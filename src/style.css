@@ -152,6 +152,7 @@ textarea { resize: vertical; min-height: 120px; }
   align-content: start;
 }
 .section header { display: grid; gap: 2px; }
+.section p { overflow-wrap: anywhere; }
 .notes { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
 
 .card {
