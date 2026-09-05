@@ -48,7 +48,11 @@ npm run preview
 
 ## Deploy
 
+- **Live:** https://status-board-production-806b.up.railway.app
 - **Railway** (primary): the `Dockerfile` builds the site and serves `dist/` with nginx on `$PORT`.
-  Connect the GitHub repo to a Railway service and generate a `*.up.railway.app` domain.
-- **GitHub Pages** (fallback): `.github/workflows/pages.yml` builds with `BASE_PATH=/<repo>/` and
-  publishes `dist/` on every push to `main`.
+  The Railway service `status-board` (project `bot-ops-status-board`) tracks `main` on this repo
+  and redeploys on every push.
+- **GitHub Pages** (fallback, not wired up): a manual-dispatch workflow that builds with
+  `BASE_PATH=/<repo>/` and publishes `dist/` exists in the source project as
+  `.github/workflows/pages.yml`. It was not pushed here because the publishing token lacks the
+  `workflow` scope; add it from the GitHub UI if Railway ever needs a backup host.
