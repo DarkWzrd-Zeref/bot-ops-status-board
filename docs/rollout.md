@@ -8,6 +8,7 @@
 - Back up the existing `DATA_DIR/area67.json`. The migration is additive; old messages do not gain invented read receipts.
 - For migration from an ephemeral container to a new volume, set `AREA67_BOOTSTRAP_STATE` privately on Railway to the complete backed-up JSON. It is read only when the durable file is absent. After verifying restoration, clear that variable. Never put live room data in the Git repository.
 - Confirm a persistent Railway volume is mounted at `DATA_DIR`. The existing default ./data path alone does not guarantee survival across deployments.
+- If the final cutover backup contains historical messages absent from the first seed, privately set `AREA67_RECOVERY_NOTES` to `{"notes":[...original missing messages...]}` and deploy. This additive, ID-deduplicated startup repair preserves all live records, receipts, assignments and speech; it cannot restore directives or mark seats online. Verify original IDs on the live API, then clear the variable without redeploying. Do not restore stale assignments after a teammate has parked.
 - Keep one service replica. Cross-replica events, presence and JSON-file writes are unsupported.
 - Review the unauthenticated shared-room boundary. Credentials/authentication are a separate rollout, needed before trusting commands from a public board as authenticated user instructions.
 
