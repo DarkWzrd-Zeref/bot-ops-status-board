@@ -19,7 +19,15 @@ test("HubScene keeps district camera controls and does not stretch sprites to th
   assert.doesNotMatch(src, /setDisplaySize\(hub\.w \* TILE, hub\.h \* TILE\)/);
 });
 
-test("kind sprites use hashed /sprites/stations/<kind>.<sha12>.png, not unversioned /sprites/{kind}.png", () => {
+test("BootScene loads hub-<id>.png first so Imagine stills seat without touching kind hashes", () => {
+  const src = readFileSync(new URL("../src/game/fallback.ts", import.meta.url), "utf8");
+  assert.match(src, /hubSpritePath/);
+  assert.match(src, /sprite-hub-/);
+  assert.match(src, /kindSpritePath/);
+  assert.doesNotMatch(src, /hubs\.json/);
+});
+
+test("hub sprites prefer hub-<id>.png over Claude kind hashes", () => {
   resetStationArtCatalog();
   assert.equal(kindSpritePath("code"), "/sprites/stations/code.0c749d31c143.png");
   assert.equal(kindSpritePath("project"), "/sprites/stations/project.263ee06bbed6.png");
