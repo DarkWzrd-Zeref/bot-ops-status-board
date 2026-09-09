@@ -10,7 +10,7 @@ import {
   assignAgent,
   beginMove,
   buildingAt,
-  buildingName,
+  stationMapLabel,
   cancelMove,
   demolish,
   finishMove,
@@ -226,7 +226,7 @@ export class HubScene extends Phaser.Scene {
     });
     this.bSprites.set(uidStr, img);
     const label = this.add
-      .text(img.x, b.ty * TILE - 4, buildingName(b), {
+      .text(img.x, b.ty * TILE - 4, stationMapLabel(b, runtime.selectedBuilding === uidStr), {
         fontFamily: "monospace",
         fontSize: "14px",
         color: "#b7f07a",
@@ -261,7 +261,7 @@ export class HubScene extends Phaser.Scene {
           tilesH: hub.h,
           kind: hub.kind,
         });
-        this.labels.get("b-" + id)?.setText(buildingName(building)).setPosition(spr.x, building.ty * TILE - 4);
+        this.labels.get("b-" + id)?.setText(stationMapLabel(building, runtime.selectedBuilding === id)).setPosition(spr.x, building.ty * TILE - 4);
       }
     }
   }

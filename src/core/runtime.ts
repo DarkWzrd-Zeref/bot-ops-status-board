@@ -269,6 +269,12 @@ export function updateProject(uid: string, info: ProjectInfo): void {
 }
 export function buildingName(building: PlacedBuilding): string { return building.project?.name ?? hubById(building.hubId).name; }
 
+/** Collapsed map chip: catalog short name, or the project title. Selected/inspector still use buildingName. */
+export function stationMapLabel(building: PlacedBuilding, selected = false): string {
+  if (selected) return buildingName(building);
+  return building.project?.name ?? hubById(building.hubId).short;
+}
+
 export function buildingAt(tx: number, ty: number): PlacedBuilding | null {
   for (const b of runtime.buildings) {
     const h = hubById(b.hubId);

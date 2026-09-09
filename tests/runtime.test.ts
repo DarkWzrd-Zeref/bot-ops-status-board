@@ -77,6 +77,25 @@ await test("project metadata survives placement, move, cancel, reload and safe i
   assert.equal(game.runtime.buildings.some(b => b.uid === building.uid), false);
   assert.equal(game.runtime.agents.find(a => a.id === "codex")!.buildingUid, null);
 });
+await test("collapsed map labels use hub.short; selected and project titles keep full identity", () => {
+  const discord = game.runtime.buildings.find(b => b.hubId === "discord")!;
+  const well = game.runtime.buildings.find(b => b.hubId === "well")!;
+  assert.equal(game.stationMapLabel(discord), "Discord");
+  assert.equal(game.stationMapLabel(discord, true), "Discord Hall");
+  assert.equal(game.stationMapLabel(well), "Well");
+  assert.equal(game.stationMapLabel(well, true), "Command Well");
+  assert.equal(game.buildingName(discord), "Discord Hall");
+  const info = { name: "AREA 67", repoUrl: "https://github.com/DarkWzrd-Zeref/bot-ops-status-board", workspace: "AI RPG HUB", summary: "Shared command center", contents: ["src"] };
+  game.prepareProject(info);
+  let plot: { x: number; y: number } | undefined;
+  for (let y = 8; y < 34 && !plot; y++) for (let x = 12; x < 42; x++) if (game.placementOk("project-site", x, y)) { plot = { x, y }; break; }
+  assert.ok(plot);
+  assert.equal(game.tryPlace("project-site", plot.x, plot.y), true);
+  const project = game.runtime.buildings.at(-1)!;
+  assert.equal(game.stationMapLabel(project), "AREA 67");
+  assert.equal(game.stationMapLabel(project, true), "AREA 67");
+  game.demolish(project.uid);
+});
 await test("a fresh work target survives radio speech and base hydration without changing assignment", () => {
   const a = game.runtime.agents.find(a => a.id === "codex")!;
   const b = game.runtime.buildings.find(b => b.hubId === "cursor")!;
