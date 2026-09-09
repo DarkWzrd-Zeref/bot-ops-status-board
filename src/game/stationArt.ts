@@ -9,8 +9,10 @@ export type StationArtKind = {
 };
 
 type StationArtManifest = {
+  version?: number;
   kinds?: Record<string, Omit<StationArtKind, "kind">>;
   stations?: StationArtKind[];
+  entries?: Array<StationArtKind & { src?: string }>;
 };
 
 /** Radio-posted hashes until Claude commits src/content/station-art.json / public/sprites/stations/manifest.json. */
@@ -53,6 +55,15 @@ export function applyStationArtManifest(manifest: StationArtManifest | null | un
   for (const row of manifest.stations ?? []) {
     if (!row.kind) continue;
     if (row.file) catalog.set(row.kind, row.file.startsWith("/") ? row.file : "/sprites/stations/" + row.file);
+    else {
+      const sha = sha12Of(row);
+      if (sha) catalog.set(row.kind, hashedPath(row.kind, sha));
+    }
+  }
+  for (const row of manifest.entries ?? []) {
+    if (!row.kind) continue;
+    if (row.src) catalog.set(row.kind, row.src);
+    else if (row.file) catalog.set(row.kind, row.file.startsWith("/") ? row.file : "/sprites/stations/" + row.file);
     else {
       const sha = sha12Of(row);
       if (sha) catalog.set(row.kind, hashedPath(row.kind, sha));

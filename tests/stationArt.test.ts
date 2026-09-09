@@ -22,7 +22,17 @@ test("kind sprites use hashed /sprites/stations/<kind>.<sha12>.png, not unversio
   assert.equal(stationTextureKeys("well", "core").painted, "well-mark");
 });
 
-test("Claude station-art manifest overrides radio hashes and unknown kinds stay procedural", () => {
+test("Claude entries[].src manifest is the live Drive contract", () => {
+  resetStationArtCatalog();
+  applyStationArtManifest({
+    version: 1,
+    entries: [{ kind: "code", src: "/sprites/stations/code.0c749d31c143.png", sha256: "0c749d31c1432297" }],
+  });
+  assert.equal(kindSpritePath("code"), "/sprites/stations/code.0c749d31c143.png");
+  assert.equal(kindSpritePath("ecosystem"), null);
+});
+
+test("legacy kinds/stations manifest still overrides radio hashes", () => {
   resetStationArtCatalog();
   applyStationArtManifest({
     kinds: { code: { sha256: "abcdef1234569999" }, ecosystem: { file: "ecosystem.deadbeefcafe.png" } },
