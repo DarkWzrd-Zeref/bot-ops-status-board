@@ -4,8 +4,8 @@ import { radioLive, reconnectLive } from "../core/live.ts";
 export const CHAT_DRAFT_KEY = "area67-draft";
 export const QUICK_DRAFT_KEY = "area67-quick-draft";
 const HEALTH_TIMEOUT_MS = 4000;
-const env = import.meta.env as { VITE_AREA67_BUNDLE_COMMIT?: string };
-const bundleCommit = env.VITE_AREA67_BUNDLE_COMMIT || null;
+const env = (import.meta as ImportMeta & { env?: { VITE_AREA67_BUNDLE_COMMIT?: string } }).env;
+const bundleCommit = env?.VITE_AREA67_BUNDLE_COMMIT || null;
 
 export function shortCommit(sha: string | null | undefined, n = 7): string {
   return (sha || "").slice(0, n) || "unknown";
