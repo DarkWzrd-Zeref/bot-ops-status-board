@@ -1,4 +1,5 @@
 import "./style.css";
+import "./ui/mobile-clarity.css";
 import { connectLive } from "./core/live.ts";
 import { bootRuntime } from "./core/runtime.ts";
 import { makeGame } from "./game/config.ts";

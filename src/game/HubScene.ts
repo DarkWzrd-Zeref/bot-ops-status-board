@@ -23,7 +23,8 @@ import {
 } from "../core/runtime.ts";
 import { bus } from "../core/events.ts";
 import type { GameEvent } from "../core/types.ts";
-import { attention, liveWork } from "../core/live.ts";
+import { presenceBySeat, workReports, radioLive } from "../core/live.ts";
+import { agentSignal, standbySpots, STANDBY_CENTER } from "../core/agentPresentation.ts";
 import { seatForPal } from "../../shared/protocol.ts";
 import { DISTRICTS } from "../../shared/map.ts";
 
@@ -53,6 +54,8 @@ export class HubScene extends Phaser.Scene {
   private bSprites = new Map<string, Phaser.GameObjects.Image>();
   private ring!: Phaser.GameObjects.Graphics;
   private bubbles = new Map<string, Phaser.GameObjects.Text>();
+  private parking: Array<{ x: number; y: number }> = [];
+  private standbyLabel!: Phaser.GameObjects.Text;
 
   constructor() {
     super("hub");
@@ -70,7 +73,7 @@ export class HubScene extends Phaser.Scene {
     const district = (event: Event) => {
       const id = (event as CustomEvent<string>).detail;
       const camera = this.cameras.main;
-      const d = DISTRICTS.find(d => d.id === id);
+      const d = id === "standby" ? STANDBY_CENTER : DISTRICTS.find(d => d.id === id);
       if (id !== "overview" && !d) return;
       camera.stopFollow();
       camera.setZoom(id === "overview" ? Math.min(camera.width / (MAP_W * TILE), camera.height / (MAP_H * TILE)) * .95 : .65);
@@ -143,8 +146,9 @@ export class HubScene extends Phaser.Scene {
     });
 
     bus.on((e: GameEvent) => {
-      if (e.type === "changed") this.syncBuildings();
+      if (e.type === "changed") { this.syncBuildings(); this.parking = standbySpots(runtime.grid, runtime.agents.length); }
       if (e.type === "say") this.showBubble(e.agentId, e.text);
+      if (e.type === "focus-agent") { const spr = this.agentSprites.get(e.agentId); if (spr) { this.cameras.main.stopFollow(); this.cameras.main.centerOn(spr.x, spr.y); } }
     });
 
     const syncKb = () => {
@@ -242,6 +246,8 @@ export class HubScene extends Phaser.Scene {
   }
 
   private spawnActors(): void {
+    this.parking = standbySpots(runtime.grid, runtime.agents.length);
+    this.standbyLabel = this.add.text(STANDBY_CENTER.x * TILE, (STANDBY_CENTER.y - 5) * TILE, "Standby", { fontSize: "14px", color: "#bacbd6", backgroundColor: "#0c1924", padding: { x: 8, y: 5 } }).setOrigin(.5, 1).setDepth(7);
     for (const a of runtime.agents) {
       const model = AGENTS.find(d => d.id === a.id)?.model ?? "";
       const spr = this.add.image(a.tx * TILE + 16, a.ty * TILE + 10, /grok/i.test(model) ? "robot" : "alien").setDisplaySize(40, 40).setDepth(5);
@@ -292,7 +298,7 @@ export class HubScene extends Phaser.Scene {
       if (confirm(b.project ? "Remove the map building only? Repository and files will NOT be deleted." : "Dismantle this station?")) demolish(b.uid);
       return;
     }
-    const agent = runtime.agents.find((a) => a.tx === tx && a.ty === ty);
+    const agent = runtime.agents.find(a => { const spr = this.agentSprites.get(a.id); return spr?.visible && Math.floor(spr.x / TILE) === tx && Math.floor(spr.y / TILE) === ty; });
     if (agent) {
       runtime.selectedAgent = agent.id;
       runtime.selectedBuilding = null;
@@ -335,21 +341,25 @@ export class HubScene extends Phaser.Scene {
     this.player.y = runtime.player.y;
     this.labels.get("player")?.setPosition(this.player.x, this.player.y - 18);
 
-    for (const a of runtime.agents) {
+    let parkedCount = 0;
+    for (const [index, a] of runtime.agents.entries()) {
       const spr = this.agentSprites.get(a.id);
       if (!spr) continue;
-      const ax = a.tx * TILE + 16;
-      const ay = a.ty * TILE + 10;
-      spr.x += (ax - spr.x) * 0.25;
-      spr.y += (ay - spr.y) * 0.25;
-      this.labels.get(a.id)?.setPosition(spr.x, spr.y - 18);
       const seat = seatForPal(a.id);
-      const active = seat && ["attentive", "busy"].includes(attention(seat.id));
-      spr.setAlpha(active ? 1 : .55);
-      const working = seat && liveWork().some(w => w.seat === seat.id);
-      this.labels.get(a.id)?.setColor(working ? "#9fdcff" : "#c5d5da");
-      this.bubbles.get(a.id)?.setPosition(spr.x, spr.y - 36);
+      const signal = agentSignal(radioLive, seat ? presenceBySeat.get(seat.id) : undefined, workReports.find(w => w.seat === seat?.id), a.path.length > 0);
+      const spot = signal.parked ? this.parking[index] : { x: a.tx, y: a.ty };
+      spr.setVisible(!!spot);
+      if (!spot) { this.labels.get(a.id)?.setVisible(false); continue; }
+      const ax = spot.x * TILE + 16, ay = spot.y * TILE + 10;
+      if (signal.parked || spr.getData("parked")) spr.setPosition(ax, ay);
+      else { spr.x += (ax - spr.x) * .25; spr.y += (ay - spr.y) * .25; }
+      spr.setData("parked", signal.parked);
+      spr.setDisplaySize(signal.parked ? 24 : 32, signal.parked ? 24 : 32).setAlpha(signal.parked ? .55 : signal.status === "away" ? .7 : 1);
+      if (signal.parked) parkedCount++;
+      this.labels.get(a.id)?.setPosition(spr.x, spr.y - 22).setVisible(!signal.parked || runtime.selectedAgent === a.id).setText((seat?.label ?? a.id) + " " + signal.icon + " " + signal.label).setColor(signal.status === "working" ? "#9fdcff" : signal.status === "blocked" ? "#f2b365" : "#c5d5da");
+      this.bubbles.get(a.id)?.setPosition(spr.x, spr.y - 44).setVisible(!signal.parked);
     }
+    this.standbyLabel.setText("Standby · " + parkedCount + " parked");
 
     this.drawGhost();
   }

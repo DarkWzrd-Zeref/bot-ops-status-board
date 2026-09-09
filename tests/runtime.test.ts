@@ -4,6 +4,7 @@ const cache = new Map<string, string>();
 Object.defineProperty(globalThis, "localStorage", { value: { getItem: (k: string) => cache.get(k) ?? null, setItem: (k: string, v: string) => cache.set(k, v), removeItem: (k: string) => cache.delete(k) } });
 const game = await import("../src/core/runtime.ts");
 const { canEquipSkill } = await import("../src/core/skillspector.ts");
+const { dismissInteraction } = await import("../src/ui/panels.ts");
 game.bootRuntime();
 await test("starter base includes Codex separately from ChatGPT, Heavy and Cursor", () => {
   for (const id of ["codex", "researcher", "director", "cursor-ultra"]) assert.ok(game.runtime.agents.some(a => a.id === id));
@@ -89,4 +90,27 @@ await test("a fresh work target survives radio speech and base hydration without
   assert.equal(a.buildingUid, null);
   game.syncWorkTargets(new Map());
   assert.equal(a.path.length, 0);
+});
+await test("touch Close during a lifted project restores its exact data and assignments", () => {
+  const b = game.runtime.buildings.find(b => b.hubId === "cursor")!;
+  const before = structuredClone(game.exportSave());
+  game.runtime.selectedBuilding = b.uid;
+  assert.equal(game.beginMove(b.uid), true);
+  dismissInteraction(game.runtime, game.cancelMove);
+  const after = game.exportSave();
+  assert.deepEqual(after.buildings.find(row => row.uid === b.uid), before.buildings.find(row => row.uid === b.uid));
+  assert.equal(after.buildings.filter(row => row.uid === b.uid).length, 1);
+  assert.deepEqual(after.assignments, before.assignments);
+  assert.deepEqual(after.equipped, before.equipped);
+  assert.equal(game.runtime.lifting, null);
+  assert.equal(game.runtime.selectedBuilding, null);
+  assert.equal(game.runtime.mode, "play");
+});
+await test("touch Cancel for a new project removes the ghost without creating a building", () => {
+  const before = game.runtime.buildings.length;
+  game.prepareProject({ name: "Unplaced draft", repoUrl: "", workspace: "preview", summary: "", contents: [] });
+  dismissInteraction(game.runtime, game.cancelMove);
+  assert.equal(game.runtime.ghostProject, null);
+  assert.equal(game.runtime.ghostHub, null);
+  assert.equal(game.runtime.buildings.length, before);
 });

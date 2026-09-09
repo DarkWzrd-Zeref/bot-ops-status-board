@@ -334,7 +334,6 @@ html, body, #app { height: 100%; overflow: hidden; }
   .world-heading .eyebrow { display: none; }
   .comms-panel { right: 10px; bottom: 68px; width: calc(100vw - 84px); height: min(72dvh, 660px); }
   .operations-panel { left: calc(var(--left) + 10px); bottom: 68px; width: calc(100vw - 84px); }
-  #hud:has(.comms-panel:not([hidden])) .operations-panel { bottom: 68px; }
   .world-caption { display: none; }
   .header-actions { gap: 8px; }
   .brand { min-width: 130px; }
@@ -430,7 +429,7 @@ html, body, #app { height: 100%; overflow: hidden; }
   #quick-text { padding: 5px; }
   #chat-launcher { right: 8px; bottom: 17px; min-width: 52px; padding: 10px 6px; font-size: 12px; }
   #chat-launcher span { display: none; }
-  .operations-panel, #hud:has(.comms-panel:not([hidden])) .operations-panel { bottom: 112px; }
+  .operations-panel { bottom: 112px; }
   .comms-panel { bottom: 78px; }
   #ecosystem-dialog { padding: 16px; }
   #ecosystem-records { grid-template-columns: 1fr; }
