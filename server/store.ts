@@ -405,14 +405,16 @@ export function actOnCard(actor: Speaker, input: CardAction): BoardCard {
   if (card.revision !== data.revision) throw new RecordConflict("Someone updated this card. Read the latest version and try again.");
   if (card.claimedBy && card.claimedBy !== actor && actor !== "zeref") throw new Error("This task is claimed by " + speakerLabel(card.claimedBy));
   if (data.action === "claim") {
-    if (card.board !== "pending-work" || !["parked", "open"].includes(card.status)) throw new Error("Only parked work can be picked up");
+    if (!["pending-work", "bug-board"].includes(card.board) || !["parked", "open"].includes(card.status)) throw new Error("Only open or parked work and bugs can be picked up");
     card.claimedBy = actor; card.status = "claimed";
   } else if (data.action === "park") {
-    card.board = "pending-work"; card.status = "parked"; card.claimedBy = null;
+    if (card.board !== "bug-board") card.board = "pending-work";
+    card.status = "parked"; card.claimedBy = null;
   } else if (data.action === "discuss") {
+    if (card.board === "bug-board") throw new Error("Keep bugs on the Bug Board; use chat for discussion");
     card.board = "war-table"; card.status = "open"; card.claimedBy = null;
   } else if (data.action === "complete") {
-    if (card.board === "pending-work" && card.claimedBy !== actor && actor !== "zeref") throw new Error("Pick up this work before completing it");
+    if (["pending-work", "bug-board"].includes(card.board) && card.claimedBy !== actor && actor !== "zeref") throw new Error("Pick up this work before completing it");
     card.status = "done";
   } else if (data.action === "archive") {
     if (actor !== card.createdBy && actor !== "zeref" && actor !== card.claimedBy) throw new Error("Only the author, claimant or Zeref can archive this card");
