@@ -4,6 +4,7 @@
 
 - Review the feature branch against the currently deployed branch, including any teammate changes since the rebuild started.
 - Run `npm ci`, `npm test` and `npm run build` on Node 22+.
+- Optional CI: with an account authorized to write workflows, copy `docs/verify-workflow.example.yml` to `.github/workflows/verify.yml`. The publishing token could not activate this workflow; no CI result is claimed.
 - Back up the existing `DATA_DIR/area67.json`. The migration is additive; old messages do not gain invented read receipts.
 - Confirm a persistent Railway volume is mounted at `DATA_DIR`. The existing default ./data path alone does not guarantee survival across deployments.
 - Keep one service replica. Cross-replica events, presence and JSON-file writes are unsupported.

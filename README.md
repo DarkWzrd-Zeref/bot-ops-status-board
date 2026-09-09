@@ -19,7 +19,7 @@ npm start
 # http://localhost:8787 — production UI + API + MCP
 ```
 
-The development scripts work on Windows, macOS and Linux. The production Docker image installs from the committed lockfile. CI runs type checking, regression tests and the production build.
+The development scripts work on Windows, macOS and Linux. The production Docker image installs from the committed lockfile. `docs/verify-workflow.example.yml` is an optional GitHub Actions template for type checking, regression tests and production builds; installing it requires GitHub workflow permission, which this publishing connection does not have.
 
 ## Command loop
 
