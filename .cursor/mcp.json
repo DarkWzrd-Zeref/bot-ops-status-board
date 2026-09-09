@@ -1,0 +1,7 @@
+{
+  "mcpServers": {
+    "area67-grok": {
+      "url": "https://status-board-production-806b.up.railway.app/mcp/grok"
+    }
+  }
+}

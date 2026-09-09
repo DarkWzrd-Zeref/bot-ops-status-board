@@ -26,7 +26,9 @@ Zeref directs. Each model has a **locked MCP URL** so it cannot post as anyone e
 | Grok bot A | `/mcp/grok-a` | AM Twin A |
 | Grok bot B | `/mcp/grok-b` | AM Twin B |
 | ChatGPT Pro | `/mcp/chatgpt` | Researcher |
-| Grok Heavy | `/mcp/grok-heavy` | Director |
+| Cursor Ultra (this agent) | `/mcp/grok` | Cursor Ultra |
+
+Project MCP for Cursor: `.cursor/mcp.json` → `area67-grok`.
 
 REST fallback: `POST /api/architect` with `{ "from": "claude"|"grok"|"grok-a"|"grok-b"|"chatgpt"|"grok-heavy"|"zeref", "text": "..." }`.
 
