@@ -1,0 +1,145 @@
+{
+  "comment": "Palworld work-suitability analog. Placing a building and assigning a pal CHANGES that pal's AI: tools, gates, policy.",
+  "stations": {
+    "well": {
+      "work": "command",
+      "slots": 0,
+      "grants": ["assign-pals"],
+      "gate": null,
+      "aiChange": "This is the Palbox. Radius for placing stations. No production of its own."
+    },
+    "bank": {
+      "work": "memory",
+      "slots": 2,
+      "grants": ["ledger", "park-tasks"],
+      "gate": null,
+      "aiChange": "Assigned pal may park/go tasks and read the old sheet vault."
+    },
+    "grand-exchange": {
+      "work": "quests",
+      "slots": 1,
+      "grants": ["research-board"],
+      "gate": null,
+      "aiChange": "Assigned pal posts open research questions as GE offers."
+    },
+    "skillspector": {
+      "work": "scan",
+      "slots": 2,
+      "grants": ["scan-skill", "mcp:skillspector"],
+      "gate": "skill-install",
+      "aiChange": "Assigned pal (usually Police) runs NVIDIA SkillSpector. No skill equips until this station exists and returns SAFE or CAUTION."
+    },
+    "skill-rack": {
+      "work": "equip",
+      "slots": 1,
+      "grants": ["equip-skill"],
+      "gate": "requires-spector-scan",
+      "aiChange": "Assigned pal installs a scanned skill onto another pal. DO_NOT_INSTALL is blocked."
+    },
+    "discord": {
+      "work": "comms",
+      "slots": 3,
+      "grants": ["mcp:discord"],
+      "gate": null,
+      "aiChange": "Assigned pal may read/write Community Brain channels."
+    },
+    "cursor": {
+      "work": "code",
+      "slots": 2,
+      "grants": ["mcp:cursor-cloud", "cloud-agent"],
+      "gate": null,
+      "aiChange": "Assigned pal may spawn/watch Cursor Ultra cloud runs."
+    },
+    "github": {
+      "work": "code",
+      "slots": 2,
+      "grants": ["mcp:github"],
+      "gate": null,
+      "aiChange": "Assigned pal may open PRs and read CI."
+    },
+    "gmail": {
+      "work": "comms",
+      "slots": 1,
+      "grants": ["mcp:gmail"],
+      "gate": null,
+      "aiChange": "Assigned pal may draft and label mail."
+    },
+    "calendar": {
+      "work": "ops",
+      "slots": 1,
+      "grants": ["mcp:google-calendar"],
+      "gate": null,
+      "aiChange": "Assigned pal owns the one-LIVE calendar rule."
+    },
+    "slack": {
+      "work": "comms",
+      "slots": 1,
+      "grants": ["mcp:slack"],
+      "gate": null,
+      "aiChange": "Assigned pal may post to Slack."
+    },
+    "railway": {
+      "work": "infra",
+      "slots": 2,
+      "grants": ["mcp:railway", "deploy"],
+      "gate": null,
+      "aiChange": "Assigned pal may deploy/restart Railway services."
+    },
+    "neon": {
+      "work": "data",
+      "slots": 1,
+      "grants": ["mcp:neon"],
+      "gate": null,
+      "aiChange": "Assigned pal may query/migrate Postgres."
+    },
+    "cloudflare": {
+      "work": "infra",
+      "slots": 1,
+      "grants": ["mcp:cloudflare"],
+      "gate": null,
+      "aiChange": "Assigned pal may touch Workers/KV/R2."
+    },
+    "firecrawl": {
+      "work": "research",
+      "slots": 2,
+      "grants": ["mcp:firecrawl"],
+      "gate": null,
+      "aiChange": "Assigned pal may search and scrape the web."
+    },
+    "apify": {
+      "work": "research",
+      "slots": 1,
+      "grants": ["mcp:apify"],
+      "gate": null,
+      "aiChange": "Assigned pal may run Apify Actors."
+    },
+    "elevenlabs": {
+      "work": "media",
+      "slots": 1,
+      "grants": ["mcp:elevenlabs", "voice"],
+      "gate": null,
+      "aiChange": "Assigned pal may speak with ElevenLabs."
+    },
+    "agentmail": {
+      "work": "comms",
+      "slots": 1,
+      "grants": ["mcp:agentmail"],
+      "gate": null,
+      "aiChange": "Assigned pal gets an agent-native inbox."
+    },
+    "drive": {
+      "work": "ops",
+      "slots": 1,
+      "grants": ["mcp:google-drive"],
+      "gate": null,
+      "aiChange": "Assigned pal may read/write Drive files."
+    },
+    "x": {
+      "work": "media",
+      "slots": 1,
+      "grants": ["mcp:x"],
+      "gate": null,
+      "aiChange": "Assigned pal may post/read X."
+    }
+  }
+}

@@ -1,0 +1,32 @@
+{
+  "skills": [
+    {
+      "id": "discord-sync",
+      "name": "Discord Sync",
+      "target": "https://github.com/example/community-brain-discord-sync",
+      "description": "Mirrors Community Brain channels into the ledger.",
+      "wantedBy": ["grok-am-a", "grok-am-b"]
+    },
+    {
+      "id": "firecrawl-research",
+      "name": "Firecrawl Research",
+      "target": "https://github.com/example/firecrawl-research-skill",
+      "description": "Search + scrape into Researcher proposals.",
+      "wantedBy": ["researcher"]
+    },
+    {
+      "id": "cursor-pr",
+      "name": "Cursor PR Pulse",
+      "target": "https://github.com/example/cursor-pr-pulse",
+      "description": "Watches cloud-agent PRs and pings Engineer.",
+      "wantedBy": ["engineer", "cursor-ultra"]
+    },
+    {
+      "id": "rogue-exfil",
+      "name": "Helpful Exfil (fixture)",
+      "target": "https://github.com/example/do-not-install-exfil",
+      "description": "Demo skill that SkillSpector should block. Pretends to 'backup' secrets.",
+      "wantedBy": []
+    }
+  ]
+}

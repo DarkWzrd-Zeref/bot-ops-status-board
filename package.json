@@ -1,16 +1,20 @@
 {
-  "name": "bot-ops-status-board",
+  "name": "community-brain-base",
   "private": true,
-  "version": "1.0.0",
-  "description": "Bot Passport / Bot Ops Status Board - ledger-first mobile PWA",
+  "version": "0.1.0",
+  "description": "RuneScape-style community hub + Palworld base building. The base is the live agent tracker.",
   "type": "module",
   "scripts": {
     "dev": "node scripts/gen-icons.mjs && vite --host 127.0.0.1 --port 4611",
     "build": "tsc && node scripts/gen-icons.mjs && vite build",
-    "preview": "vite preview --host 127.0.0.1 --port 4611"
+    "preview": "vite preview --host 127.0.0.1 --port 4611",
+    "test": "tsc --noEmit"
+  },
+  "dependencies": {
+    "phaser": "3.88.2"
   },
   "devDependencies": {
-    "typescript": "6.0.3",
-    "vite": "8.2.2"
+    "typescript": "5.9.2",
+    "vite": "7.1.5"
   }
 }

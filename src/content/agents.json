@@ -1,0 +1,130 @@
+{
+  "player": {
+    "id": "zeref",
+    "name": "Zeref",
+    "title": "Base owner",
+    "color": "#f4d03f"
+  },
+  "agents": [
+    {
+      "id": "grok-am-a",
+      "name": "AM Twin A",
+      "role": "Account Manager",
+      "model": "Grok",
+      "account": "grok-1",
+      "discordChannel": "the-account-managers",
+      "color": "#7dd3fc",
+      "mimicOf": null,
+      "homeHub": "discord",
+      "bio": "Primary Grok account-manager. Twin B copies its moves."
+    },
+    {
+      "id": "grok-am-b",
+      "name": "AM Twin B",
+      "role": "Account Manager",
+      "model": "Grok",
+      "account": "grok-2",
+      "discordChannel": "account-manager",
+      "color": "#38bdf8",
+      "mimicOf": "grok-am-a",
+      "homeHub": "discord",
+      "bio": "Second Grok account. Paths after Twin A so you can see echo / drift."
+    },
+    {
+      "id": "chief-of-staff",
+      "name": "Chief of Staff",
+      "role": "CoS",
+      "model": "Claude Pro",
+      "account": "claude-pro",
+      "discordChannel": "chief-of-staff",
+      "color": "#f5c16c",
+      "mimicOf": null,
+      "homeHub": "bank",
+      "bio": "Queue, park/go, handoffs. Banks memory at the ledger."
+    },
+    {
+      "id": "police",
+      "name": "Police",
+      "role": "Guard",
+      "model": "Claude Pro",
+      "account": "claude-pro",
+      "discordChannel": "police",
+      "color": "#60a5fa",
+      "mimicOf": null,
+      "homeHub": "github",
+      "bio": "MCP-first rules, no-clone, waste flags."
+    },
+    {
+      "id": "researcher",
+      "name": "Researcher",
+      "role": "Scout",
+      "model": "ChatGPT Pro",
+      "account": "chatgpt-pro",
+      "discordChannel": "researcher",
+      "color": "#c4b5fd",
+      "mimicOf": null,
+      "homeHub": "firecrawl",
+      "bio": "Web insight, vision board, proposals."
+    },
+    {
+      "id": "engineer",
+      "name": "Engineer",
+      "role": "Crafter",
+      "model": "Cursor Ultra",
+      "account": "cursor-ultra",
+      "discordChannel": "engineer-bot",
+      "color": "#34d399",
+      "mimicOf": null,
+      "homeHub": "cursor",
+      "bio": "Boarding packets, PRs, cloud-agent handoff."
+    },
+    {
+      "id": "stay-on-track",
+      "name": "Stay on Track",
+      "role": "Scribe",
+      "model": "Claude Pro",
+      "account": "claude-pro",
+      "discordChannel": "stay-on-track",
+      "color": "#fb7185",
+      "mimicOf": null,
+      "homeHub": "calendar",
+      "bio": "One-LIVE rule, syllabus, done artifacts."
+    },
+    {
+      "id": "director",
+      "name": "Director",
+      "role": "Overlord",
+      "model": "Grok Heavy",
+      "account": "grok-heavy",
+      "discordChannel": "director",
+      "color": "#f97316",
+      "mimicOf": null,
+      "homeHub": "grand-exchange",
+      "bio": "Sets the quest board. Watches the plaza."
+    },
+    {
+      "id": "cursor-ultra",
+      "name": "Cursor Ultra",
+      "role": "Cloud smith",
+      "model": "Cursor Ultra",
+      "account": "cursor-ultra",
+      "discordChannel": null,
+      "color": "#a3e635",
+      "mimicOf": null,
+      "homeHub": "cursor",
+      "bio": "Live Cursor cloud agents. This run is one of them."
+    },
+    {
+      "id": "n8n",
+      "name": "n8n",
+      "role": "Automator",
+      "model": "n8n-self-host",
+      "account": "n8n",
+      "discordChannel": "n8n-self-host",
+      "color": "#f472b6",
+      "mimicOf": null,
+      "homeHub": "railway",
+      "bio": "Already in Community Brain Discord. Workflows as a workstation."
+    }
+  ]
+}
