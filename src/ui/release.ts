@@ -3,6 +3,13 @@ import { radioLive, reconnectLive } from "../core/live.ts";
 
 export const CHAT_DRAFT_KEY = "area67-draft";
 export const QUICK_DRAFT_KEY = "area67-quick-draft";
+const HEALTH_TIMEOUT_MS = 4000;
+const env = import.meta.env as { VITE_AREA67_BUNDLE_COMMIT?: string };
+const bundleCommit = env.VITE_AREA67_BUNDLE_COMMIT || null;
+
+export function shortCommit(sha: string | null | undefined, n = 7): string {
+  return (sha || "").slice(0, n) || "unknown";
+}
 
 export type HealthPayload = {
   ok?: boolean;
@@ -21,7 +28,7 @@ export type ReleaseStatus = {
   showUpdate: boolean;
 };
 
-let bootCommit: string | null = null;
+let bootCommit: string | null = bundleCommit;
 let health: HealthPayload | null = null;
 let healthError: string | null = null;
 let checking = false;
@@ -34,7 +41,7 @@ export function setReleaseReload(fn: () => void): void {
 }
 
 export function resetReleaseWatchForTests(): void {
-  bootCommit = null;
+  bootCommit = bundleCommit;
   health = null;
   healthError = null;
   checking = false;
@@ -42,9 +49,25 @@ export function resetReleaseWatchForTests(): void {
   watching = false;
 }
 
-export function shortCommit(commit: string | null | undefined): string {
-  if (!commit) return "unknown";
-  return commit.slice(0, 7);
+export function parseHealthPayload(data: unknown, httpOk: boolean): { health: HealthPayload | null; error: string | null } {
+  if (!data || typeof data !== "object") return { health: null, error: "Hub /health returned a non-object payload" };
+  const row = data as Record<string, unknown>;
+  const commit = row.commit;
+  if (commit !== null && commit !== undefined && typeof commit !== "string") {
+    return { health: null, error: "Hub /health commit is not a string" };
+  }
+  const parsed: HealthPayload = {
+    ok: row.ok === true,
+    name: typeof row.name === "string" ? row.name : undefined,
+    version: typeof row.version === "string" ? row.version : undefined,
+    commit: typeof commit === "string" ? commit : null,
+  };
+  if (!httpOk || parsed.ok === false) return { health: parsed, error: "Hub /health is not ok" };
+  return { health: parsed, error: null };
+}
+
+export function bundleIdentity(): string | null {
+  return bundleCommit;
 }
 
 export function releaseStatus(opts: {
@@ -105,17 +128,19 @@ export function currentReleaseChip(): string {
 export async function pollHealth(fetchImpl: typeof fetch = fetch): Promise<HealthPayload | null> {
   checking = true;
   bus.emit({ type: "changed" });
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), HEALTH_TIMEOUT_MS);
   try {
-    const res = await fetchImpl("/health", { cache: "no-store" });
-    const data = await res.json() as HealthPayload;
-    health = data;
-    healthError = !res.ok || data.ok === false ? "Hub /health is not ok" : null;
-    if (bootCommit === null && typeof data.commit === "string" && data.commit) bootCommit = data.commit;
-    return data;
+    const res = await fetchImpl("/health", { cache: "no-store", signal: controller.signal });
+    const parsed = parseHealthPayload(await res.json(), res.ok);
+    health = parsed.health;
+    healthError = parsed.error;
+    return parsed.health;
   } catch (error) {
     healthError = error instanceof Error ? error.message : "health failed";
     return null;
   } finally {
+    clearTimeout(timer);
     checking = false;
     bus.emit({ type: "changed" });
   }

@@ -1,30 +1,28 @@
 {
-  "generatedAt": "2026-09-09T15:20:00Z",
+  "asOf": "2026-09-09T15:25:00Z",
+  "kind": "snapshot",
   "generatedBy": "cursor-ultra",
-  "note": "Read-only snapshot of what the live hub is missing vs GitHub DarkWzrd-Zeref and the AI HIVE HUB Drive folder. Not a Goals and Task fork. Does not grant tools or place stations.",
-  "liveHub": {
+  "note": "Public hub sources only, labeled snapshot/as-of — not a live inventory. Private repositories, personal lanes, and unapproved Drive file IDs are not published here.",
+  "hub": {
     "url": "https://status-board-production-806b.up.railway.app",
-    "connect": "https://status-board-production-806b.up.railway.app/connect",
-    "version": "1.2.4",
-    "commit": "67bbb18a785f846b4a243c0cc76e17de03aaf39f",
-    "githubApp": "https://github.com/DarkWzrd-Zeref/bot-ops-status-board"
+    "connect": "/connect",
+    "github": "https://github.com/DarkWzrd-Zeref/bot-ops-status-board"
   },
-  "placedBuildings": [
-    { "uid": "b1akyet9", "hubId": "well", "name": "Command Well" },
-    { "uid": "bltotebl", "hubId": "bank", "name": "Ledger Bank" },
-    { "uid": "b6inft7d", "hubId": "grand-exchange", "name": "Grand Exchange" },
-    { "uid": "b8qdnulh", "hubId": "discord", "name": "Discord Hall" },
-    { "uid": "by7qsp74", "hubId": "cursor", "name": "Cursor Forge" },
-    { "uid": "b9vkaqi7", "hubId": "skillspector", "name": "Spector Gate" },
-    {
-      "uid": "project-area67",
-      "hubId": "project-site",
-      "name": "AREA 67",
-      "repo": "DarkWzrd-Zeref/bot-ops-status-board",
-      "contentsStillPlaceholder": true
-    }
+  "onMap": [
+    "well",
+    "bank",
+    "grand-exchange",
+    "discord",
+    "cursor",
+    "skillspector",
+    "project-area67"
   ],
-  "unplacedCatalog": [
+  "publicGithub": {
+    "name": "bot-ops-status-board",
+    "url": "https://github.com/DarkWzrd-Zeref/bot-ops-status-board",
+    "hubStation": "project-area67"
+  },
+  "unplacedCatalogTypes": [
     "war-table",
     "vision-board",
     "pending-work",
@@ -44,257 +42,13 @@
     "drive",
     "x"
   ],
-  "ecosystem": {
-    "bugCards": ["A67-B001", "A67-B002", "A67-B003", "A67-B004", "A67-B005", "A67-B006", "A67-B007", "A67-B008", "A67-B009", "A67-B010", "A67-B011"],
-    "skillAltar": [],
-    "fixtureSkillsInRepo": ["discord-sync", "firecrawl-research", "cursor-pr", "rogue-exfil"]
-  },
-  "githubRepos": [
-    {
-      "name": "bot-ops-status-board",
-      "url": "https://github.com/DarkWzrd-Zeref/bot-ops-status-board",
-      "visibility": "public",
-      "description": "AREA 67 command center / Bot Passport PWA",
-      "hubStation": "project-area67",
-      "appMcp": "LIVE seat MCPs"
-    },
-    {
-      "name": "hub-app-mcps",
-      "url": "https://github.com/DarkWzrd-Zeref/hub-app-mcps",
-      "visibility": "private",
-      "description": "App MCP shortcuts + health scaffolds. Not vendor connectors. No secrets.",
-      "hubStation": null,
-      "appMcp": "SCAFFOLD"
-    },
-    {
-      "name": "hub-quota",
-      "url": "https://github.com/DarkWzrd-Zeref/hub-quota",
-      "visibility": "private",
-      "description": "Seat heartbeats, ok/stale/critical. Not ModelDeck.",
-      "hubStation": null,
-      "appMcp": "SCAFFOLD HTTP"
-    },
-    {
-      "name": "hub-judgment",
-      "url": "https://github.com/DarkWzrd-Zeref/hub-judgment",
-      "visibility": "private",
-      "description": "Decisions and patterns for the crew. Not Cortex Suite.",
-      "hubStation": null,
-      "appMcp": "SCAFFOLD HTTP"
-    },
-    {
-      "name": "atlas-apex",
-      "url": "https://github.com/DarkWzrd-Zeref/atlas-apex",
-      "visibility": "private",
-      "description": "Live signals (CoinGecko + Neon + Railway). No trade execution.",
-      "hubStation": null,
-      "appMcp": "MISSING"
-    },
-    {
-      "name": "mlb-predictions",
-      "url": "https://github.com/DarkWzrd-Zeref/mlb-predictions",
-      "visibility": "private",
-      "description": "Automated MLB predictions (ULTRON / SERAPH v4)",
-      "hubStation": null,
-      "appMcp": "MISSING"
-    },
-    {
-      "name": "HARD-DRIVE-1.0",
-      "url": "https://github.com/DarkWzrd-Zeref/HARD-DRIVE-1.0",
-      "visibility": "private",
-      "description": "Crypto-earning game 1.0. Never replace with later versions.",
-      "hubStation": null,
-      "appMcp": "MISSING"
-    },
-    {
-      "name": "hard-drive-2.0",
-      "url": "https://github.com/DarkWzrd-Zeref/hard-drive-2.0",
-      "visibility": "private",
-      "description": "HARD DRIVE 2.0 — Super Off Road racer",
-      "hubStation": null,
-      "appMcp": "MISSING"
-    },
-    {
-      "name": "hard-drive-v3",
-      "url": "https://github.com/DarkWzrd-Zeref/hard-drive-v3",
-      "visibility": "private",
-      "description": "HD2 adoption + graphics upgrade. Separate Railway.",
-      "hubStation": null,
-      "appMcp": "MISSING"
-    },
-    {
-      "name": "hard-drive-sticky",
-      "url": "https://github.com/DarkWzrd-Zeref/hard-drive-sticky",
-      "visibility": "private",
-      "description": "HARD DRIVE sticky history site (1.0→2.0→3.0)",
-      "hubStation": null,
-      "appMcp": "MISSING"
-    },
-    {
-      "name": "reserve-os",
-      "url": "https://github.com/DarkWzrd-Zeref/reserve-os",
-      "visibility": "private",
-      "description": "Personal bookkeeper — Coinbase perps + paychecks. PERSONAL lane.",
-      "hubStation": null,
-      "appMcp": "MISSING / PERSONAL",
-      "personal": true
-    },
-    {
-      "name": "bull-codex-host",
-      "url": "https://github.com/DarkWzrd-Zeref/bull-codex-host",
-      "visibility": "private",
-      "description": "Bull Codex shared vault — Netlify Blobs ledger + GIF intake",
-      "hubStation": null,
-      "appMcp": "MISSING"
-    },
-    {
-      "name": "website-creation",
-      "url": "https://github.com/DarkWzrd-Zeref/website-creation",
-      "visibility": "private",
-      "description": "Private website building engine + BULLWZRD NFT promo site",
-      "hubStation": null,
-      "appMcp": "MISSING"
-    },
-    {
-      "name": "wzrd-nft",
-      "url": "https://github.com/DarkWzrd-Zeref/wzrd-nft",
-      "visibility": "private",
-      "description": "WZRD NFT marketing site. Not bulls / not Game Earn.",
-      "hubStation": null,
-      "appMcp": "MISSING"
-    },
-    {
-      "name": "rocket-ansem",
-      "url": "https://github.com/DarkWzrd-Zeref/rocket-ansem",
-      "visibility": "private",
-      "description": "Arena Rush rocket-car soccer (Unity 6 + web test slice)",
-      "hubStation": null,
-      "appMcp": "MISSING"
-    },
-    {
-      "name": "bultoshi-fantasy-1",
-      "url": "https://github.com/DarkWzrd-Zeref/bultoshi-fantasy-1",
-      "visibility": "private",
-      "description": "Bulltoshi: No Exit Liquidity — street philosophy RPG",
-      "hubStation": null,
-      "appMcp": "MISSING"
-    },
-    {
-      "name": "media-money-printer",
-      "url": "https://github.com/DarkWzrd-Zeref/media-money-printer",
-      "visibility": "private",
-      "description": "Media turbo lane (topic → script → voice/subs → footage → 9:16)",
-      "hubStation": null,
-      "appMcp": "MISSING"
-    }
-  ],
-  "driveCanonical": [
-    {
-      "name": "Goals and Task",
-      "id": "1LioHGWTOd9XKJD2gQ2XitPpHJpsLxa79rdadSnfCNYU",
-      "url": "https://docs.google.com/spreadsheets/d/1LioHGWTOd9XKJD2gQ2XitPpHJpsLxa79rdadSnfCNYU/edit",
-      "role": "Command ledger. Append in place. Do not fork.",
-      "onHub": false
-    },
-    {
-      "name": "Bot Passport",
-      "id": "1NLKE5XY4nygezoOs2IAjDOPfdplTLWL1OHHDFHF0sVw",
-      "url": "https://docs.google.com/spreadsheets/d/1NLKE5XY4nygezoOs2IAjDOPfdplTLWL1OHHDFHF0sVw/edit",
-      "role": "Canonical bot identities, laws, grants. No secrets.",
-      "onHub": false
-    },
-    {
-      "name": "HUB — App MCP Shortcuts",
-      "id": "10dW_0zuGfW-UhfuHtFehuISIxkRv_rhum2Pusri5sk0",
-      "url": "https://docs.google.com/spreadsheets/d/10dW_0zuGfW-UhfuHtFehuISIxkRv_rhum2Pusri5sk0/edit",
-      "role": "Our apps vs vendor connectors. Scaffold != live.",
-      "onHub": false
-    },
-    {
-      "name": "BUG BOARD — seed list",
-      "id": "1xyi3Af9O99bLKFc-zJTpiB5MtlvAaHiKK9FWtk-f5vk",
-      "url": "https://docs.google.com/spreadsheets/d/1xyi3Af9O99bLKFc-zJTpiB5MtlvAaHiKK9FWtk-f5vk/edit",
-      "role": "Seed list. Live hub already has A67-B001…B011.",
-      "onHub": "partial"
-    },
-    {
-      "name": "HUB — Pending Repos",
-      "id": "16qvy9PIr5ti2Z_hYR438-hbBsN8_6yTNMDkcBysYt4E",
-      "url": "https://docs.google.com/spreadsheets/d/16qvy9PIr5ti2Z_hYR438-hbBsN8_6yTNMDkcBysYt4E/edit",
-      "role": "External repo legal gate. ModelDeck CODE no. Cortex CODE no.",
-      "onHub": false
-    },
-    {
-      "name": "Skills Models Handoff Graph",
-      "id": "1blhLc9wPF90V94sFCHYbBkkY2lSEqaqFdXFGnWxnlxg",
-      "url": "https://docs.google.com/spreadsheets/d/1blhLc9wPF90V94sFCHYbBkkY2lSEqaqFdXFGnWxnlxg/edit",
-      "role": "Which engine gets which job.",
-      "onHub": false
-    },
-    {
-      "name": "HUB — MCP and Credential Registry",
-      "id": "1T_nJa8hY064MSQlfhcAYA2r30yLhY7lJzoXxvGVfozk",
-      "url": "https://docs.google.com/spreadsheets/d/1T_nJa8hY064MSQlfhcAYA2r30yLhY7lJzoXxvGVfozk/edit",
-      "role": "Connector metadata only. No secret values.",
-      "onHub": false
-    },
-    {
-      "name": "HUB — Agent Deck",
-      "id": "1kBoMYdQiiOTHLd0vrjmFC0scWIq9bAPWYRRNHK238VE",
-      "url": "https://docs.google.com/spreadsheets/d/1kBoMYdQiiOTHLd0vrjmFC0scWIq9bAPWYRRNHK238VE/edit",
-      "role": "Paid seats and bot accounts.",
-      "onHub": false
-    },
-    {
-      "name": "HUB — AREA 67 Seat URLs",
-      "id": "15_PgN1NQ9Fr1WfH7TyUEN3Bz-lqlauAF8_iJ8hOlc-M",
-      "url": "https://docs.google.com/spreadsheets/d/15_PgN1NQ9Fr1WfH7TyUEN3Bz-lqlauAF8_iJ8hOlc-M/edit",
-      "role": "Seat MCP URLs. S06 is stale: Cursor Ultra is /mcp/cursor, not /mcp/grok.",
-      "onHub": "stale",
-      "correction": "Cursor Ultra → https://status-board-production-806b.up.railway.app/mcp/cursor"
-    },
-    {
-      "name": "HUB — Build Tracker and Decisions",
-      "id": "1VE596JkMKV6bhhyN2pQS8RNhIKTwPwLYfEOYDA7WnEE",
-      "url": "https://docs.google.com/spreadsheets/d/1VE596JkMKV6bhhyN2pQS8RNhIKTwPwLYfEOYDA7WnEE/edit",
-      "role": "Build decisions. Update in place.",
-      "onHub": false
-    },
-    {
-      "name": "AREA 67 ART BRIDGE",
-      "id": "1K7Z5hVIy9MJzqDLy5fgIbXQpi9GbQAXq",
-      "url": "https://drive.google.com/drive/folders/1K7Z5hVIy9MJzqDLy5fgIbXQpi9GbQAXq",
-      "role": "Claude station sprites. Manifest is in the repo; PNGs are still missing.",
-      "onHub": "manifest-only"
-    }
-  ],
-  "driveIgnoreForks": [
-    { "name": "HUB — Goals and Tasks", "id": "1uLdchGOCrBNjcW-hqWoJohlIQljrYFnV-oo2BkAi4cE" },
-    { "name": "GOALS AND TASKS", "id": "1y3mhgEbDVWUAQsh57pby7zV0L-jHoyIRBYAupB3LpjE" },
-    { "name": "COMMUNITY SKILL TREE", "id": "1mi34Oksv_lzqtcYxFpiSPs8h_K3Qn2uwjNhLGeynOFk" }
-  ],
-  "cursorOpenGapsFill": {
-    "url": "https://docs.google.com/document/d/1BH9W80chrSAzW5zz62Ptd1fxuOd52kSoZMXIV5poRfQ/edit",
-    "reason": "Drive cannot append cells to Goals (B03). This is a paste buffer for CU-00, not a second ledger."
-  },
   "blockedWithoutSeatKey": [
-    "board_post for GitHub/Drive missing-data cards",
-    "skill_register for real Cursor skills (Skill Altar is empty)",
-    "station_build for sibling repos or the 18 unplaced catalog types",
-    "updating project-area67 contents on the live map"
-  ],
-  "cursorSkillsThisSeat": [
-    { "name": "AREA 67 MCP", "have": "YES", "detail": "/mcp/cursor pal=cursor-ultra — whoami, hub_sync, work_report, pal_assign, architect_post" },
-    { "name": "GitHub DarkWzrd-Zeref", "have": "YES", "detail": "17 repos listed; PRs 1/3/8" },
-    { "name": "Google Drive", "have": "YES", "detail": "search/read/create. Cannot write cells into existing sheets (B03)." },
-    { "name": "Slack", "have": "YES", "detail": "#aihandoffbaord reachable from this seat" },
-    { "name": "board_post / skill_register / station_build", "have": "LOCKED", "detail": "Needs this seat's private Bearer key" },
-    { "name": "Railway independent deploy", "have": "NO", "detail": "Approval hold; Railway tracks cursor/rpg-agent-base-4777" }
+    "board_post",
+    "skill_register",
+    "station_build"
   ],
   "art": {
-    "manifestInRepo": "/sprites/stations/manifest.json",
-    "pngsOnDrive": false,
-    "pngsInRepo": false,
-    "loader": "HubScene keeps painted fallbacks until hashed PNG URLs exist"
+    "manifest": "/sprites/stations/manifest.json",
+    "pngs": "missing"
   }
 }

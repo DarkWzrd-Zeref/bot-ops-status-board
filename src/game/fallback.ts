@@ -18,8 +18,19 @@ class BootScene extends Phaser.Scene {
   }
   create(): void { cookTextures(this); this.scene.start("hub"); }
 }
+
+function withTimeout(task: Promise<unknown>, ms: number): Promise<void> {
+  return new Promise(resolve => {
+    const timer = setTimeout(resolve, ms);
+    task.finally(() => {
+      clearTimeout(timer);
+      resolve();
+    });
+  });
+}
+
 export async function makeFallback(parent: HTMLElement) {
-  await hydrateStationArt();
+  await withTimeout(hydrateStationArt(), 1500);
   return new Phaser.Game({ type: Phaser.CANVAS, parent, backgroundColor: "#0b100c", pixelArt: false, roundPixels: true,
     scale: { mode: Phaser.Scale.RESIZE, autoCenter: Phaser.Scale.CENTER_BOTH, width: 960, height: 640 }, scene: [BootScene, HubScene] });
 }

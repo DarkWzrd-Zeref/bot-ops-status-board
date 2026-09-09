@@ -150,6 +150,8 @@ export function connectLive() {
 /** Re-open the hub stream. Does not reload the page or claim that agents resumed. */
 export function reconnectLive() {
   radioLive = false;
+  ready = false;
+  window.clearTimeout(persistTimer);
   updateWorkTargets();
   bus.emit({ type: "presence" });
   if (!started) {

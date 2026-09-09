@@ -5,6 +5,7 @@ import {
   QUICK_DRAFT_KEY,
   applyHubUpdate,
   draftsStillHeld,
+  parseHealthPayload,
   reconnectHub,
   releaseChipHtml,
   releaseStatus,
@@ -63,6 +64,23 @@ test("stale deploy offers Update; disconnect offers Reconnect; neither auto-relo
   });
   assert.equal(bad.kind, "bad");
   assert.equal(reloads, 0);
+});
+
+test("boot identity stays the bundle commit; /health is validated and never adopted as boot", () => {
+  const parsed = parseHealthPayload({ ok: true, version: "1.2.4", commit: "67bbb18deadbeef" }, true);
+  assert.equal(parsed.error, null);
+  assert.equal(parsed.health?.commit, "67bbb18deadbeef");
+  const stale = releaseStatus({
+    radioLive: true,
+    health: parsed.health,
+    bootCommit: "aaaaaaaa",
+  });
+  assert.equal(stale.kind, "stale");
+  const garbage = parseHealthPayload("not-json", true);
+  assert.equal(garbage.health, null);
+  assert.match(garbage.error ?? "", /non-object/);
+  const badCommit = parseHealthPayload({ ok: true, commit: 12 }, true);
+  assert.equal(badCommit.health, null);
 });
 
 test("reconnect preserves chat drafts and does not reload or mark agents resumed", async () => {

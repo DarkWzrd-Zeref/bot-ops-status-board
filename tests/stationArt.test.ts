@@ -1,12 +1,23 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
 import {
   applyStationArtManifest,
   hubSpritePath,
   kindSpritePath,
   resetStationArtCatalog,
+  stationSeatLayout,
   stationTextureKeys,
 } from "../src/game/stationArt.ts";
+
+test("HubScene keeps district camera controls and does not stretch sprites to the tile box", () => {
+  const src = readFileSync(new URL("../src/game/HubScene.ts", import.meta.url), "utf8");
+  assert.match(src, /area67-district/);
+  assert.match(src, /area67-camera/);
+  assert.match(src, /DISTRICTS/);
+  assert.match(src, /seatStationImage/);
+  assert.doesNotMatch(src, /setDisplaySize\(hub\.w \* TILE, hub\.h \* TILE\)/);
+});
 
 test("kind sprites use hashed /sprites/stations/<kind>.<sha12>.png, not unversioned /sprites/{kind}.png", () => {
   resetStationArtCatalog();
@@ -30,6 +41,46 @@ test("Claude entries[].src manifest is the live Drive contract", () => {
   });
   assert.equal(kindSpritePath("code"), "/sprites/stations/code.0c749d31c143.png");
   assert.equal(kindSpritePath("ecosystem"), null);
+});
+
+test("sprite seating uses uniform groundQuad scale; painted boxes still fill the tile footprint", () => {
+  resetStationArtCatalog();
+  applyStationArtManifest({
+    version: 1,
+    entries: [{
+      kind: "code",
+      src: "/sprites/stations/code.0c749d31c143.png",
+      pixelWidth: 320,
+      pixelHeight: 320,
+      anchorX: 0.5,
+      anchorY: 0.60345,
+      groundBounds: [0.09653, 0.3705, 0.90347, 0.83639],
+    }],
+  });
+  const sprite = stationSeatLayout({
+    painted: false,
+    pixelWidth: 320,
+    pixelHeight: 320,
+    footprintWidth: 128,
+    footprintHeight: 96,
+    kind: "code",
+  });
+  assert.equal(sprite.painted, false);
+  assert.equal(sprite.originX, 0.5);
+  assert.equal(sprite.originY, 0.60345);
+  assert.ok(Math.abs(sprite.displayWidth / sprite.displayHeight - 1) < 1e-6);
+  assert.notEqual(sprite.displayWidth, 128);
+  assert.notEqual(sprite.displayHeight, 96);
+  const painted = stationSeatLayout({
+    painted: true,
+    pixelWidth: 128,
+    pixelHeight: 96,
+    footprintWidth: 128,
+    footprintHeight: 96,
+    kind: "code",
+  });
+  assert.equal(painted.displayWidth, 128);
+  assert.equal(painted.displayHeight, 96);
 });
 
 test("legacy kinds/stations manifest still overrides radio hashes", () => {

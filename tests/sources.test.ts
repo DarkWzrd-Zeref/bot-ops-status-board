@@ -3,25 +3,28 @@ import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 
 const sources = JSON.parse(readFileSync(new URL("../public/sources.json", import.meta.url), "utf8"));
+const connect = readFileSync(new URL("../public/connect.html", import.meta.url), "utf8");
+const publicJson = JSON.stringify(sources);
 
-test("sources.json lists every DarkWzrd-Zeref repo and flags the 16 missing project buildings", () => {
-  assert.equal(sources.githubRepos.length, 17);
-  const onMap = sources.githubRepos.filter((r: { hubStation: string | null }) => r.hubStation);
-  assert.deepEqual(onMap.map((r: { name: string }) => r.name), ["bot-ops-status-board"]);
-  assert.equal(sources.githubRepos.filter((r: { hubStation: string | null }) => !r.hubStation).length, 16);
-  for (const repo of sources.githubRepos) {
-    assert.match(repo.url, /^https:\/\/github.com\/DarkWzrd-Zeref\//);
-  }
+test("public sources snapshot names only the public hub repo and does not publish private inventory", () => {
+  assert.equal(sources.kind, "snapshot");
+  assert.ok(sources.asOf);
+  assert.equal(sources.publicGithub.name, "bot-ops-status-board");
+  assert.equal(sources.publicGithub.hubStation, "project-area67");
+  assert.equal(sources.unplacedCatalogTypes.length, 18);
+  assert.equal(sources.onMap.length, 7);
+  assert.equal(sources.githubRepos, undefined);
+  assert.equal(sources.driveCanonical, undefined);
+  assert.doesNotMatch(publicJson, /docs\.google\.com/);
+  assert.doesNotMatch(publicJson, /drive\.google\.com/);
+  assert.doesNotMatch(publicJson, /reserve-os/);
+  assert.doesNotMatch(publicJson, /hub-quota/);
+  assert.doesNotMatch(publicJson, /HARD-DRIVE/);
 });
 
-test("sources.json points at canonical Drive ledgers and does not treat Goals forks as live", () => {
-  const names = sources.driveCanonical.map((f: { name: string }) => f.name);
-  assert.ok(names.includes("Goals and Task"));
-  assert.ok(names.includes("Bot Passport"));
-  assert.ok(names.includes("HUB — App MCP Shortcuts"));
-  const forks = sources.driveIgnoreForks.map((f: { name: string }) => f.name);
-  assert.ok(forks.includes("HUB — Goals and Tasks"));
-  assert.ok(forks.includes("GOALS AND TASKS"));
-  assert.equal(sources.unplacedCatalog.length, 18);
-  assert.equal(sources.placedBuildings.length, 7);
+test("connect.html does not embed private repo names or Drive file URLs", () => {
+  assert.doesNotMatch(connect, /docs\.google\.com/);
+  assert.doesNotMatch(connect, /drive\.google\.com/);
+  assert.doesNotMatch(connect, /hub-quota|reserve-os|HARD-DRIVE|atlas-apex/);
+  assert.match(connect, /fetch\("\/sources\.json"\)/);
 });
