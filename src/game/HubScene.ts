@@ -10,6 +10,7 @@ import {
   assignAgent,
   beginMove,
   buildingAt,
+  buildingName,
   cancelMove,
   demolish,
   finishMove,
@@ -22,10 +23,12 @@ import {
 } from "../core/runtime.ts";
 import { bus } from "../core/events.ts";
 import type { GameEvent } from "../core/types.ts";
+import { attention, liveWork } from "../core/live.ts";
+import { seatForPal } from "../../shared/protocol.ts";
 
 function typingInHud(): boolean {
   const el = document.activeElement;
-  return el instanceof HTMLInputElement || el instanceof HTMLTextAreaElement;
+  return !!el?.closest("input, textarea, select, dialog");
 }
 
 const TILE_KEY: Record<TileKind, string> = {
@@ -191,9 +194,9 @@ export class HubScene extends Phaser.Scene {
       .setDepth(3);
     this.bSprites.set(uidStr, img);
     const label = this.add
-      .text(img.x, b.ty * TILE - 4, hub.short, {
+      .text(img.x, b.ty * TILE - 4, buildingName(b), {
         fontFamily: "monospace",
-        fontSize: "10px",
+        fontSize: "14px",
         color: "#b7f07a",
         backgroundColor: "#071208cc",
         padding: { x: 3, y: 1 },
@@ -206,11 +209,16 @@ export class HubScene extends Phaser.Scene {
   private syncBuildings(): void {
     for (const b of runtime.buildings) this.spawnBuilding(b.uid);
     for (const [id, spr] of this.bSprites) {
-      if (!runtime.buildings.some((b) => b.uid === id)) {
+      const building = runtime.buildings.find(b => b.uid === id);
+      if (!building) {
         spr.destroy();
         this.bSprites.delete(id);
         this.labels.get("b-" + id)?.destroy();
         this.labels.delete("b-" + id);
+      } else {
+        const hub = hubById(building.hubId);
+        spr.setPosition(building.tx * TILE + hub.w * TILE / 2, building.ty * TILE + hub.h * TILE / 2);
+        this.labels.get("b-" + id)?.setText(buildingName(building)).setPosition(spr.x, building.ty * TILE - 4);
       }
     }
   }
@@ -263,7 +271,7 @@ export class HubScene extends Phaser.Scene {
     }
     const b = buildingAt(tx, ty);
     if (runtime.mode === "demolish" && b) {
-      demolish(b.uid);
+      if (confirm(b.project ? "Remove the map building only? Repository and files will NOT be deleted." : "Dismantle this station?")) demolish(b.uid);
       return;
     }
     const agent = runtime.agents.find((a) => a.tx === tx && a.ty === ty);
@@ -317,6 +325,11 @@ export class HubScene extends Phaser.Scene {
       spr.x += (ax - spr.x) * 0.25;
       spr.y += (ay - spr.y) * 0.25;
       this.labels.get(a.id)?.setPosition(spr.x, spr.y - 18);
+      const seat = seatForPal(a.id);
+      const active = seat && ["attentive", "busy"].includes(attention(seat.id));
+      spr.setAlpha(active ? 1 : .55);
+      const working = seat && liveWork().some(w => w.seat === seat.id);
+      this.labels.get(a.id)?.setColor(working ? "#9fdcff" : "#c5d5da");
       this.bubbles.get(a.id)?.setPosition(spr.x, spr.y - 36);
     }
 

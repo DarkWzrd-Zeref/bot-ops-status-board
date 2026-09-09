@@ -10,6 +10,7 @@ import { handleMcp } from "./mcp.ts";
 import * as store from "./store.ts";
 import { z } from "zod";
 import { SPEAKERS } from "../shared/protocol.ts";
+import { projectSchema, workSchema } from "../shared/workspace.ts";
 
 store.loadStore();
 
@@ -31,7 +32,7 @@ app.get("/health", (c) =>
   c.json({
     ok: true,
     name: "area67",
-    version: "1.0.0",
+    version: "1.1.0",
     commit: process.env.RAILWAY_GIT_COMMIT_SHA ?? null,
     mcp: "/mcp",
     connect: "/connect",
@@ -74,7 +75,7 @@ app.get("/api/events", (c) =>
       if (!stream.aborted) void stream.writeSSE({ data: JSON.stringify(ev) }).catch(() => {});
     };
     c.header("Cache-Control", "no-cache, no-transform");
-    send({ type: "hello", notes: store.notes(200), base: store.base(), presence: store.presence(), revision: store.revision() });
+    send({ type: "hello", notes: store.notes(200), base: store.base(), presence: store.presence(), revision: store.revision(), work: store.workReports() });
     const off = store.subscribe(send);
     stream.onAbort(off);
     try {
@@ -95,6 +96,7 @@ app.get("/api/status", (c) =>
     notes: store.notes(200),
     presence: store.presence(),
     revision: store.revision(),
+    work: store.workReports(),
     pals: store.palList(),
     stations: store.stationList(),
     base: store.base(),
@@ -106,7 +108,7 @@ app.get("/api/architect", (c) => c.json({ notes: store.notes(80) }));
 app.post("/api/architect", async (c) => {
   const body = z.object({ from: z.enum(SPEAKERS), text: z.string().trim().min(1).max(2000),
     channel: z.enum(["command", "team"]).optional(), to: z.enum(["all", ...SPEAKERS]).optional(),
-    directive: z.boolean().optional(), replyTo: z.string().optional() }).parse(await c.req.json());
+    directive: z.boolean().optional(), replyTo: z.string().optional(), ping: z.boolean().optional(), projectUid: z.string().max(80).optional() }).parse(await c.req.json());
   const { from, text, ...options } = body;
   return c.json(store.postArchitect(from, text, options));
 });
@@ -122,7 +124,12 @@ app.get("/api/inbox/:seat", c => {
   const seat = c.req.param("seat");
   if (!isSpeaker(seat)) return c.json({ error: "Unknown seat" }, 404);
   store.heartbeat(seat, "attentive", "Reading directives", "rest");
-  return c.json({ seat, inbox: store.inbox(seat, 200), presence: store.presence() });
+  return c.json({ seat, inbox: store.inbox(seat, 200), presence: store.presence(), work: store.workReports(), base: store.base() });
+});
+app.post("/api/work/:seat", async c => {
+  const seat = c.req.param("seat");
+  if (!isSpeaker(seat)) return c.json({ error: "Unknown seat" }, 404);
+  return c.json(store.reportWork(seat, workSchema.parse(await c.req.json())));
 });
 app.post("/api/directives/:id/ack", async c => {
   const body = z.object({ seat: z.enum(SPEAKERS), state: z.enum(["seen", "accepted", "completed", "blocked"]), detail: z.string().max(500).optional() }).parse(await c.req.json());
@@ -144,7 +151,7 @@ app.post("/api/assign", async (c) => {
   const palId = typeof body?.palId === "string" ? body.palId : "";
   const hubId = body?.hubId == null ? null : String(body.hubId);
   if (!palId) return c.json({ error: "Need { palId, hubId }" }, 400);
-  const r = store.assignPal(palId, hubId);
+  const r = store.assignPal(palId, hubId, typeof body?.buildingUid === "string" ? body.buildingUid : undefined);
   if (!r.ok) return c.json(r, 400);
   return c.json(r);
 });
@@ -155,7 +162,7 @@ app.get("/api/base", (c) => c.json(store.base()));
 
 app.post("/api/base", async (c) => {
   const body = z.object({ revision: z.number().int().nonnegative().optional(),
-    buildings: z.array(z.object({ uid: z.string().min(1).max(80), hubId: z.string().min(1), tx: z.number().int().min(0).max(55), ty: z.number().int().min(0).max(39) })).max(400),
+    buildings: z.array(z.object({ uid: z.string().min(1).max(80), hubId: z.string().min(1), tx: z.number().int().min(0).max(55), ty: z.number().int().min(0).max(39), project: projectSchema.optional() })).max(400),
     assignments: z.record(z.string(), z.string().nullable()), equipped: z.record(z.string(), z.array(z.string())).optional(),
   }).parse(await c.req.json());
   if (store.base() && body.revision !== store.revision()) return c.json({ error: "The base changed. Latest version restored; try your action again.", base: store.base(), revision: store.revision() }, 409);

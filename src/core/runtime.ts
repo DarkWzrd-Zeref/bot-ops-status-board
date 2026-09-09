@@ -8,6 +8,7 @@ import agentsFile from "../content/agents.json";
 import hubsFile from "../content/hubs.json";
 import modsFile from "../content/modifiers.json";
 import skillsFile from "../content/skills.json";
+import { projectSchema, type ProjectInfo } from "../../shared/workspace.ts";
 
 const SAVE_KEY = "area67-base-v1";
 
@@ -42,11 +43,13 @@ export const runtime = {
   well: { x: 0, y: 0 } as Point,
   buildings: [] as PlacedBuilding[],
   agents: [] as AgentRuntime[],
+  workTargets: new Map<string, string>(),
   scans: {} as Record<string, ScanReport>,
   equipped: {} as Record<string, string[]>,
   mode: "play" as Mode,
   buildTab: BUILD_TABS[0].id as (typeof BUILD_TABS)[number]["id"],
   ghostHub: null as string | null,
+  ghostProject: null as ProjectInfo | null,
   lifting: null as LiftedBuilding | null,
   selectedAgent: null as string | null,
   selectedBuilding: null as string | null,
@@ -66,12 +69,12 @@ export function bootRuntime(): void {
 
   const saved = loadSave();
   if (saved) {
-    for (const b of saved.buildings) placeAt(b.hubId, b.tx, b.ty, b.uid, true);
+    for (const b of saved.buildings) placeAt(b.hubId, b.tx, b.ty, b.uid, true, b.project);
     runtime.equipped = saved.equipped ?? {};
     runtime.scans = saved.scans ?? {};
     runtime.cautionBlocks = saved.cautionBlocks ?? false;
     if (saved.lifting && !runtime.buildings.some(b => b.uid === saved.lifting!.uid)) {
-      placeAt(saved.lifting.hubId, saved.lifting.fromTx, saved.lifting.fromTy, saved.lifting.uid, true);
+      placeAt(saved.lifting.hubId, saved.lifting.fromTx, saved.lifting.fromTy, saved.lifting.uid, true, saved.lifting.project);
     }
   } else {
     seedStarter();
@@ -142,13 +145,13 @@ export function placementOk(hubId: string, tx: number, ty: number): boolean {
   return runtime.grid.canPlace(tx, ty, hub.w, hub.h, runtime.well, BASE_RADIUS);
 }
 
-export function placeAt(hubId: string, tx: number, ty: number, reuseUid?: string, skipRules = false): boolean {
+export function placeAt(hubId: string, tx: number, ty: number, reuseUid?: string, skipRules = false, project?: ProjectInfo): boolean {
   const hub = hubById(hubId);
   if (!skipRules && hubId !== PALBOX_ID) {
     if (!runtime.grid.canPlace(tx, ty, hub.w, hub.h, runtime.well, BASE_RADIUS)) return false;
   }
   runtime.grid.occupy(tx, ty, hub.w, hub.h, true);
-  const b: PlacedBuilding = { uid: reuseUid ?? uid(), hubId, tx, ty };
+  const b: PlacedBuilding = { uid: reuseUid ?? uid(), hubId, tx, ty, ...(project ? { project } : {}) };
   runtime.buildings.push(b);
   persist();
   bus.emit({ type: "changed" });
@@ -166,7 +169,9 @@ export function tryPlace(hubId: string, tx: number, ty: number): boolean {
     log(placeFailMessage(fail), "warn");
     return false;
   }
-  placeAt(hubId, tx, ty);
+  if (hubId === "project-site" && !runtime.ghostProject) { log("Name your repository or workspace first.", "warn"); return false; }
+  placeAt(hubId, tx, ty, undefined, false, hubId === "project-site" ? runtime.ghostProject! : undefined);
+  if (hubId === "project-site") { runtime.ghostProject = null; runtime.ghostHub = null; runtime.mode = "play"; runtime.selectedBuilding = runtime.buildings.at(-1)!.uid; runtime.selectedAgent = null; }
   const mod = MODS[hubId];
   log("Founded " + hub.name + ". " + (mod?.aiChange ?? "Station online."), "ok");
   return true;
@@ -180,7 +185,7 @@ export function beginMove(uidStr: string): boolean {
     log("Core structures stay put.", "warn");
     return false;
   }
-  runtime.lifting = { uid: b.uid, hubId: b.hubId, fromTx: b.tx, fromTy: b.ty };
+  runtime.lifting = { uid: b.uid, hubId: b.hubId, fromTx: b.tx, fromTy: b.ty, project: b.project };
   runtime.grid.occupy(b.tx, b.ty, hub.w, hub.h, false);
   runtime.buildings = runtime.buildings.filter((x) => x.uid !== uidStr);
   runtime.ghostHub = b.hubId;
@@ -200,7 +205,7 @@ export function finishMove(tx: number, ty: number): boolean {
     log(placeFailMessage(fail), "warn");
     return false;
   }
-  placeAt(lift.hubId, tx, ty, lift.uid);
+  placeAt(lift.hubId, tx, ty, lift.uid, false, lift.project);
   for (const a of runtime.agents) {
     if (a.buildingUid === lift.uid) walkToBuilding(a.id, lift.uid);
   }
@@ -215,7 +220,7 @@ export function finishMove(tx: number, ty: number): boolean {
 export function cancelMove(): void {
   const lift = runtime.lifting;
   if (!lift) return;
-  placeAt(lift.hubId, lift.fromTx, lift.fromTy, lift.uid, true);
+  placeAt(lift.hubId, lift.fromTx, lift.fromTy, lift.uid, true, lift.project);
   runtime.lifting = null;
   runtime.ghostHub = null;
   runtime.mode = "play";
@@ -233,6 +238,7 @@ export function demolish(uidStr: string): void {
   }
   runtime.grid.occupy(b.tx, b.ty, hub.w, hub.h, false);
   runtime.buildings = runtime.buildings.filter((x) => x.uid !== uidStr);
+  if (runtime.selectedBuilding === uidStr) runtime.selectedBuilding = null;
   for (const a of runtime.agents) {
     if (a.buildingUid === uidStr) {
       a.buildingUid = null;
@@ -241,8 +247,21 @@ export function demolish(uidStr: string): void {
     }
   }
   persist();
-  log("Removed " + hub.name + ". Assigned pals lost that AI change.", "warn");
+  log(b.project ? "Removed the project building. Repository and files are untouched." : "Removed " + hub.name + ". Pals are unassigned.", "warn");
 }
+
+export function prepareProject(info: ProjectInfo): void {
+  if (runtime.lifting) cancelMove();
+  runtime.ghostProject = projectSchema.parse(info);
+  runtime.ghostHub = "project-site"; runtime.mode = "build"; runtime.buildTab = "projects";
+  bus.emit({ type: "changed" });
+}
+export function updateProject(uid: string, info: ProjectInfo): void {
+  const building = runtime.buildings.find(b => b.uid === uid && b.hubId === "project-site");
+  if (!building) throw new Error("Project building no longer exists");
+  building.project = projectSchema.parse(info); persist();
+}
+export function buildingName(building: PlacedBuilding): string { return building.project?.name ?? hubById(building.hubId).name; }
 
 export function buildingAt(tx: number, ty: number): PlacedBuilding | null {
   for (const b of runtime.buildings) {
@@ -317,9 +336,27 @@ export function walkAgentToHub(agentId: string, hubId: string): void {
 export function palSay(agentId: string, text: string): void {
   const a = runtime.agents.find((x) => x.id === agentId);
   if (!a) return;
-  walkAgentToHub(agentId, "grand-exchange");
+  if (!runtime.workTargets.has(agentId)) walkAgentToHub(agentId, "grand-exchange");
   a.detail = text.length > 72 ? text.slice(0, 69) + "…" : text;
   bus.emit({ type: "say", agentId, text });
+}
+
+export function syncWorkTargets(targets: Map<string, string>): void {
+  const old = runtime.workTargets;
+  runtime.workTargets = targets;
+  for (const a of runtime.agents) {
+    const target = targets.get(a.id);
+    const building = runtime.buildings.find(b => b.uid === target);
+    if (building) {
+      const h = hubById(building.hubId);
+      const dock = runtime.grid.dockFor(building.tx, building.ty, h.w, h.h);
+      const goal = a.path.at(-1);
+      if (old.get(a.id) !== target || (!goal && (a.tx !== dock.x || a.ty !== dock.y)) || (goal && (goal.x !== dock.x || goal.y !== dock.y))) walkToBuilding(a.id, building.uid);
+    } else if (old.has(a.id)) {
+      a.path = []; a.status = "idle"; a.detail = "Work report no longer live";
+      if (a.buildingUid) walkToBuilding(a.id, a.buildingUid);
+    }
+  }
 }
 
 export function walkToBuilding(agentId: string, buildingUid: string): void {
@@ -393,7 +430,7 @@ function workDetail(a: AgentRuntime, b: PlacedBuilding): string {
 }
 
 function pulseOnce(): void {
-  const idle = runtime.agents.filter((a) => !a.buildingUid);
+  const idle = runtime.agents.filter((a) => !a.buildingUid && !runtime.workTargets.has(a.id));
   if (idle.length && Math.random() < 0.4) {
     const a = idle[Math.floor(Math.random() * idle.length)];
     const wander = ringSpot(Math.floor(Math.random() * 10));
@@ -405,7 +442,7 @@ function pulseOnce(): void {
     bus.emit({ type: "changed" });
     return;
   }
-  const workers = runtime.agents.filter((a) => runtime.buildings.some(b => b.uid === a.buildingUid));
+  const workers = runtime.agents.filter((a) => !runtime.workTargets.has(a.id) && runtime.buildings.some(b => b.uid === a.buildingUid));
   if (!workers.length) return;
   const a = workers[Math.floor(Math.random() * workers.length)];
   a.detail = workDetail(a, runtime.buildings.find((x) => x.uid === a.buildingUid)!);
@@ -495,7 +532,8 @@ export function applyBaseSnapshot(next: Pick<SaveShape, "buildings" | "assignmen
     a.skills = runtime.equipped[a.id] ?? [];
     if (changed || assigned) {
       a.path = [];
-      if (assigned) walkToBuilding(a.id, assigned);
+      if (runtime.workTargets.has(a.id) && runtime.buildings.some(b => b.uid === runtime.workTargets.get(a.id))) walkToBuilding(a.id, runtime.workTargets.get(a.id)!);
+      else if (assigned) walkToBuilding(a.id, assigned);
       else { a.status = "idle"; a.detail = "unassigned"; }
     }
   }
@@ -508,7 +546,7 @@ export function exportSave(): SaveShape {
   const buildings = runtime.buildings.slice();
   if (runtime.lifting && !buildings.some(b => b.uid === runtime.lifting!.uid)) {
     const l = runtime.lifting;
-    buildings.push({ uid: l.uid, hubId: l.hubId, tx: l.fromTx, ty: l.fromTy });
+    buildings.push({ uid: l.uid, hubId: l.hubId, tx: l.fromTx, ty: l.fromTy, ...(l.project ? { project: l.project } : {}) });
   }
   return {
     buildings,

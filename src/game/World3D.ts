@@ -1,10 +1,10 @@
 import * as THREE from "three";
 import { OrbitControls } from "three/addons/controls/OrbitControls.js";
 import { CSS2DObject, CSS2DRenderer } from "three/addons/renderers/CSS2DRenderer.js";
-import { AGENTS, HUBS, BASE_RADIUS, MAP_W, MAP_H, assignAgent, beginMove, buildingAt, cancelMove, demolish, finishMove, hubById, placementOk, runtime, stepAgents, tryPlace, walkPlayerTo } from "../core/runtime.ts";
+import { AGENTS, HUBS, BASE_RADIUS, MAP_W, MAP_H, assignAgent, beginMove, buildingAt, buildingName, cancelMove, demolish, finishMove, hubById, placementOk, runtime, stepAgents, tryPlace, walkPlayerTo } from "../core/runtime.ts";
 import { bus } from "../core/events.ts";
-import { attention } from "../core/live.ts";
-import { seatForPal } from "../../shared/protocol.ts";
+import { attention, liveWork } from "../core/live.ts";
+import { seatForPal, speakerLabel } from "../../shared/protocol.ts";
 
 const colors = { attentive: 0x80f5b8, busy: 0x80c8ff, away: 0xe4b76a, offline: 0x536570 };
 const cx = MAP_W / 2, cz = MAP_H / 2;
@@ -31,6 +31,7 @@ export class World3D {
   private down = { x: 0, y: 0 };
   private previous = performance.now();
   private reduced = matchMedia("(prefers-reduced-motion: reduce)").matches;
+  private lastSignals = 0;
 
   constructor(parent: HTMLElement) {
     this.renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true, powerPreference: "low-power" });
@@ -81,8 +82,10 @@ export class World3D {
     };
     new ResizeObserver(resize).observe(parent); resize();
     this.bind();
+    matchMedia("(prefers-reduced-motion: reduce)").addEventListener("change", e => { this.reduced = e.matches; });
     bus.on(e => {
       if (e.type === "changed") this.syncStations();
+      if (e.type === "changed" || e.type === "presence") this.updateSignals();
       if (e.type === "focus-agent") {
         const a = runtime.agents.find(a => a.id === e.agentId);
         if (a) this.focus(a.tx + .5, a.ty + .5);
@@ -154,10 +157,20 @@ export class World3D {
     const b = runtime.buildings.find(b => b.uid === uid)!;
     const h = hubById(b.hubId);
     const group = new THREE.Group(); group.position.set(b.tx + h.w / 2, .19, b.ty + h.h / 2);
-    group.userData = { uid, signature: [b.tx, b.ty, b.hubId].join(":") };
+    group.userData = { uid, signature: JSON.stringify([b.tx, b.ty, b.hubId, b.project]) };
     const color = parseInt(h.color.slice(1), 16);
     this.box(h.w + .2, .2, h.h + .2, 0x233a40, 0, .1, 0, group);
-    if (b.hubId === "well") {
+    if (b.project) {
+      this.box(2.65, .2, 2.65, 0x3d6288, 0, .26, 0, group);
+      this.box(2.25, 1.55, 1.9, 0x213b53, 0, 1.1, 0, group);
+      this.box(2.55, .2, 2.2, color, 0, 1.96, 0, group);
+      for (let i = -1; i <= 1; i++) {
+        const screen = this.box(.45, .65, .06, 0x82c9ef, i * .65, 1.24, 1, group);
+        (screen.material as THREE.MeshStandardMaterial).emissive.setHex(0x1a557e);
+      }
+      this.box(.18, 1.1, .18, 0x557aa1, 1, 2.5, 0, group);
+      this.box(.95, .5, .1, color, .6, 2.85, 0, group);
+    } else if (b.hubId === "well") {
       this.mesh(new THREE.CylinderGeometry(.85, 1.1, .6, 12), 0x426b68, 0, .5, 0, group);
       this.mesh(new THREE.CylinderGeometry(.55, .55, .15, 32), 0x102c2c, 0, .87, 0, group);
       const crystal = this.mesh(new THREE.OctahedronGeometry(.65), 0x85ffcf, 0, 1.8, 0, group);
@@ -195,7 +208,23 @@ export class World3D {
       const window = this.box(.23, .24, .025, 0x92e4d8, x, .85, h.h * .38 + .02, group);
       (window.material as THREE.MeshStandardMaterial).emissive.setHex(0x3d8e82);
     }
-    this.label(h.short, "map-station-label", .08, group);
+    const banner = this.label("", "map-station-label station-banner", b.project ? 3.5 : 3.3, group);
+    const name = document.createElement("strong"); name.textContent = buildingName(b);
+    const scope = document.createElement("span"); scope.className = "station-scope";
+    scope.textContent = b.project?.workspace || (b.project?.repoUrl ? new URL(b.project.repoUrl).pathname.slice(1) : h.kind + " · " + h.short);
+    const contents = document.createElement("span"); contents.className = "station-contents";
+    contents.textContent = b.project?.contents.slice(0, 3).join(" · ") || b.project?.summary || h.blurb;
+    const signal = document.createElement("span"); signal.className = "station-signal";
+    banner.append(name, scope, contents, signal);
+    banner.title = buildingName(b) + "\n" + (b.project?.summary || h.blurb);
+    banner.style.setProperty("--station-color", h.color);
+    banner.addEventListener("click", event => { event.stopPropagation(); runtime.selectedAgent = null; runtime.selectedBuilding = uid; bus.emit({ type: "changed" }); });
+    banner.setAttribute("role", "button"); banner.tabIndex = 0;
+    banner.setAttribute("aria-label", "Inspect " + buildingName(b));
+    banner.addEventListener("keydown", e => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); banner.click(); } });
+    const beacon = this.glowRing(Math.max(h.w, h.h) * .62, 0x82c9ff, .3, group, .9);
+    beacon.name = "work-beacon"; beacon.visible = false;
+    group.userData.banner = banner; group.userData.signal = signal;
     this.scene.add(group); this.stations.set(uid, group);
   }
   private disposeGroup(group: THREE.Group) {
@@ -208,9 +237,23 @@ export class World3D {
   private syncStations() {
     for (const [uid, g] of this.stations) {
       const b = runtime.buildings.find(b => b.uid === uid);
-      if (!b || g.userData.signature !== [b.tx, b.ty, b.hubId].join(":")) { this.disposeGroup(g); this.stations.delete(uid); }
+      if (!b || g.userData.signature !== JSON.stringify([b.tx, b.ty, b.hubId, b.project])) { this.disposeGroup(g); this.stations.delete(uid); }
     }
     for (const b of runtime.buildings) if (!this.stations.has(b.uid)) this.station(b.uid);
+  }
+  private updateSignals() {
+    for (const [uid, group] of this.stations) {
+      const active = liveWork(uid);
+      const assigned = runtime.agents.filter(a => a.buildingUid === uid);
+      const banner = group.userData.banner as HTMLElement;
+      const signal = group.userData.signal as HTMLElement;
+      banner.classList.toggle("working", active.length > 0);
+      banner.classList.toggle("selected", runtime.selectedBuilding === uid);
+      signal.textContent = active.length ? active.map(w => speakerLabel(w.seat) + " · " + w.taskId).join(" + ") : assigned.length ? assigned.length + " assigned · no live work report" : "Open workspace";
+      signal.title = active.map(w => speakerLabel(w.seat) + ": " + w.activity).join("\n");
+      group.getObjectByName("work-beacon")!.visible = active.length > 0;
+      group.userData.working = active.length > 0;
+    }
   }
   private createActors() {
     const loader = new THREE.TextureLoader();
@@ -263,7 +306,7 @@ export class World3D {
       while (hit && !hit.userData.uid && !hit.userData.agentId) hit = hit.parent;
       const b = hit?.userData.uid ? runtime.buildings.find(b => b.uid === hit!.userData.uid) : buildingAt(t.x, t.y);
       if (runtime.mode === "move" && b) { beginMove(b.uid); return; }
-      if (runtime.mode === "demolish" && b) { if (confirm("Dismantle this station?")) demolish(b.uid); return; }
+      if (runtime.mode === "demolish" && b) { if (confirm(b.project ? "Remove this building from the map? Repository and files will NOT be deleted." : "Dismantle this station?")) demolish(b.uid); return; }
       if (hit?.userData.agentId) { runtime.selectedAgent = hit.userData.agentId; runtime.selectedBuilding = null; }
       else if (b) {
         if (runtime.selectedAgent) assignAgent(runtime.selectedAgent, b.uid);
@@ -315,6 +358,7 @@ export class World3D {
   private frame() {
     const now = performance.now(), dt = Math.min(now - this.previous, 100);
     this.previous = now;
+    if (now - this.lastSignals > 1000) { this.updateSignals(); this.lastSignals = now; }
     if (!typing() && now - this.lastStep > 160) {
       const dx = (this.keys.has("d") || this.keys.has("arrowright") ? 1 : 0) - (this.keys.has("a") || this.keys.has("arrowleft") ? 1 : 0);
       const dz = (this.keys.has("s") || this.keys.has("arrowdown") ? 1 : 0) - (this.keys.has("w") || this.keys.has("arrowup") ? 1 : 0);
@@ -330,7 +374,9 @@ export class World3D {
       actor.light.material.color.setHex(colors[state]);
       actor.sprite.material.opacity = state === "offline" ? .53 : state === "away" ? .72 : 1;
       const active = state === "busy" || state === "attentive";
-      actor.sprite.position.y = actor.sprite.scale.y * .48 + (active && !this.reduced ? Math.sin(now * .002 + a.tx) * .04 : 0);
+      const working = a.path.length === 0 && runtime.workTargets.has(a.id) && liveWork().some(w => w.seat === seat?.id);
+      actor.sprite.position.y = actor.sprite.scale.y * .48 + (active && !this.reduced ? Math.sin(now * (working ? .009 : .002) + a.tx) * (working ? .09 : .04) : 0);
+      actor.label.classList.toggle("working", working);
       (actor.ring.material as THREE.MeshBasicMaterial).opacity = runtime.selectedAgent === a.id ? 1 : active ? .55 : .15;
       actor.label.classList.toggle("selected", runtime.selectedAgent === a.id);
       actor.label.dataset.attention = state;
@@ -338,6 +384,9 @@ export class World3D {
     for (const group of this.stations.values()) {
       const crystal = group.getObjectByName("core");
       if (crystal && !this.reduced) crystal.rotation.y = now * .0003;
+      const beacon = group.getObjectByName("work-beacon")!;
+      const scale = !this.reduced && group.userData.working ? 1 + Math.sin(now * .003) * .09 : 1;
+      beacon.scale.set(scale, scale, 1);
     }
     this.drawGhost(); this.controls.update(); this.renderer.render(this.scene, this.camera); this.labels.render(this.scene, this.camera);
   }

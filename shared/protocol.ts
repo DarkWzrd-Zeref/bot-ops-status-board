@@ -10,6 +10,8 @@ export interface RadioNote {
   channel: Channel; to: Speaker | "all"; directive: boolean;
   recipients: Speaker[]; receipts: Partial<Record<Speaker, Receipt>>;
   replyTo?: string;
+  ping?: boolean;
+  projectUid?: string;
 }
 export interface Presence {
   seat: Speaker; state: Attention; lastSeen: number; activity: string;

@@ -1,6 +1,7 @@
 {
   "comment": "Palworld work-suitability analog. Placing a building and assigning a pal CHANGES that pal's AI: tools, gates, policy.",
   "stations": {
+    "project-site": { "work": "code", "slots": 0, "grants": [], "gate": null, "aiChange": "Shared project workspace. Assignment does not grant repository access or execute code." },
     "well": {
       "work": "command",
       "slots": 0,

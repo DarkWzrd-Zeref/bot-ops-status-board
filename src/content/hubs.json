@@ -2,6 +2,11 @@
   "starter": ["well", "bank", "grand-exchange", "discord", "cursor", "skillspector"],
   "hubs": [
     {
+      "id": "project-site", "name": "Project Workspace", "short": "Project", "kind": "project",
+      "w": 3, "h": 3, "color": "#82b9ff", "roof": "#304e7f", "mcp": null, "placeable": true,
+      "blurb": "A shared repository or project folder. Place a building, gather teammates, link work and discuss the same task. Removing it only changes this map."
+    },
+    {
       "id": "well",
       "name": "Command Well",
       "short": "Well",

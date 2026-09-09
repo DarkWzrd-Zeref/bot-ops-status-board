@@ -1,9 +1,11 @@
 import { bus } from "./events.ts";
-import { applyBaseSnapshot, exportSave, onPersist, palSay } from "./runtime.ts";
-import { effectiveAttention, type RadioNote, type Speaker, type Presence, type Channel } from "../../shared/protocol.ts";
+import { applyBaseSnapshot, exportSave, onPersist, palSay, syncWorkTargets } from "./runtime.ts";
+import { effectiveAttention, SEATS, type RadioNote, type Speaker, type Presence, type Channel } from "../../shared/protocol.ts";
+import { workIsLive, type WorkReport } from "../../shared/workspace.ts";
 
 export const radioNotes: RadioNote[] = [];
 export const presenceBySeat = new Map<Speaker, Presence>();
+export const workReports: WorkReport[] = [];
 export let radioLive = false;
 let revision = 0;
 let ready = false;
@@ -42,7 +44,21 @@ function hydrate(data: { base?: Parameters<typeof applyBaseSnapshot>[0] | null; 
 }
 function updatePresence(rows: Presence[]) {
   for (const p of rows) presenceBySeat.set(p.seat, p);
+  updateWorkTargets();
   bus.emit({ type: "presence" });
+}
+function updateWork(rows: WorkReport[]) {
+  workReports.splice(0, workReports.length, ...rows);
+  updateWorkTargets();
+  bus.emit({ type: "changed" });
+}
+function updateWorkTargets() {
+  const targets = new Map<string, string>();
+  for (const work of liveWork()) { const pal = SEATS.find(s => s.id === work.seat)?.palId; if (pal) targets.set(pal, work.buildingUid); }
+  syncWorkTargets(targets);
+}
+export function liveWork(buildingUid?: string): WorkReport[] {
+  return workReports.filter(w => (!buildingUid || w.buildingUid === buildingUid) && radioLive && workIsLive(w, presenceBySeat.get(w.seat)));
 }
 async function pushBase() {
   if (!ready || !radioLive || remoteChange) return;
@@ -60,10 +76,14 @@ async function pushBase() {
     bus.emit({ type: "toast", tone: "bad", text: "Base change was not saved. Reconnect and try again." });
   }
 }
-export async function postRadio(from: Speaker, text: string, options: { channel?: Channel; to?: Speaker | "all"; directive?: boolean; replyTo?: string } = {}) {
+export async function postRadio(from: Speaker, text: string, options: { channel?: Channel; to?: Speaker | "all"; directive?: boolean; replyTo?: string; ping?: boolean; projectUid?: string } = {}) {
   const note = await request<RadioNote>("/api/architect", { method: "POST", body: JSON.stringify({ from, text, ...options }) });
   remember(note, false);
   return note;
+}
+export async function markHumanPingSeen(id: string) {
+  const note = await request<RadioNote>(`/api/directives/${encodeURIComponent(id)}/ack`, { method: "POST", body: JSON.stringify({ seat: "zeref", state: "seen" }) });
+  remember(note, false);
 }
 function userHeartbeat() {
   if (!radioLive) return;
@@ -86,10 +106,11 @@ export function connectLive() {
       const ev = JSON.parse(event.data);
       if (ev.type === "hello") {
         radioNotes.splice(0, radioNotes.length, ...(ev.notes ?? []));
-        hydrate(ev); updatePresence(ev.presence ?? []); ready = true;
+        hydrate(ev); updatePresence(ev.presence ?? []); updateWork(ev.work ?? []); ready = true;
         if (!ev.base) void pushBase();
         bus.emit({ type: "changed" });
       } else if (ev.type === "presence") updatePresence(ev.presence);
+      else if (ev.type === "work") updateWork(ev.work);
       else if (ev.type === "architect") {
         remember(ev.note, true);
         if (ev.note.palId) palSay(ev.note.palId, ev.note.text);
@@ -100,12 +121,12 @@ export function connectLive() {
       // pal-assign events only for older clients; do not republish them here.
     } catch (error) { console.error("Hub event failed", error); }
   };
-  es.onerror = () => { radioLive = false; bus.emit({ type: "presence" }); };
+  es.onerror = () => { radioLive = false; updateWorkTargets(); bus.emit({ type: "presence" }); };
   document.addEventListener("pointerdown", () => { lastInteraction = Date.now(); }, { passive: true });
   document.addEventListener("keydown", () => { lastInteraction = Date.now(); });
   document.addEventListener("visibilitychange", userHeartbeat);
   window.setInterval(userHeartbeat, 30_000);
-  window.setInterval(() => bus.emit({ type: "presence" }), 10_000);
+  window.setInterval(() => { updateWorkTargets(); bus.emit({ type: "presence" }); }, 10_000);
   window.addEventListener("pagehide", () => navigator.sendBeacon("/api/presence/zeref",
     new Blob([JSON.stringify({ state: "away", activity: "Closed the command deck" })], { type: "application/json" })));
 }
