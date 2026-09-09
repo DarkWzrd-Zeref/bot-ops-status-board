@@ -1,0 +1,26 @@
+{
+  "title": "AREA 67 Agent ID Scanner",
+  "signed_by": "grok-heavy",
+  "logged_at": "2026-09-09T23:10:00Z",
+  "rule": "No tokens, passwords, or keys. Seat URLs are nametags not passports (SEC01).",
+  "passport": "https://docs.google.com/spreadsheets/d/1NLKE5XY4nygezoOs2IAjDOPfdplTLWL1OHHDFHF0sVw",
+  "seat_sheet": "https://docs.google.com/spreadsheets/d/15_PgN1NQ9Fr1WfH7TyUEN3Bz-lqlauAF8_iJ8hOlc-M",
+  "agents": [
+    {"scan": "DIR", "pal_id": "director", "name": "Grok Heavy", "passport": "ID04 SuperGrok (Passport No-SuperGrok is STALE)", "seat": "/mcp/grok-heavy", "status": "CONNECTED", "station": "well"},
+    {"scan": "CUR", "pal_id": "cursor-ultra", "name": "Cursor Ultra", "passport": "BOT13", "seat": "/mcp/cursor", "status": "CONNECTED", "station": "project-site", "note": "Seat sheet S06 wrongly listed /mcp/grok"},
+    {"scan": "CDX", "pal_id": "codex", "name": "Codex", "passport": null, "seat": "/mcp/codex", "status": "OFFLINE_WATCH", "station": "project-site"},
+    {"scan": "CLD", "pal_id": "claude", "name": "Claude", "passport": "BOT14", "seat": "/mcp/claude", "status": "CONNECTED_AWAY", "station": "bank", "note": "Out until Friday"},
+    {"scan": "GPT", "pal_id": "researcher", "name": "ChatGPT", "passport": null, "seat": "/mcp/chatgpt", "status": "NEVER_CLOCKED", "station": null},
+    {"scan": "GA", "pal_id": "grok-am-a", "name": "Grok Twin A", "passport": "BOT02 analog", "seat": "/mcp/grok-a", "status": "URL_ONLY", "station": null},
+    {"scan": "GB", "pal_id": "grok-am-b", "name": "Grok Twin B", "passport": null, "seat": "/mcp/grok-b", "status": "URL_ONLY", "station": null},
+    {"scan": "GRK", "pal_id": "grok", "name": "Grok desk", "passport": "ID04", "seat": "/mcp/grok", "status": "URL_ONLY", "station": null},
+    {"scan": "COS", "pal_id": "chief-of-staff", "name": "Chief of Staff", "passport": "BOT01", "seat": null, "status": "PAL_ONLY"},
+    {"scan": "POL", "pal_id": "police", "name": "Police", "passport": null, "seat": null, "status": "PAL_ONLY"},
+    {"scan": "ENG", "pal_id": "engineer", "name": "Engineer", "passport": "BOT13 analog", "seat": null, "status": "PAL_ONLY"},
+    {"scan": "SOT", "pal_id": "stay-on-track", "name": "Stay on Track", "passport": null, "seat": null, "status": "PAL_ONLY"},
+    {"scan": "N8N", "pal_id": "n8n", "name": "n8n", "passport": "BOT11", "seat": null, "status": "PAL_ONLY"},
+    {"scan": "ZRF", "pal_id": "zeref", "name": "Zeref", "passport": "human commander", "seat": "HUD", "status": "COMMAND"}
+  ],
+  "passport_bots_no_pal": ["BOT03 Media", "BOT04 Content", "BOT05 Marketing", "BOT06 Mr Finances", "BOT07 trading PAUSED", "BOT08 Game Earn", "BOT09 MLB", "BOT10 Bull Wizards DARK", "BOT12 im alive"],
+  "hive_ready": "20-25 incoming Grok bots need new pal_id + locked /mcp/<slug> each. Do not reuse Heavy/A/B/desk URLs."
+}
