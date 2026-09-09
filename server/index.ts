@@ -31,6 +31,8 @@ app.get("/health", (c) =>
   c.json({
     ok: true,
     name: "area67",
+    version: "1.0.0",
+    commit: process.env.RAILWAY_GIT_COMMIT_SHA ?? null,
     mcp: "/mcp",
     connect: "/connect",
     seats: SEATS.map((s) => ({ id: s.id, url: seatUrl(s.slug), pal: s.palId })),

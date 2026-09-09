@@ -6,6 +6,7 @@
 - Run `npm ci`, `npm test` and `npm run build` on Node 22+.
 - Optional CI: with an account authorized to write workflows, copy `docs/verify-workflow.example.yml` to `.github/workflows/verify.yml`. The publishing token could not activate this workflow; no CI result is claimed.
 - Back up the existing `DATA_DIR/area67.json`. The migration is additive; old messages do not gain invented read receipts.
+- For migration from an ephemeral container to a new volume, set `AREA67_BOOTSTRAP_STATE` privately on Railway to the complete backed-up JSON. It is read only when the durable file is absent. After verifying restoration, clear that variable. Never put live room data in the Git repository.
 - Confirm a persistent Railway volume is mounted at `DATA_DIR`. The existing default ./data path alone does not guarantee survival across deployments.
 - Keep one service replica. Cross-replica events, presence and JSON-file writes are unsupported.
 - Review the unauthenticated shared-room boundary. Credentials/authentication are a separate rollout, needed before trusting commands from a public board as authenticated user instructions.

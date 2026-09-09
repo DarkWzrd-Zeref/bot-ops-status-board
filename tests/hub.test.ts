@@ -1,6 +1,6 @@
 import { test, after } from "node:test";
 import assert from "node:assert/strict";
-import { mkdtempSync, readFileSync, writeFileSync } from "node:fs";
+import { mkdtempSync, readFileSync, writeFileSync, renameSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { effectiveAttention, SEATS, type Presence } from "../shared/protocol.ts";
@@ -158,5 +158,19 @@ await test("corrupt storage fails closed without overwriting the recoverable fil
   assert.equal(readFileSync(file, "utf8"), "broken-test-data");
   writeFileSync(file, good);
   store.loadStore();
+});
+await test("one-time bootstrap restores original IDs and base into a new volume", () => {
+  const file = join(testDir, "area67.json");
+  const backup = readFileSync(file, "utf8");
+  renameSync(file, join(testDir, "before-bootstrap.json"));
+  process.env.AREA67_BOOTSTRAP_STATE = backup;
+  store.loadStore();
+  const restored = JSON.parse(readFileSync(file, "utf8"));
+  assert.deepEqual(restored.notes, JSON.parse(backup).notes);
+  assert.deepEqual(restored.base, JSON.parse(backup).base);
+  assert.ok(store.presence().every(p => p.state === "offline"));
+  process.env.AREA67_BOOTSTRAP_STATE = "invalid-but-must-be-ignored-for-existing-volume";
+  assert.doesNotThrow(() => store.loadStore());
+  delete process.env.AREA67_BOOTSTRAP_STATE;
 });
 after(() => { console.log("Isolated test data: " + testDir); });

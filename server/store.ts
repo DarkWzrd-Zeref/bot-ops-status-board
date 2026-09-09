@@ -57,21 +57,29 @@ function nid(): string {
   return randomUUID();
 }
 
+function readState(raw: string): DiskState {
+  const parsed = JSON.parse(raw) as Partial<DiskState>;
+  if (!parsed || typeof parsed !== "object" || !Array.isArray(parsed.notes)) throw new Error("Invalid AREA 67 state: expected a notes array");
+  return {
+    notes: parsed.notes.map(n => ({ ...n, channel: n.channel ?? "command", to: n.to ?? "all", directive: n.directive ?? false, recipients: n.recipients ?? [], receipts: n.receipts ?? {} })),
+    lastSay: parsed.lastSay && typeof parsed.lastSay === "object" ? parsed.lastSay : {},
+    base: parsed.base ?? null,
+    revision: parsed.revision ?? 0,
+  };
+}
+
 export function loadStore(): void {
   heartbeats.clear();
   try {
     mkdirSync(DATA_DIR, { recursive: true });
     const raw = readFileSync(DATA_FILE, "utf8");
-    const parsed = JSON.parse(raw) as Partial<DiskState>;
-    state = {
-      notes: Array.isArray(parsed.notes) ? parsed.notes.map(n => ({ ...n, channel: n.channel ?? "command", to: n.to ?? "all", directive: n.directive ?? false, recipients: n.recipients ?? [], receipts: n.receipts ?? {} })) : [],
-      lastSay: parsed.lastSay && typeof parsed.lastSay === "object" ? parsed.lastSay : {},
-      base: parsed.base ?? null,
-      revision: parsed.revision ?? 0,
-    };
+    state = readState(raw);
     committedState = JSON.stringify(state);
   } catch (error) {
     if ((error as NodeJS.ErrnoException).code !== "ENOENT") throw error;
+    // One-time migration into a newly mounted volume. Existing durable state
+    // always wins; invalid bootstrap data stops startup rather than erasing it.
+    if (process.env.AREA67_BOOTSTRAP_STATE) state = readState(process.env.AREA67_BOOTSTRAP_STATE);
     mkdirSync(DATA_DIR, { recursive: true });
     persist();
   }
