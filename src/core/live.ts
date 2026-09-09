@@ -3,15 +3,20 @@ import { applyBaseSnapshot, exportSave, onPersist, palSay, syncWorkTargets } fro
 import { effectiveAttention, SEATS, type RadioNote, type Speaker, type Presence, type Channel } from "../../shared/protocol.ts";
 import { workIsLive, type WorkReport } from "../../shared/workspace.ts";
 import type { Ecosystem } from "../../shared/ecosystem.ts";
+import type { TaskMemory } from "../../shared/memory.ts";
 
 export const radioNotes: RadioNote[] = [];
 export const presenceBySeat = new Map<Speaker, Presence>();
 export const workReports: WorkReport[] = [];
-export const ecosystem: Ecosystem = { cards: [], skills: [] };
+export const ecosystem: Ecosystem = { cards: [], skills: [], memories: [] };
 export function updateEcosystem(data: Ecosystem) {
   ecosystem.cards.splice(0, ecosystem.cards.length, ...(data.cards ?? []));
   ecosystem.skills.splice(0, ecosystem.skills.length, ...(data.skills ?? []));
+  ecosystem.memories.splice(0, ecosystem.memories.length, ...(data.memories ?? []));
   bus.emit({ type: "changed" });
+}
+export function memoriesFor(seat?: Speaker): TaskMemory[] {
+  return ecosystem.memories.filter(m => (!seat || m.seat === seat) && m.state !== "done");
 }
 export let radioLive = false;
 let revision = 0;
@@ -112,7 +117,7 @@ function openStream() {
       const ev = JSON.parse(event.data);
       if (ev.type === "hello") {
         radioNotes.splice(0, radioNotes.length, ...(ev.notes ?? []));
-        hydrate(ev); updatePresence(ev.presence ?? []); updateWork(ev.work ?? []); updateEcosystem(ev.ecosystem ?? { cards: [], skills: [] }); ready = true;
+        hydrate(ev); updatePresence(ev.presence ?? []); updateWork(ev.work ?? []); updateEcosystem(ev.ecosystem ?? { cards: [], skills: [], memories: [] }); ready = true;
         if (!ev.base) void pushBase();
         bus.emit({ type: "changed" });
       } else if (ev.type === "presence") updatePresence(ev.presence);

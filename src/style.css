@@ -390,7 +390,10 @@ html, body, #app { height: 100%; overflow: hidden; }
 .ecosystem-tools { display: flex; gap: 12px; flex-wrap: wrap; align-items: center; padding-bottom: 18px; }
 .ecosystem-tools label { font-size: 14px; }
 #ecosystem-records { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px; align-items: start; }
-.ecosystem-card { padding: 20px; border: 1px solid #335367; border-top: 3px solid #83caff; border-radius: 10px; background: #172a37; min-width: 0; }
+.ecosystem-card.memory-card { border-top-color: #f5c16c; }
+.card-state.pending { color: #f5c16c; }
+.card-state.blocked { color: #ff9c94; }
+.memory-card code { font-size: 13px; }
 .ecosystem-card h3 { font-size: 20px; line-height: 1.35; margin: 12px 0 8px; overflow-wrap: anywhere; }
 .ecosystem-card p { font-size: 16px; line-height: 1.55; white-space: pre-wrap; overflow-wrap: anywhere; margin: 12px 0; }
 .board-card-meta { display: flex; justify-content: space-between; flex-wrap: wrap; gap: 6px; font-size: 12px; color: #9fb8ca; }

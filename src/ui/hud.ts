@@ -1,7 +1,7 @@
 import { BUILD_TABS } from "../build/palworld.ts";
 import { bus } from "../core/events.ts";
 import { AGENTS, SKILLS, assignAgent, beginMove, cancelMove, catalogForTab, demolish, equipSkill, grantsFor, hubById, runScan, runtime, buildingName, prepareProject, updateProject } from "../core/runtime.ts";
-import { attention, postRadio, presenceBySeat, radioLive, radioNotes, workReports, liveWork, markHumanPingSeen } from "../core/live.ts";
+import { attention, postRadio, presenceBySeat, radioLive, radioNotes, workReports, liveWork, markHumanPingSeen, memoriesFor } from "../core/live.ts";
 import { SEATS, seatForPal, speakerLabel, type Speaker, type Channel } from "../../shared/protocol.ts";
 import { projectSchema, safeLink } from "../../shared/workspace.ts";
 import { mountEcosystem, showEcosystem, ecosystemNav } from "./ecosystem.ts";
@@ -117,6 +117,7 @@ function inspector() {
       <p>${esc(def.bio)}</p><div class="detail-stats"><span>Identity<b>${esc(def.model)}</b></span><span>Connection<b>${seat ? ago(presenceBySeat.get(seat.id)?.lastSeen) : "Unconnected role"}</b></span></div>
       <div class="detail-actions">${seat ? `<button class="primary" data-address="${seat.id}">Message</button><button data-ping="${seat.id}">Ping ${esc(seat.label)}</button>` : ""}<button data-focus="${a.id}">Locate</button></div>
       ${seat ? workCard(workReports.find(w => w.seat === seat.id)) : ""}
+      ${seat ? memoriesFor(seat.id).map(memoryCard).join("") || '<p class="microcopy">No remaining-task memories yet. This seat saves them with task_memory_save.</p>' : ""}
       <label class="field-label">Assigned station<select id="assign-station" data-pal="${a.id}"><option value="">Unassigned</option>${runtime.buildings.map(b => `<option value="${b.uid}" ${a.buildingUid === b.uid ? "selected" : ""}>${esc(buildingName(b))}</option>`).join("")}</select></label>
       <details><summary>Capabilities & skills</summary><p class="microcopy">Station capabilities: ${grantsFor(a.id).map(esc).join(", ") || "None"}<br>Equipped: ${a.skills.map(esc).join(", ") || "None"}<br>Station assignments describe roles; external tools still require a running, authorized client.</p>${skills(a.id)}</details>`;
   }
@@ -128,7 +129,9 @@ function inspector() {
       <div class="detail-actions">${h.kind === "ecosystem" ? `<button class="primary" data-ecosystem="${h.id}">Open ${esc(h.name)}</button>` : ""}<button data-project-chat="${b.uid}">${h.kind === "ecosystem" ? "Discussion" : "Open project chat"}</button><button data-ping-project="${b.uid}">Ping assigned crew</button></div>
       <label class="field-label">Assign an agent<select id="project-assign" data-building="${b.uid}"><option value="">Choose an agent…</option>${SEATS.map(s => `<option value="${s.palId}">${s.label}</option>`).join("")}</select></label>
       <p class="microcopy">Assigned: ${runtime.agents.filter(a => a.buildingUid === b.uid).map(a => esc(AGENTS.find(d => d.id === a.id)!.name)).join(", ") || "No pals yet"}</p>
-      <div class="workspace-work">${workReports.filter(w => w.buildingUid === b.uid).map(workCard).join("") || '<p class="microcopy">No work reported yet. Connected agents use work_report with this building’s ID.</p>'}</div><code class="building-id">${esc(b.uid)}</code>
+      <div class="workspace-work">${h.id === "pending-work"
+        ? memoriesFor().map(memoryCard).join("") || '<p class="microcopy">No remaining-task memories yet. Each bot uses task_memory_save on its own MCP seat.</p>'
+        : workReports.filter(w => w.buildingUid === b.uid).map(workCard).join("") || '<p class="microcopy">No work reported yet. Connected agents use work_report with this building’s ID.</p>'}</div><code class="building-id">${esc(b.uid)}</code>
       <div class="detail-actions">${project ? `<button data-edit-project="${b.uid}">Edit sign</button>` : ""}${h.placeable ? `<button data-lift="${b.uid}">Move</button><button class="danger" data-demo="${b.uid}">${project ? "Remove from map" : "Dismantle"}</button>` : "Command core"}</div>`;
   }
   const c = counts();
@@ -141,6 +144,9 @@ function workCard(work?: typeof workReports[number]) {
   if (!work) return "";
   const live = liveWork().some(w => w.seat === work.seat);
   return `<div class="work-card ${live ? "live" : work.state}"><span>${esc(speakerLabel(work.seat))}<b>${live ? "● Working" : work.state === "working" ? "Last report · stale" : work.state === "done" ? "Done" : "Blocked"}</b></span><strong>${esc(work.taskId)}</strong><p>${esc(work.activity)}</p><small>Self-reported · ${ago(work.updatedAt)}</small>${work.artifacts.filter(safeLink).map((url, i) => `<a href="${esc(url)}" target="_blank" rel="noopener noreferrer">Evidence ${i + 1} ↗</a>`).join("")}</div>`;
+}
+function memoryCard(memory: ReturnType<typeof memoriesFor>[number]) {
+  return `<div class="work-card ${memory.state}"><span>${esc(speakerLabel(memory.seat))}<b>${memory.state} memory</b></span><strong>${esc(memory.title)}</strong><p>${esc(memory.body)}</p><small>task_memory_save · ${esc(memory.slot)} · ${ago(memory.updatedAt)}</small></div>`;
 }
 function projects() {
   const buildings = runtime.buildings.filter(b => b.project);

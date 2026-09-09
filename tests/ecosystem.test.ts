@@ -31,7 +31,7 @@ await test("ecosystem mutations are closed by default while boards remain readab
   const read = content(await call("codex", "ecosystem_read")); assert.equal(read.canWrite, false);
   assert.equal((await call("codex", "board_post", { board: "vision-board", title: "Idea", body: "Details" })).isError, true);
   assert.equal((await call("codex", "skill_register", { name: "Build", description: "Test", signature: "Codex" })).isError, true);
-  assert.deepEqual(store.ecosystem(), { cards: [], skills: [] });
+  assert.deepEqual(store.ecosystem(), { cards: [], skills: [], memories: [] });
 });
 await test("keys are seat-specific and client-supplied actor/owner values cannot impersonate", async () => {
   process.env.AREA67_ECOSYSTEM_KEYS = JSON.stringify(keys);
