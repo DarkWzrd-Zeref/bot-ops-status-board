@@ -28,6 +28,7 @@ let previousMode = runtime.mode;
 let chatProject: string | undefined;
 let editingProject: string | undefined;
 let friendsOnlineOnly = false;
+let agentSearch = "";
 let inspectedKey = "";
 const stateLabels = { attentive: "Online", busy: "Online · working", away: "Away", offline: "Offline" };
 const receiptLabels = { seen: "Seen", accepted: "Working", completed: "Done", blocked: "Blocked" };
@@ -71,7 +72,7 @@ function counts() {
 function roster() {
   const rank = { busy: 0, attentive: 1, away: 2, offline: 3 };
   const seats = [...SEATS].sort((a, b) => rank[attention(a.id)] - rank[attention(b.id)]);
-  const visible = friendsOnlineOnly ? seats.filter(s => ["busy", "attentive"].includes(attention(s.id))) : seats;
+  const visible = seats.filter(s => (!friendsOnlineOnly || ["busy", "attentive"].includes(attention(s.id))) && (s.label + " " + s.model).toLowerCase().includes(agentSearch));
   return visible.map(s => {
     const a = runtime.agents.find(a => a.id === s.palId);
     const building = runtime.buildings.find(b => b.uid === a?.buildingUid);
@@ -201,6 +202,7 @@ function render() {
   update("#team-count", c.seats + " / " + SEATS.length + " online");
   update("#inspector-content", selected && !runtime.lifting ? inspector() : "");
   update("#build-tools", buildTools());
+  host.querySelector<HTMLElement>("#build-tools")!.hidden = !!selected;
   update("#mission-summary", `<span class="eyebrow">ACTIVE OPERATIONS</span><strong>${c.pending.length ? c.pending.length + " open directive" + (c.pending.length === 1 ? "" : "s") : "Ready for your next directive"}</strong><span>${c.blocked ? c.blocked + " need your attention" : c.seats + " teammates checking in"}</span>`);
   const log = host.querySelector<HTMLElement>("#message-log")!;
   const bottom = log.scrollHeight - log.scrollTop - log.clientHeight < 65;
@@ -233,6 +235,7 @@ export function mountHud(root: HTMLElement) {
     <div id="toast" role="status" aria-live="polite"></div>`;
   root.querySelector(".header-center")!.innerHTML = ecosystemNav();
   root.querySelector(".friends-filter")!.insertAdjacentHTML("beforebegin", '<div id="human-presence" class="human-presence"></div>');
+  root.querySelector(".friends-filter")!.insertAdjacentHTML("afterend", '<label class="agent-search"><span class="sr-only">Find an agent</span><input id="agent-search" type="search" placeholder="Find an agent" autocomplete="off"></label>');
   root.querySelector(".crew-footer")!.insertAdjacentHTML("beforeend", ecosystemNav());
   root.insertAdjacentHTML("beforeend", '<form id="quick-chat" aria-label="Quick team message"><label for="quick-text" class="sr-only">Message everyone as Zeref</label><input id="quick-text" maxlength="2000" placeholder="Message everyone as Zeref…" autocomplete="off"><button type="submit">Send</button></form>');
   mountEcosystem(root, openChat);
@@ -285,6 +288,12 @@ async function pingSeats(seats: (Speaker | "all")[], projectUid?: string) {
   } catch (error) { flash(error instanceof Error ? error.message : "Ping could not be queued.", "bad"); }
 }
 function bind() {
+  host.querySelector<HTMLInputElement>("#agent-search")!.addEventListener("input", e => {
+    agentSearch = (e.target as HTMLInputElement).value.trim().toLowerCase(); render();
+  });
+  window.addEventListener("area67-view-change", () => {
+    closeOperations(); friendsOpen = false; chatOpen = false; render();
+  });
   window.addEventListener("keydown", event => {
     if (event.key !== "Escape" || document.activeElement?.closest("input, textarea, select, dialog")) return;
     closeOperations(); friendsOpen = false; chatOpen = false;

@@ -10,7 +10,7 @@ import {
   assignAgent,
   beginMove,
   buildingAt,
-  buildingName,
+  stationMapLabel,
   cancelMove,
   demolish,
   finishMove,
@@ -87,6 +87,13 @@ export class HubScene extends Phaser.Scene {
     };
     window.addEventListener("area67-district", district);
     window.addEventListener("area67-camera", cameraAction);
+    const stationFocus = (event: Event) => {
+      const b = runtime.buildings.find(b => b.uid === (event as CustomEvent<string>).detail); if (!b) return;
+      this.cameras.main.stopFollow(); this.cameras.main.setZoom(.8); this.cameras.main.centerOn(b.tx * TILE, b.ty * TILE);
+      runtime.selectedAgent = null; runtime.selectedBuilding = b.uid; bus.emit({ type: "changed" });
+    };
+    window.addEventListener("area67-focus-building", stationFocus);
+    this.events.once("shutdown", () => window.removeEventListener("area67-focus-building", stationFocus));
     this.events.once("shutdown", () => { window.removeEventListener("area67-district", district); window.removeEventListener("area67-camera", cameraAction); });
 
     const kb = this.input.keyboard!;
@@ -226,7 +233,7 @@ export class HubScene extends Phaser.Scene {
     });
     this.bSprites.set(uidStr, img);
     const label = this.add
-      .text(img.x, b.ty * TILE - 4, buildingName(b), {
+      .text(img.x, b.ty * TILE - 4, stationMapLabel(b, runtime.selectedBuilding === uidStr), {
         fontFamily: "monospace",
         fontSize: "14px",
         color: "#b7f07a",
@@ -261,7 +268,7 @@ export class HubScene extends Phaser.Scene {
           tilesH: hub.h,
           kind: hub.kind,
         });
-        this.labels.get("b-" + id)?.setText(buildingName(building)).setPosition(spr.x, building.ty * TILE - 4);
+        this.labels.get("b-" + id)?.setText(stationMapLabel(building, runtime.selectedBuilding === id)).setPosition(spr.x, building.ty * TILE - 4);
       }
     }
   }
