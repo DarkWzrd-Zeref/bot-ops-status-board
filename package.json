@@ -13,8 +13,9 @@
     "preview": "vite preview --host 127.0.0.1 --port 4611",
     "typecheck": "tsc --noEmit",
     "test": "tsc --noEmit && tsx --test tests/*.test.ts",
-    "hive:online": "node scripts/area67-mcp.mjs cursor online --hub cursor",
-    "hive:loop": "node scripts/area67-mcp.mjs cursor loop --hub cursor"
+    "hive:online": "node scripts/area67-mcp.mjs cursor online --hub project-site --building project-area67 --task hive-lock-8h",
+    "hive:loop": "node scripts/area67-mcp.mjs cursor loop --hub project-site --building project-area67 --task hive-lock-8h",
+    "hive:shift8": "node scripts/area67-mcp.mjs cursor shift8 --hub project-site --building project-area67 --task hive-lock-8h"
   },
   "dependencies": {
     "three": "^0.180.0",
