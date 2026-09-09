@@ -2,7 +2,7 @@ import { mkdirSync, readFileSync, writeFileSync, renameSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { AGENTS, HUBS, MODS, SKILL_IDS, SEATS, SPEAKER_PAL, agentById, hubById, publicBase as siteBase, seatUrl, type Speaker } from "./catalog.ts";
 import { randomUUID } from "node:crypto";
-import { effectiveAttention, type RadioNote, type Presence, type Attention, type Channel, type ReceiptState } from "../shared/protocol.ts";
+import { effectiveAttention, isSpeaker, type RadioNote, type Presence, type Attention, type Channel, type ReceiptState } from "../shared/protocol.ts";
 
 export interface PlacedBuilding {
   uid: string;
@@ -82,6 +82,23 @@ export function loadStore(): void {
     if (process.env.AREA67_BOOTSTRAP_STATE) state = readState(process.env.AREA67_BOOTSTRAP_STATE);
     mkdirSync(DATA_DIR, { recursive: true });
     persist();
+  }
+  // Operator-only cutover repair: add missing historical messages, never replace
+  // existing records, assignments, receipts, speech or attention. No public API.
+  if (process.env.AREA67_RECOVERY_NOTES) {
+    const recovery = readState(process.env.AREA67_RECOVERY_NOTES).notes;
+    if (recovery.some(n => !n || typeof n.id !== "string" || !n.id || !isSpeaker(n.from)
+      || n.palId !== SPEAKER_PAL[n.from] || typeof n.text !== "string" || !n.text.trim()
+      || !Number.isFinite(n.at) || n.directive || n.recipients.length || Object.keys(n.receipts).length
+      || !["command", "team"].includes(n.channel) || (n.to !== "all" && !isSpeaker(n.to)))) {
+      throw new Error("Invalid historical recovery notes");
+    }
+    const ids = new Set(state.notes.map(n => n.id));
+    const missing = recovery.filter(n => { if (ids.has(n.id)) return false; ids.add(n.id); return true; });
+    if (missing.length) {
+      state.notes = [...state.notes, ...missing].sort((a, b) => b.at - a.at);
+      persist();
+    }
   }
 }
 

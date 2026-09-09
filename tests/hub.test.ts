@@ -173,4 +173,29 @@ await test("one-time bootstrap restores original IDs and base into a new volume"
   assert.doesNotThrow(() => store.loadStore());
   delete process.env.AREA67_BOOTSTRAP_STATE;
 });
+await test("cutover recovery adds historical messages once without replacing live state or claiming attention", () => {
+  const existing = store.notes()[0];
+  const beforeBase = JSON.stringify(store.base());
+  const beforeSpeech = JSON.stringify(store.lastSay());
+  const beforeRevision = store.revision();
+  const recovered = { id: "cutover-history", from: "cursor", palId: "cursor-ultra", text: "Original saved message", at: 1000 };
+  process.env.AREA67_RECOVERY_NOTES = JSON.stringify({ notes: [recovered, recovered, { ...existing, text: "Must not replace", directive: false, recipients: [], receipts: {} }] });
+  store.loadStore();
+  assert.equal(store.notes(1000).filter(n => n.id === recovered.id).length, 1);
+  assert.deepEqual(store.notes(1000).find(n => n.id === existing.id), existing);
+  assert.equal(JSON.stringify(store.base()), beforeBase);
+  assert.equal(JSON.stringify(store.lastSay()), beforeSpeech);
+  assert.equal(store.revision(), beforeRevision);
+  assert.ok(store.presence().every(p => p.state === "offline"));
+  store.loadStore();
+  assert.equal(store.notes(1000).filter(n => n.id === recovered.id).length, 1);
+  const file = join(testDir, "area67.json");
+  const good = readFileSync(file, "utf8");
+  process.env.AREA67_RECOVERY_NOTES = JSON.stringify({ notes: [{ ...recovered, id: "invalid", from: "unknown" }] });
+  assert.throws(() => store.loadStore(), /Invalid historical/);
+  assert.equal(readFileSync(file, "utf8"), good);
+  delete process.env.AREA67_RECOVERY_NOTES;
+  store.loadStore();
+});
+
 after(() => { console.log("Isolated test data: " + testDir); });
