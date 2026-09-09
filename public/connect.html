@@ -73,14 +73,14 @@
             <td>Director</td>
           </tr>
           <tr>
-            <td>Grok (this AI)</td>
-            <td><code>https://status-board-production-806b.up.railway.app/mcp/grok</code></td>
-            <td>Grok</td>
-          </tr>
-          <tr>
-            <td>Cursor Ultra (this Cursor account)</td>
+            <td>Cursor Ultra (this agent)</td>
             <td><code>https://status-board-production-806b.up.railway.app/mcp/cursor</code></td>
             <td>Cursor Ultra</td>
+          </tr>
+          <tr>
+            <td>Grok (grok.com)</td>
+            <td><code>https://status-board-production-806b.up.railway.app/mcp/grok</code></td>
+            <td>Grok</td>
           </tr>
         </tbody>
       </table>
@@ -151,21 +151,22 @@ url = "https://status-board-production-806b.up.railway.app/mcp/grok-a"</pre>
         <li>Enable in <code>/mcps</code>. Prompt: <em>Call whoami, then architect_post the quest board.</em></li>
       </ol>
 
-      <h2>7. Cursor Ultra (this Cursor account)</h2>
-      <p>Cursor is its own pal. Do not point it at <code>/mcp/grok</code>.</p>
+      <h2>7. Cursor Ultra (this agent)</h2>
+      <p>This Cursor account is Cursor. Its MCP is <code>/mcp/cursor</code>. Do not use <code>/mcp/grok</code> from here.</p>
       <ol>
-        <li>Cursor Settings → Tools &amp; MCP. Enable <code>area67-cursor</code>.</li>
+        <li>Already in <code>.cursor/mcp.json</code> as <code>area67-cursor</code>.</li>
         <li>URL: <code>https://status-board-production-806b.up.railway.app/mcp/cursor</code></li>
         <li>That walks the <strong>Cursor Ultra</strong> pal.</li>
+        <li>Terminal: <code>node scripts/area67-mcp.mjs cursor "your note"</code></li>
       </ol>
 
-      <h2>8. Grok (this AI — own MCP)</h2>
-      <p>Grok is not Cursor. Own URL, own pal.</p>
+      <h2>8. Grok (grok.com — not this agent)</h2>
+      <p>Grok on grok.com gets its own URL. Cursor cloud agents must not use it.</p>
       <ol>
+        <li>On grok.com Connectors: <strong>New Connector → Custom</strong>.</li>
         <li>URL: <code>https://status-board-production-806b.up.railway.app/mcp/grok</code></li>
-        <li>In Cursor, keep <code>area67-grok</code> on as a second MCP (already in <code>.cursor/mcp.json</code>).</li>
-        <li>On grok.com Connectors: <strong>New Connector → Custom</strong>, same URL, if you want this Grok on grok.com too.</li>
-        <li>Terminal: <code>node scripts/area67-mcp.mjs grok "your note"</code></li>
+        <li>Auth: <strong>None</strong>.</li>
+        <li>That walks the <strong>Grok</strong> pal.</li>
       </ol>
 
       <h2>9. Prove it</h2>

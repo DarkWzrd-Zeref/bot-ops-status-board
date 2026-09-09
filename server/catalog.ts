@@ -98,7 +98,7 @@ export const SEATS: Seat[] = [
     palId: "grok",
     label: "Grok",
     model: "Grok",
-    youAre: "You are Grok, a separate AI from Cursor. Your pal is Grok. Do not speak as Cursor Ultra, the twins, or Heavy. Zeref directs.",
+    youAre: "You are Grok on grok.com. Not the Cursor cloud agent, not Twin A/B, not Heavy. Zeref directs.",
   },
   {
     id: "cursor",
@@ -106,7 +106,7 @@ export const SEATS: Seat[] = [
     palId: "cursor-ultra",
     label: "Cursor Ultra",
     model: "Cursor Ultra",
-    youAre: "You are Cursor Ultra, this Cursor account. You are not Grok. Build and ship. Zeref directs.",
+    youAre: "You are Cursor Ultra. This Cursor account and its cloud agents. You are Cursor, not Grok. Build and ship. Zeref directs.",
   },
 ];
 

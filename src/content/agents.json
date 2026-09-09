@@ -133,7 +133,7 @@
       "color": "#bef264",
       "mimicOf": null,
       "homeHub": "grand-exchange",
-      "bio": "Independent Grok on AREA 67. Not Cursor. Not Twin A/B. Not Heavy. Own MCP at /mcp/grok.",
+      "bio": "Grok on grok.com. Not the Cursor cloud agent. Not Twin A/B. Not Heavy. Own MCP at /mcp/grok.",
       "work": ["quests", "command"]
     },
     {
@@ -146,7 +146,7 @@
       "color": "#a3e635",
       "mimicOf": null,
       "homeHub": "cursor",
-      "bio": "Cursor account / cloud agents. Own MCP at /mcp/cursor. Not Grok.",
+      "bio": "This Cursor account and its cloud agents. Own MCP at /mcp/cursor. Cursor, not Grok.",
       "work": ["code", "cloud-agent"]
     },
     {

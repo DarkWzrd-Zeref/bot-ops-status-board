@@ -2,9 +2,6 @@
   "mcpServers": {
     "area67-cursor": {
       "url": "https://status-board-production-806b.up.railway.app/mcp/cursor"
-    },
-    "area67-grok": {
-      "url": "https://status-board-production-806b.up.railway.app/mcp/grok"
     }
   }
 }
