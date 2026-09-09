@@ -2,10 +2,17 @@ import { bus } from "./events.ts";
 import { applyBaseSnapshot, exportSave, onPersist, palSay, syncWorkTargets } from "./runtime.ts";
 import { effectiveAttention, SEATS, type RadioNote, type Speaker, type Presence, type Channel } from "../../shared/protocol.ts";
 import { workIsLive, type WorkReport } from "../../shared/workspace.ts";
+import type { Ecosystem } from "../../shared/ecosystem.ts";
 
 export const radioNotes: RadioNote[] = [];
 export const presenceBySeat = new Map<Speaker, Presence>();
 export const workReports: WorkReport[] = [];
+export const ecosystem: Ecosystem = { cards: [], skills: [] };
+export function updateEcosystem(data: Ecosystem) {
+  ecosystem.cards.splice(0, ecosystem.cards.length, ...(data.cards ?? []));
+  ecosystem.skills.splice(0, ecosystem.skills.length, ...(data.skills ?? []));
+  bus.emit({ type: "changed" });
+}
 export let radioLive = false;
 let revision = 0;
 let ready = false;
@@ -106,11 +113,12 @@ export function connectLive() {
       const ev = JSON.parse(event.data);
       if (ev.type === "hello") {
         radioNotes.splice(0, radioNotes.length, ...(ev.notes ?? []));
-        hydrate(ev); updatePresence(ev.presence ?? []); updateWork(ev.work ?? []); ready = true;
+        hydrate(ev); updatePresence(ev.presence ?? []); updateWork(ev.work ?? []); updateEcosystem(ev.ecosystem ?? { cards: [], skills: [] }); ready = true;
         if (!ev.base) void pushBase();
         bus.emit({ type: "changed" });
       } else if (ev.type === "presence") updatePresence(ev.presence);
       else if (ev.type === "work") updateWork(ev.work);
+      else if (ev.type === "ecosystem") updateEcosystem(ev.ecosystem);
       else if (ev.type === "architect") {
         remember(ev.note, true);
         if (ev.note.palId) palSay(ev.note.palId, ev.note.text);

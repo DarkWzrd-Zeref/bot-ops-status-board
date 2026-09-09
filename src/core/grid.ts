@@ -1,6 +1,6 @@
 export const TILE = 32;
-export const MAP_W = 56;
-export const MAP_H = 40;
+import { MAP_W, MAP_H, CORE_X, CORE_Y, BASE_RADIUS } from "../../shared/map.ts";
+export { MAP_W, MAP_H };
 
 export type TileKind = "sand" | "sand2" | "path" | "pad" | "plaza" | "water" | "fence";
 
@@ -76,12 +76,12 @@ export class WorldGrid {
 }
 
 export function generateWorld(grid: WorldGrid): { plazaMin: Point; plazaMax: Point; well: Point } {
-  const cx = Math.floor(MAP_W / 2);
-  const cy = Math.floor(MAP_H / 2);
+  const cx = CORE_X;
+  const cy = CORE_Y;
   const plazaMin = { x: cx - 6, y: cy - 6 };
   const plazaMax = { x: cx + 6, y: cy + 6 };
   const well = { x: cx - 1, y: cy - 1 };
-  const radius = 16;
+  const radius = BASE_RADIUS;
 
   for (let y = 0; y < MAP_H; y++) {
     for (let x = 0; x < MAP_W; x++) {

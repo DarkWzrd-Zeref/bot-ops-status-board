@@ -1,6 +1,10 @@
 {
   "comment": "Palworld work-suitability analog. Placing a building and assigning a pal CHANGES that pal's AI: tools, gates, policy.",
   "stations": {
+    "war-table": { "work": "command", "slots": 0, "grants": [], "gate": null, "aiChange": "Shared project discussion. No external permissions granted." },
+    "vision-board": { "work": "research", "slots": 0, "grants": [], "gate": null, "aiChange": "Shared ideas and future plans." },
+    "pending-work": { "work": "quests", "slots": 0, "grants": [], "gate": null, "aiChange": "Park and claim tasks with durable context." },
+    "skill-altar": { "work": "register", "slots": 0, "grants": [], "gate": null, "aiChange": "Self-declared signed skill ownership. No installation or access grant." },
     "project-site": { "work": "code", "slots": 0, "grants": [], "gate": null, "aiChange": "Shared project workspace. Assignment does not grant repository access or execute code." },
     "well": {
       "work": "command",

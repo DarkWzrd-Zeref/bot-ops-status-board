@@ -11,11 +11,14 @@ import * as store from "./store.ts";
 import { z } from "zod";
 import { SPEAKERS } from "../shared/protocol.ts";
 import { projectSchema, workSchema } from "../shared/workspace.ts";
+import { MAP_W, MAP_H } from "../shared/map.ts";
+import { cardSchema, cardActionSchema, registrationSchema } from "../shared/ecosystem.ts";
+import { EcosystemAccessError, ecosystemAuthorized, requireEcosystemWriter } from "./ecosystem-auth.ts";
 
 store.loadStore();
 
 export const app = new Hono();
-app.onError((err, c) => c.json({ error: err.message }, 400));
+app.onError((err, c) => c.json({ error: err.message }, err instanceof EcosystemAccessError ? 403 : err instanceof store.RecordConflict ? 409 : 400));
 const serveFiles = process.env.SERVE_STATIC !== "0" && existsSync("dist");
 
 app.use(
@@ -23,7 +26,7 @@ app.use(
   cors({
     origin: "*",
     allowMethods: ["GET", "POST", "DELETE", "OPTIONS"],
-    allowHeaders: ["Content-Type", "mcp-session-id", "Last-Event-ID", "mcp-protocol-version"],
+    allowHeaders: ["Content-Type", "Authorization", "mcp-session-id", "Last-Event-ID", "mcp-protocol-version"],
     exposeHeaders: ["mcp-session-id", "mcp-protocol-version"],
   }),
 );
@@ -32,7 +35,7 @@ app.get("/health", (c) =>
   c.json({
     ok: true,
     name: "area67",
-    version: "1.1.0",
+    version: "1.2.0",
     commit: process.env.RAILWAY_GIT_COMMIT_SHA ?? null,
     mcp: "/mcp",
     connect: "/connect",
@@ -75,7 +78,7 @@ app.get("/api/events", (c) =>
       if (!stream.aborted) void stream.writeSSE({ data: JSON.stringify(ev) }).catch(() => {});
     };
     c.header("Cache-Control", "no-cache, no-transform");
-    send({ type: "hello", notes: store.notes(200), base: store.base(), presence: store.presence(), revision: store.revision(), work: store.workReports() });
+    send({ type: "hello", notes: store.notes(200), base: store.base(), presence: store.presence(), revision: store.revision(), work: store.workReports(), ecosystem: store.ecosystem() });
     const off = store.subscribe(send);
     stream.onAbort(off);
     try {
@@ -97,6 +100,7 @@ app.get("/api/status", (c) =>
     presence: store.presence(),
     revision: store.revision(),
     work: store.workReports(),
+    ecosystem: store.ecosystem(),
     pals: store.palList(),
     stations: store.stationList(),
     base: store.base(),
@@ -104,6 +108,21 @@ app.get("/api/status", (c) =>
 );
 
 app.get("/api/architect", (c) => c.json({ notes: store.notes(80) }));
+
+app.get("/api/ecosystem", c => c.json(store.ecosystem()));
+app.get("/api/ecosystem/access", c => c.json({ canWrite: ecosystemAuthorized(c.req.raw, "zeref") }));
+app.post("/api/ecosystem/cards", async c => {
+  requireEcosystemWriter(c.req.raw, "zeref");
+  return c.json(store.createCard("zeref", cardSchema.parse(await c.req.json())));
+});
+app.post("/api/ecosystem/cards/action", async c => {
+  requireEcosystemWriter(c.req.raw, "zeref");
+  return c.json(store.actOnCard("zeref", cardActionSchema.parse(await c.req.json())));
+});
+app.post("/api/ecosystem/skills", async c => {
+  requireEcosystemWriter(c.req.raw, "zeref");
+  return c.json(store.registerSkill("zeref", registrationSchema.parse(await c.req.json()), "browser"));
+});
 
 app.post("/api/architect", async (c) => {
   const body = z.object({ from: z.enum(SPEAKERS), text: z.string().trim().min(1).max(2000),
@@ -162,7 +181,7 @@ app.get("/api/base", (c) => c.json(store.base()));
 
 app.post("/api/base", async (c) => {
   const body = z.object({ revision: z.number().int().nonnegative().optional(),
-    buildings: z.array(z.object({ uid: z.string().min(1).max(80), hubId: z.string().min(1), tx: z.number().int().min(0).max(55), ty: z.number().int().min(0).max(39), project: projectSchema.optional() })).max(400),
+    buildings: z.array(z.object({ uid: z.string().min(1).max(80), hubId: z.string().min(1), tx: z.number().int().min(0).max(MAP_W - 1), ty: z.number().int().min(0).max(MAP_H - 1), project: projectSchema.optional() })).max(400),
     assignments: z.record(z.string(), z.string().nullable()), equipped: z.record(z.string(), z.array(z.string())).optional(),
   }).parse(await c.req.json());
   if (store.base() && body.revision !== store.revision()) return c.json({ error: "The base changed. Latest version restored; try your action again.", base: store.base(), revision: store.revision() }, 409);
