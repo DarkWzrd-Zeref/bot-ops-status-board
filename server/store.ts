@@ -6,6 +6,7 @@ import { projectSchema, workSchema, type ProjectInfo, type WorkInput, type WorkR
 import { effectiveAttention, isSpeaker, speakerLabel, seatForPal, type RadioNote, type Presence, type Attention, type Channel, type ReceiptState } from "../shared/protocol.ts";
 import { MAP_W, MAP_H, CORE_X, CORE_Y, BASE_RADIUS } from "../shared/map.ts";
 import { cardSchema, cardActionSchema, registrationSchema, type Ecosystem, type CardInput, type CardAction, type BoardCard, type RegistrationInput, type SkillRegistration } from "../shared/ecosystem.ts";
+import { memorySchema, MAX_MEMORIES_PER_SEAT, type MemoryInput, type TaskMemory } from "../shared/memory.ts";
 import { stationPlanSchema, stationBuildSchema, type StationPlan, type StationBuild } from "../shared/construction.ts";
 import { constructionInventory, planConstruction } from "./construction.ts";
 
@@ -58,7 +59,7 @@ const MAX_NOTES = 200;
 
 const listeners = new Set<(ev: BusEvent) => void>();
 
-let state: DiskState = { notes: [], lastSay: {}, base: null, revision: 0, work: [], ecosystem: { cards: [], skills: [] } };
+let state: DiskState = { notes: [], lastSay: {}, base: null, revision: 0, work: [], ecosystem: { cards: [], skills: [], memories: [] } };
 // Presence is never restored from disk or inferred from an animated pal.
 const heartbeats = new Map<Speaker, Presence>();
 let committedState = JSON.stringify(state);
@@ -76,7 +77,7 @@ function readState(raw: string): DiskState {
     base: parsed.base ?? null,
     revision: parsed.revision ?? 0,
     work: Array.isArray(parsed.work) ? parsed.work.map(w => ({ ...w, sessionActive: false })) : [],
-    ecosystem: { cards: parsed.ecosystem?.cards ?? [], skills: parsed.ecosystem?.skills ?? [] },
+    ecosystem: { cards: parsed.ecosystem?.cards ?? [], skills: parsed.ecosystem?.skills ?? [], memories: Array.isArray(parsed.ecosystem?.memories) ? parsed.ecosystem.memories : [] },
   };
 }
 
@@ -387,6 +388,33 @@ export function stationList() {
 
 export class RecordConflict extends Error {}
 export function ecosystem(): Ecosystem { return state.ecosystem; }
+export function taskMemories(): TaskMemory[] { return state.ecosystem.memories; }
+export function saveMemory(seat: Speaker, input: MemoryInput): TaskMemory {
+  if (!SEATS.some(s => s.id === seat)) throw new Error("Only an AI seat can save its own remaining-task memory");
+  const data = memorySchema.parse(input);
+  if (data.projectUid && !state.base?.buildings.some(b => b.uid === data.projectUid && b.project)) throw new Error("Choose an existing project workspace");
+  const memories = state.ecosystem.memories ?? (state.ecosystem.memories = []);
+  const existing = memories.find(m => m.seat === seat && m.slot === data.slot);
+  if (!existing && memories.filter(m => m.seat === seat).length >= MAX_MEMORIES_PER_SEAT) {
+    throw new Error("This seat already has " + MAX_MEMORIES_PER_SEAT + " memories. Clear or reuse a slot.");
+  }
+  const next: TaskMemory = { ...data, seat, updatedAt: Date.now() };
+  state.ecosystem.memories = existing
+    ? memories.map(m => m.seat === seat && m.slot === data.slot ? next : m)
+    : [next, ...memories];
+  ecosystemChanged();
+  return next;
+}
+export function clearMemory(seat: Speaker, slot: string): TaskMemory | null {
+  if (!SEATS.some(s => s.id === seat)) throw new Error("Only an AI seat can clear its own remaining-task memory");
+  const parsed = memorySchema.shape.slot.parse(slot);
+  const memories = state.ecosystem.memories ?? [];
+  const found = memories.find(m => m.seat === seat && m.slot === parsed);
+  if (!found) return null;
+  state.ecosystem.memories = memories.filter(m => !(m.seat === seat && m.slot === parsed));
+  ecosystemChanged();
+  return found;
+}
 function ecosystemChanged() { persist(); publish({ type: "ecosystem", ecosystem: state.ecosystem }); }
 export function createCard(actor: Speaker, input: CardInput): BoardCard {
   if (!isSpeaker(actor)) throw new Error("Unknown author");

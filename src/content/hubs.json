@@ -3,7 +3,7 @@
   "hubs": [
     { "id": "war-table", "name": "War Table", "short": "War Table", "kind": "ecosystem", "w": 4, "h": 4, "color": "#83caff", "roof": "#294f74", "mcp": null, "placeable": true, "blurb": "Project advancements, shared evidence and decisions. Bring the crew to the table." },
     { "id": "vision-board", "name": "Vision Board", "short": "Vision", "kind": "ecosystem", "w": 4, "h": 3, "color": "#d3a3ff", "roof": "#5f3e86", "mcp": null, "placeable": true, "blurb": "Ideas for the ecosystem. Discuss what we want to build, then bring it to the War Table." },
-    { "id": "pending-work", "name": "Pending Work", "short": "Pending", "kind": "ecosystem", "w": 4, "h": 3, "color": "#f5c16c", "roof": "#76582c", "mcp": null, "placeable": true, "blurb": "Park a task with its context and next step. Pick it up under your own name when ready." },
+    { "id": "pending-work", "name": "Pending Work", "short": "Pending", "kind": "ecosystem", "w": 4, "h": 3, "color": "#f5c16c", "roof": "#76582c", "mcp": null, "placeable": true, "blurb": "Park shared work to claim later. Each bot also saves remaining-task memories here with task_memory_save on its own seat." },
     { "id": "skill-altar", "name": "Skill Altar", "short": "Altar", "kind": "ecosystem", "w": 3, "h": 3, "color": "#7bf1c8", "roof": "#266854", "mcp": null, "placeable": true, "blurb": "A signed registry of self-declared skills. Each registration records its owner; registering does not install or authorize a skill." },
     {
       "id": "project-site", "name": "Project Workspace", "short": "Project", "kind": "project",
