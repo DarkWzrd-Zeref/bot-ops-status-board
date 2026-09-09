@@ -26,6 +26,7 @@ import type { GameEvent } from "../core/types.ts";
 import { attention, liveWork } from "../core/live.ts";
 import { seatForPal } from "../../shared/protocol.ts";
 import { DISTRICTS } from "../../shared/map.ts";
+import { pickStationTexture, seatStationImage, stationTextureKeys } from "./stationArt.ts";
 
 function typingInHud(): boolean {
   const el = document.activeElement;
@@ -207,9 +208,18 @@ export class HubScene extends Phaser.Scene {
     const b = runtime.buildings.find((x) => x.uid === uidStr);
     if (!b) return;
     const hub = hubById(b.hubId);
-    const img = this.add
-      .image(b.tx * TILE + (hub.w * TILE) / 2, b.ty * TILE + (hub.h * TILE) / 2, b.hubId === "well" ? "well-mark" : "b-" + b.hubId)
-      .setDepth(3);
+    const keys = stationTextureKeys(b.hubId, hub.kind);
+    const textureKey = pickStationTexture(this, b.hubId, hub.kind);
+    const img = this.add.image(0, 0, textureKey).setDepth(3);
+    seatStationImage(img, {
+      textureKey,
+      paintedKey: keys.painted,
+      tileX: b.tx,
+      tileY: b.ty,
+      tilesW: hub.w,
+      tilesH: hub.h,
+      kind: hub.kind,
+    });
     this.bSprites.set(uidStr, img);
     const label = this.add
       .text(img.x, b.ty * TILE - 4, buildingName(b), {
@@ -235,7 +245,18 @@ export class HubScene extends Phaser.Scene {
         this.labels.delete("b-" + id);
       } else {
         const hub = hubById(building.hubId);
-        spr.setPosition(building.tx * TILE + hub.w * TILE / 2, building.ty * TILE + hub.h * TILE / 2);
+        const keys = stationTextureKeys(building.hubId, hub.kind);
+        const textureKey = pickStationTexture(this, building.hubId, hub.kind);
+        spr.setTexture(textureKey);
+        seatStationImage(spr, {
+          textureKey,
+          paintedKey: keys.painted,
+          tileX: building.tx,
+          tileY: building.ty,
+          tilesW: hub.w,
+          tilesH: hub.h,
+          kind: hub.kind,
+        });
         this.labels.get("b-" + id)?.setText(buildingName(building)).setPosition(spr.x, building.ty * TILE - 4);
       }
     }
