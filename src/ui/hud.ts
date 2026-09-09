@@ -295,10 +295,18 @@ function bind() {
     closeOperations(); friendsOpen = false; chatOpen = false; render();
   });
   window.addEventListener("keydown", event => {
-    if (event.key !== "Escape" || document.activeElement?.closest("input, textarea, select, dialog")) return;
+    if (event.key !== "Escape" || document.querySelector("dialog[open]") || event.defaultPrevented) return;
+    const composer = document.activeElement?.closest("input, textarea, select, [contenteditable=true]");
+    if (composer instanceof HTMLElement) {
+      composer.blur();
+      event.preventDefault();
+      return;
+    }
+    const hadOverlay = operationsOpen || chatOpen || friendsOpen || Array.from(host.querySelectorAll<HTMLDetailsElement>(".district-nav")).some(d => d.open);
     closeOperations(); friendsOpen = false; chatOpen = false;
     host.querySelectorAll<HTMLDetailsElement>(".district-nav").forEach(d => { d.open = false; });
     render(); bus.emit({ type: "changed" });
+    if (hadOverlay) event.preventDefault();
   });
   host.addEventListener("click", event => {
     const b = (event.target as HTMLElement).closest<HTMLButtonElement>("button");

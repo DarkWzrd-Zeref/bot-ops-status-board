@@ -60,6 +60,7 @@
 .walk-mode .map-station-label, .walk-mode .map-agent-label, .walk-mode .map-player-label, .walk-mode .standby-label { display: none !important; }
 .walk-mode #tools-launcher { display: none; }
 .walk-mode #hud.operations-open .walk-pad, .walk-mode #hud.operations-open .walk-guide, .walk-mode #hud.operations-open .walk-interact { display: none; }
+.walk-mode #quick-chat { z-index: 6; }
 @media (max-width: 760px) {
   :root { --header: 60px; }
   .header-center { display: none; }
