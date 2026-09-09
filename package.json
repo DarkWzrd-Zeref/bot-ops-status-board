@@ -1,8 +1,8 @@
 {
-  "name": "community-brain-base",
+  "name": "area-67",
   "private": true,
-  "version": "0.1.0",
-  "description": "RuneScape-style community hub + Palworld base building. The base is the live agent tracker.",
+  "version": "0.2.0",
+  "description": "AREA 67 — Palworld-style agent base. Palbox radius, build ghosts, pal tracker.",
   "type": "module",
   "scripts": {
     "dev": "node scripts/gen-icons.mjs && vite --host 127.0.0.1 --port 4611",

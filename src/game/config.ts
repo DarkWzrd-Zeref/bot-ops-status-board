@@ -16,7 +16,7 @@ export function makeGame(parent: HTMLElement): Phaser.Game {
   return new Phaser.Game({
     type: Phaser.AUTO,
     parent,
-    backgroundColor: "#1a3a22",
+    backgroundColor: "#0b100c",
     pixelArt: true,
     roundPixels: true,
     scale: {

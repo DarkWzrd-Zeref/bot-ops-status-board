@@ -1,6 +1,6 @@
 import type { Point } from "./grid.ts";
 
-export type Mode = "play" | "build" | "demolish";
+export type Mode = "play" | "build" | "demolish" | "move";
 export type AgentStatus = "idle" | "walk" | "work" | "scan" | "blocked";
 export type Reco = "SAFE" | "CAUTION" | "DO_NOT_INSTALL";
 export type Severity = "LOW" | "MEDIUM" | "HIGH" | "CRITICAL";
@@ -30,6 +30,7 @@ export interface AgentDef {
   mimicOf: string | null;
   homeHub: string;
   bio: string;
+  work: string[];
 }
 
 export interface StationMod {
@@ -76,6 +77,13 @@ export interface PlacedBuilding {
   hubId: string;
   tx: number;
   ty: number;
+}
+
+export interface LiftedBuilding {
+  uid: string;
+  hubId: string;
+  fromTx: number;
+  fromTy: number;
 }
 
 export interface AgentRuntime {

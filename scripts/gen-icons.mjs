@@ -9,10 +9,10 @@ const here = dirname(fileURLToPath(import.meta.url));
 const outDir = join(here, "..", "public", "icons");
 mkdirSync(outDir, { recursive: true });
 
-const BG = [12, 10, 8];
+const BG = [11, 16, 12];
 const RING = [118, 185, 0];
-const CARD = [26, 20, 12];
-const TEXT = [240, 230, 210];
+const CARD = [7, 18, 8];
+const TEXT = [215, 245, 184];
 
 const crcTable = new Int32Array(256).map((_, n) => {
   let c = n;

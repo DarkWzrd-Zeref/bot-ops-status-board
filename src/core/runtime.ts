@@ -2,13 +2,14 @@ import { MAP_H, MAP_W, TILE, WorldGrid, generateWorld, type Point } from "./grid
 import { findPath } from "./pathfinder.ts";
 import { bus } from "./events.ts";
 import { canEquipSkill, recoTone, scanSkill } from "./skillspector.ts";
-import type { AgentDef, AgentRuntime, HubDef, LogLine, Mode, PlacedBuilding, ScanReport, SkillDef, StationMod } from "./types.ts";
+import type { AgentDef, AgentRuntime, HubDef, LiftedBuilding, LogLine, Mode, PlacedBuilding, ScanReport, SkillDef, StationMod } from "./types.ts";
+import { BASE_RADIUS, BUILD_TABS, PALBOX_SLOTS, PALBOX_ID, placeFailMessage, tabFor } from "../build/palworld.ts";
 import agentsFile from "../content/agents.json";
 import hubsFile from "../content/hubs.json";
 import modsFile from "../content/modifiers.json";
 import skillsFile from "../content/skills.json";
 
-const SAVE_KEY = "cbb-base-v1";
+const SAVE_KEY = "area67-base-v1";
 
 export const HUBS: HubDef[] = hubsFile.hubs as HubDef[];
 export const AGENTS: AgentDef[] = agentsFile.agents as AgentDef[];
@@ -44,7 +45,9 @@ export const runtime = {
   scans: {} as Record<string, ScanReport>,
   equipped: {} as Record<string, string[]>,
   mode: "play" as Mode,
+  buildTab: BUILD_TABS[0].id as (typeof BUILD_TABS)[number]["id"],
   ghostHub: null as string | null,
+  lifting: null as LiftedBuilding | null,
   selectedAgent: null as string | null,
   selectedBuilding: null as string | null,
   cautionBlocks: false,
@@ -66,6 +69,9 @@ export function bootRuntime(): void {
     runtime.equipped = saved.equipped ?? {};
     runtime.scans = saved.scans ?? {};
     runtime.cautionBlocks = saved.cautionBlocks ?? false;
+    if (saved.lifting) {
+      placeAt(saved.lifting.hubId, saved.lifting.fromTx, saved.lifting.fromTy, saved.lifting.uid, true);
+    }
   } else {
     seedStarter();
   }
@@ -95,7 +101,7 @@ export function bootRuntime(): void {
     if (a.buildingUid) walkToBuilding(a.id, a.buildingUid);
   }
 
-  log("Base online. Place stations to change what pals can do. Spector Gate scans skills first.", "ok");
+  log("AREA 67 online. Palbox is live. Build inside the ring. Assign pals to change what they can do.", "ok");
 }
 
 function ringSpot(i: number): Point {
@@ -126,13 +132,21 @@ function forcePlace(hubId: string, tx: number, ty: number): void {
   runtime.buildings.push(b);
 }
 
-export function placeAt(hubId: string, tx: number, ty: number, reuseUid?: string, skipPlaza = false): boolean {
+export function catalogForTab(tab = runtime.buildTab): HubDef[] {
+  return HUBS.filter((h) => h.placeable && tabFor(h) === tab);
+}
+
+export function placementOk(hubId: string, tx: number, ty: number): boolean {
   const hub = hubById(hubId);
-  if (!skipPlaza && hubId !== "well") {
-    if (!runtime.grid.canPlace(tx, ty, hub.w, hub.h, runtime.plazaMin, runtime.plazaMax)) return false;
+  return runtime.grid.canPlace(tx, ty, hub.w, hub.h, runtime.well, BASE_RADIUS);
+}
+
+export function placeAt(hubId: string, tx: number, ty: number, reuseUid?: string, skipRules = false): boolean {
+  const hub = hubById(hubId);
+  if (!skipRules && hubId !== PALBOX_ID) {
+    if (!runtime.grid.canPlace(tx, ty, hub.w, hub.h, runtime.well, BASE_RADIUS)) return false;
   }
-  if (skipPlaza) runtime.grid.occupy(tx, ty, hub.w, hub.h, true);
-  else runtime.grid.occupy(tx, ty, hub.w, hub.h, true);
+  runtime.grid.occupy(tx, ty, hub.w, hub.h, true);
   const b: PlacedBuilding = { uid: reuseUid ?? uid(), hubId, tx, ty };
   runtime.buildings.push(b);
   persist();
@@ -142,22 +156,76 @@ export function placeAt(hubId: string, tx: number, ty: number, reuseUid?: string
 
 export function tryPlace(hubId: string, tx: number, ty: number): boolean {
   const hub = hubById(hubId);
-  if (!runtime.grid.canPlace(tx, ty, hub.w, hub.h, runtime.plazaMin, runtime.plazaMax)) {
-    log("Can't plant that here. Keep the plaza clear (Palbox radius / GE floor).", "warn");
+  if (hubId === PALBOX_ID) {
+    log("Palbox stays at the core. That's the AREA 67 well.", "warn");
+    return false;
+  }
+  const fail = runtime.grid.placeFail(tx, ty, hub.w, hub.h, runtime.well, BASE_RADIUS);
+  if (fail) {
+    log(placeFailMessage(fail), "warn");
     return false;
   }
   placeAt(hubId, tx, ty);
   const mod = MODS[hubId];
-  log("Placed " + hub.name + ". " + (mod?.aiChange ?? "Station online."), "ok");
+  log("Founded " + hub.name + ". " + (mod?.aiChange ?? "Station online."), "ok");
   return true;
+}
+
+export function beginMove(uidStr: string): boolean {
+  const b = runtime.buildings.find((x) => x.uid === uidStr);
+  if (!b) return false;
+  const hub = hubById(b.hubId);
+  if (!hub.placeable) {
+    log("Core structures stay put.", "warn");
+    return false;
+  }
+  runtime.lifting = { uid: b.uid, hubId: b.hubId, fromTx: b.tx, fromTy: b.ty };
+  runtime.grid.occupy(b.tx, b.ty, hub.w, hub.h, false);
+  runtime.buildings = runtime.buildings.filter((x) => x.uid !== uidStr);
+  runtime.ghostHub = b.hubId;
+  runtime.mode = "move";
+  persist();
+  log("Picked up " + hub.name + ". Click a plot inside the Palbox ring.", "info");
+  bus.emit({ type: "changed" });
+  return true;
+}
+
+export function finishMove(tx: number, ty: number): boolean {
+  const lift = runtime.lifting;
+  if (!lift) return false;
+  const hub = hubById(lift.hubId);
+  const fail = runtime.grid.placeFail(tx, ty, hub.w, hub.h, runtime.well, BASE_RADIUS);
+  if (fail) {
+    log(placeFailMessage(fail), "warn");
+    return false;
+  }
+  placeAt(lift.hubId, tx, ty, lift.uid);
+  for (const a of runtime.agents) {
+    if (a.buildingUid === lift.uid) walkToBuilding(a.id, lift.uid);
+  }
+  runtime.lifting = null;
+  runtime.ghostHub = null;
+  runtime.mode = "play";
+  log("Replanted " + hub.name + ".", "ok");
+  return true;
+}
+
+export function cancelMove(): void {
+  const lift = runtime.lifting;
+  if (!lift) return;
+  placeAt(lift.hubId, lift.fromTx, lift.fromTy, lift.uid, true);
+  runtime.lifting = null;
+  runtime.ghostHub = null;
+  runtime.mode = "play";
+  log("Move cancelled.", "info");
 }
 
 export function demolish(uidStr: string): void {
   const b = runtime.buildings.find((x) => x.uid === uidStr);
   if (!b) return;
   const hub = hubById(b.hubId);
-  if (!hub.placeable && b.hubId === "well") {
-    log("The Command Well is the Palbox. It stays.", "warn");
+  if (!hub.placeable && b.hubId === PALBOX_ID) {
+    log("The Palbox stays. AREA 67 has no base without it.", "warn");
     return;
   }
   runtime.grid.occupy(b.tx, b.ty, hub.w, hub.h, false);
@@ -209,6 +277,11 @@ export function assignAgent(agentId: string, buildingUid: string | null): void {
     a.buildingUid = null;
     log(hub.name + " is full (" + slots + " pal slots).", "warn");
     return;
+  }
+  const def = AGENTS.find((x) => x.id === agentId);
+  const work = MODS[b.hubId]?.work;
+  if (def && work && def.work.length && !def.work.includes(work)) {
+    log(def.name + " work-suitability mismatch (" + def.work.join("/") + " vs " + work + "). Assigning anyway.", "warn");
   }
   walkToBuilding(agentId, buildingUid);
   log(agentName(agentId) + " assigned to " + hub.name + ". AI now: " + (MODS[b.hubId]?.aiChange ?? hub.blurb), "ok");
@@ -302,7 +375,7 @@ function pulseOnce(): void {
     if (runtime.grid.walkable(wander.x, wander.y)) {
       a.path = findPath(runtime.grid, { x: a.tx, y: a.ty }, wander);
       a.status = "walk";
-      a.detail = "patrolling plaza";
+      a.detail = "patrolling AREA 67";
     }
     bus.emit({ type: "changed" });
     return;
@@ -366,6 +439,7 @@ interface SaveShape {
   scans: Record<string, ScanReport>;
   assignments: Record<string, string | null>;
   cautionBlocks: boolean;
+  lifting: LiftedBuilding | null;
 }
 
 function persist(): void {
@@ -375,6 +449,7 @@ function persist(): void {
     scans: runtime.scans,
     assignments: Object.fromEntries(runtime.agents.map((a) => [a.id, a.buildingUid])),
     cautionBlocks: runtime.cautionBlocks,
+    lifting: runtime.lifting,
   };
   try {
     localStorage.setItem(SAVE_KEY, JSON.stringify(data));
@@ -399,4 +474,4 @@ export function resetBase(): void {
   location.reload();
 }
 
-export { TILE, MAP_W, MAP_H };
+export { TILE, MAP_W, MAP_H, BASE_RADIUS, BUILD_TABS, PALBOX_SLOTS };

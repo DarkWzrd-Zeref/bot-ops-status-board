@@ -1,14 +1,20 @@
 import Phaser from "phaser";
 import { TILE, type TileKind } from "../core/grid.ts";
+import { palboxCenter } from "../build/palworld.ts";
 import {
   AGENTS,
+  BASE_RADIUS,
   HUBS,
   MAP_H,
   MAP_W,
   assignAgent,
+  beginMove,
   buildingAt,
+  cancelMove,
   demolish,
+  finishMove,
   hubById,
+  placementOk,
   runtime,
   stepAgents,
   tryPlace,
@@ -17,12 +23,13 @@ import {
 import { bus } from "../core/events.ts";
 
 const TILE_KEY: Record<TileKind, string> = {
-  grass: "tile-grass",
-  grass2: "tile-grass2",
+  sand: "tile-sand",
+  sand2: "tile-sand2",
   path: "tile-path",
-  cobble: "tile-cobble",
+  pad: "tile-pad",
   plaza: "tile-plaza",
   water: "tile-water",
+  fence: "tile-fence",
 };
 
 export class HubScene extends Phaser.Scene {
@@ -33,6 +40,8 @@ export class HubScene extends Phaser.Scene {
   private cursors!: Phaser.Types.Input.Keyboard.CursorKeys;
   private wasd!: { W: Phaser.Input.Keyboard.Key; A: Phaser.Input.Keyboard.Key; S: Phaser.Input.Keyboard.Key; D: Phaser.Input.Keyboard.Key };
   private stepCool = 0;
+  private bSprites = new Map<string, Phaser.GameObjects.Image>();
+  private ring!: Phaser.GameObjects.Graphics;
 
   constructor() {
     super("hub");
@@ -40,11 +49,13 @@ export class HubScene extends Phaser.Scene {
 
   create(): void {
     this.drawWorld();
+    this.drawRadius();
     this.drawBuildings();
     this.spawnActors();
     this.cameras.main.setBounds(0, 0, MAP_W * TILE, MAP_H * TILE);
     this.cameras.main.startFollow(this.player, true, 0.12, 0.12);
-    this.cameras.main.setZoom(0.85);
+    this.cameras.main.setZoom(0.78);
+    this.cameras.main.setBackgroundColor("#0b100c");
 
     this.cursors = this.input.keyboard!.createCursorKeys();
     this.wasd = {
@@ -63,21 +74,29 @@ export class HubScene extends Phaser.Scene {
     });
 
     this.input.on("wheel", (_p: Phaser.Input.Pointer, _g: unknown, _dx: number, dy: number) => {
-      const z = Phaser.Math.Clamp(this.cameras.main.zoom - dy * 0.001, 0.7, 2.2);
+      const z = Phaser.Math.Clamp(this.cameras.main.zoom - dy * 0.001, 0.55, 2.2);
       this.cameras.main.setZoom(z);
     });
 
     this.input.keyboard!.on("keydown-ESC", () => {
+      if (runtime.lifting) cancelMove();
       runtime.mode = "play";
       runtime.ghostHub = null;
       bus.emit({ type: "changed" });
     });
     this.input.keyboard!.on("keydown-B", () => {
       runtime.mode = runtime.mode === "build" ? "play" : "build";
+      if (runtime.lifting) cancelMove();
       bus.emit({ type: "changed" });
     });
     this.input.keyboard!.on("keydown-X", () => {
       runtime.mode = runtime.mode === "demolish" ? "play" : "demolish";
+      if (runtime.lifting) cancelMove();
+      bus.emit({ type: "changed" });
+    });
+    this.input.keyboard!.on("keydown-M", () => {
+      runtime.mode = runtime.mode === "move" ? "play" : "move";
+      if (runtime.mode !== "move" && runtime.lifting) cancelMove();
       bus.emit({ type: "changed" });
     });
 
@@ -89,19 +108,24 @@ export class HubScene extends Phaser.Scene {
       for (let x = 0; x < MAP_W; x++) {
         const kind = runtime.grid.kinds[y][x];
         this.add.image(x * TILE + TILE / 2, y * TILE + TILE / 2, TILE_KEY[kind]).setDepth(0);
-        if (runtime.grid.blocked[y][x] && kind !== "water") {
-          this.add.image(x * TILE + TILE / 2, y * TILE + TILE / 2, "tree").setDepth(2);
+        if (runtime.grid.blocked[y][x] && kind !== "water" && kind !== "fence") {
+          this.add.image(x * TILE + TILE / 2, y * TILE + TILE / 2, "cactus").setDepth(2);
         }
       }
     }
   }
 
-  private bSprites = new Map<string, Phaser.GameObjects.Image>();
+  private drawRadius(): void {
+    const c = palboxCenter(runtime.well);
+    this.ring = this.add.graphics().setDepth(1);
+    this.ring.lineStyle(2, 0x76b900, 0.55);
+    this.ring.strokeCircle(c.x * TILE + TILE / 2, c.y * TILE + TILE / 2, BASE_RADIUS * TILE);
+    this.ring.lineStyle(1, 0xbef264, 0.2);
+    this.ring.strokeCircle(c.x * TILE + TILE / 2, c.y * TILE + TILE / 2, (BASE_RADIUS - 0.5) * TILE);
+  }
 
   private drawBuildings(): void {
-    for (const b of runtime.buildings) {
-      this.spawnBuilding(b.uid);
-    }
+    for (const b of runtime.buildings) this.spawnBuilding(b.uid);
   }
 
   private spawnBuilding(uidStr: string): void {
@@ -117,8 +141,8 @@ export class HubScene extends Phaser.Scene {
       .text(img.x, b.ty * TILE - 4, hub.short, {
         fontFamily: "monospace",
         fontSize: "10px",
-        color: "#f0e6d2",
-        backgroundColor: "#1a140ccc",
+        color: "#b7f07a",
+        backgroundColor: "#071208cc",
         padding: { x: 3, y: 1 },
       })
       .setOrigin(0.5, 1)
@@ -147,8 +171,8 @@ export class HubScene extends Phaser.Scene {
         .text(spr.x, spr.y - 18, def?.name ?? a.id, {
           fontFamily: "monospace",
           fontSize: "9px",
-          color: "#ffff00",
-          stroke: "#000000",
+          color: "#b7f07a",
+          stroke: "#031405",
           strokeThickness: 3,
         })
         .setOrigin(0.5, 1)
@@ -161,7 +185,7 @@ export class HubScene extends Phaser.Scene {
         fontFamily: "monospace",
         fontSize: "9px",
         color: "#ff9810",
-        stroke: "#000000",
+        stroke: "#031405",
         strokeThickness: 3,
       })
       .setOrigin(0.5, 1)
@@ -172,6 +196,15 @@ export class HubScene extends Phaser.Scene {
   private handleClick(tx: number, ty: number): void {
     if (runtime.mode === "build" && runtime.ghostHub) {
       tryPlace(runtime.ghostHub, tx, ty);
+      return;
+    }
+    if (runtime.mode === "move") {
+      if (runtime.lifting) {
+        finishMove(tx, ty);
+        return;
+      }
+      const liftTarget = buildingAt(tx, ty);
+      if (liftTarget) beginMove(liftTarget.uid);
       return;
     }
     const b = buildingAt(tx, ty);
@@ -224,10 +257,10 @@ export class HubScene extends Phaser.Scene {
     for (const a of runtime.agents) {
       const spr = this.agentSprites.get(a.id);
       if (!spr) continue;
-      const tx = a.tx * TILE + 16;
-      const ty = a.ty * TILE + 10;
-      spr.x += (tx - spr.x) * 0.25;
-      spr.y += (ty - spr.y) * 0.25;
+      const ax = a.tx * TILE + 16;
+      const ay = a.ty * TILE + 10;
+      spr.x += (ax - spr.x) * 0.25;
+      spr.y += (ay - spr.y) * 0.25;
       this.labels.get(a.id)?.setPosition(spr.x, spr.y - 18);
     }
 
@@ -237,14 +270,15 @@ export class HubScene extends Phaser.Scene {
   private drawGhost(): void {
     for (const g of this.ghosts) g.destroy();
     this.ghosts = [];
-    if (runtime.mode !== "build" || !runtime.ghostHub) return;
+    const ghostId = runtime.ghostHub;
+    if ((runtime.mode !== "build" && runtime.mode !== "move") || !ghostId) return;
     const p = this.input.activePointer;
     const world = this.cameras.main.getWorldPoint(p.x, p.y);
     const tx = Math.floor(world.x / TILE);
     const ty = Math.floor(world.y / TILE);
-    const hub = HUBS.find((h) => h.id === runtime.ghostHub);
+    const hub = HUBS.find((h) => h.id === ghostId);
     if (!hub) return;
-    const ok = runtime.grid.canPlace(tx, ty, hub.w, hub.h, runtime.plazaMin, runtime.plazaMax);
+    const ok = placementOk(ghostId, tx, ty);
     for (let y = 0; y < hub.h; y++) {
       for (let x = 0; x < hub.w; x++) {
         const img = this.add.image((tx + x) * TILE + TILE / 2, (ty + y) * TILE + TILE / 2, "ghost").setDepth(8);

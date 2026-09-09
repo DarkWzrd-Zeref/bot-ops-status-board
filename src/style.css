@@ -1,9 +1,9 @@
 :root {
-  --wood: #2a1c12;
-  --panel: #1a140ccc;
-  --gold: #c8aa64;
-  --ink: #f0e6d2;
-  --muted: #a89478;
+  --wood: #071208;
+  --panel: #071208e6;
+  --gold: #76b900;
+  --ink: #d7f5b8;
+  --muted: #7fa36a;
   --ok: #86efac;
   --warn: #fbbf24;
   --bad: #f87171;
@@ -15,7 +15,7 @@
 html, body {
   margin: 0;
   height: 100%;
-  background: #0c0a08;
+  background: #0b100c;
   color: var(--ink);
   font: 13px/1.4 ui-monospace, "Cascadia Mono", Menlo, monospace;
 }
@@ -33,14 +33,19 @@ html, body {
   gap: 12px;
   align-items: center;
   background: var(--panel);
-  border: 2px solid var(--gold);
+  border: 1px solid var(--gold);
   padding: 8px 12px;
+  box-shadow: 0 0 18px #76b90033;
 }
 .bar.top { top: 10px; }
 .bar.bottom {
   bottom: 10px;
   flex-direction: column;
   align-items: stretch;
+}
+.bar.top strong {
+  letter-spacing: 0.18em;
+  font-size: 15px;
 }
 .muted, .hint { color: var(--muted); }
 .hint { margin: 0 0 8px; font-size: 11px; }
@@ -59,16 +64,16 @@ html, body {
 .panel {
   position: absolute;
   top: 64px;
-  bottom: 128px;
+  bottom: 168px;
   width: 280px;
   overflow: auto;
   background: var(--panel);
-  border: 2px solid var(--gold);
+  border: 1px solid var(--gold);
   padding: 10px;
 }
 .panel.left { left: 12px; }
 .panel.right { right: 12px; }
-.panel h2 { margin: 0 0 8px; font-size: 13px; color: var(--gold); }
+.panel h2 { margin: 0 0 8px; font-size: 13px; color: var(--gold); letter-spacing: 0.06em; }
 
 .row {
   display: flex;
@@ -82,13 +87,13 @@ html, body {
   cursor: pointer;
   margin-bottom: 4px;
 }
-.row.on, .hot.on, .modes button.on { border-color: var(--green); background: #76b90022; }
+.row.on, .hot.on, .modes button.on, .tab.on { border-color: var(--green); background: #76b90022; }
 .row i { width: 12px; min-width: 12px; background: #fff; }
 .row small { display: block; color: var(--muted); font-size: 10px; }
 
-.hotbar { display: flex; flex-wrap: wrap; gap: 6px; }
-.hot, .modes button, .skill button, .panel button {
-  background: #2a1c12;
+.hotbar, .tabs { display: flex; flex-wrap: wrap; gap: 6px; }
+.hot, .modes button, .skill button, .panel button, .tab {
+  background: #102014;
   color: var(--ink);
   border: 1px solid var(--gold);
   padding: 6px 8px;
@@ -98,7 +103,7 @@ html, body {
 .hot { display: flex; align-items: center; gap: 6px; }
 .swatch { width: 10px; height: 10px; display: inline-block; }
 .modes { display: flex; gap: 6px; flex-wrap: wrap; }
-.skill { border-top: 1px solid #c8aa6444; padding: 8px 0; }
+.skill { border-top: 1px solid #76b90044; padding: 8px 0; }
 .skill .btns { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 4px; }
 .skill ul { margin: 6px 0 0; padding-left: 16px; font-size: 11px; }
 .skill li.ok { color: var(--ok); }
@@ -115,8 +120,8 @@ html, body {
   transform: translateX(-50%) translateY(-12px);
   opacity: 0;
   pointer-events: none;
-  background: #1a140c;
-  border: 2px solid var(--gold);
+  background: #071208;
+  border: 1px solid var(--gold);
   padding: 8px 14px;
   transition: 0.2s;
   z-index: 5;

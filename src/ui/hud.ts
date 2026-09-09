@@ -1,11 +1,13 @@
 import questionsFile from "../content/research-questions.json";
+import { BUILD_TABS, PALBOX_LEVEL, PALBOX_SLOTS, tabFor } from "../build/palworld.ts";
 import { bus } from "../core/events.ts";
 import {
   AGENTS,
-  HUBS,
   MODS,
   SKILLS,
   assignAgent,
+  beginMove,
+  catalogForTab,
   demolish,
   equipSkill,
   grantsFor,
@@ -46,18 +48,21 @@ function html(): string {
   const mode = runtime.mode;
   const selA = runtime.agents.find((a) => a.id === runtime.selectedAgent);
   const selB = runtime.buildings.find((b) => b.uid === runtime.selectedBuilding);
-  const placeable = HUBS.filter((h) => h.placeable);
+  const placeable = catalogForTab();
   const hasSpector = runtime.buildings.some((b) => b.hubId === "skillspector");
+  const pals = runtime.agents.length;
 
   return `
     <div id="toast"></div>
     <header class="bar top">
       <div>
-        <strong>Community Brain Base</strong>
-        <span class="muted">Palbox + GE hub · stations change the AI</span>
+        <strong>AREA 67</strong>
+        <span class="muted">classified palbox · stations rewrite the agents</span>
       </div>
       <div class="pills">
-        <span class="pill ${runtime.pulseOn ? "ok" : "warn"}">${runtime.pulseOn ? "LIVE PULSE" : "PAUSED"}</span>
+        <span class="pill ok">PALBOX LV.${PALBOX_LEVEL}</span>
+        <span class="pill ${pals <= PALBOX_SLOTS ? "ok" : "bad"}">${pals}/${PALBOX_SLOTS} PALS</span>
+        <span class="pill ${runtime.pulseOn ? "ok" : "warn"}">${runtime.pulseOn ? "LIVE TRACK" : "PAUSED"}</span>
         <span class="pill ${hasSpector ? "ok" : "bad"}">${hasSpector ? "SPECTOR ONLINE" : "NO SPECTOR GATE"}</span>
         <span class="pill info">${runtime.buildings.length} stations</span>
       </div>
@@ -65,7 +70,7 @@ function html(): string {
 
     <aside class="panel left">
       <h2>Pals</h2>
-      <p class="hint">Select a pal, then click a building to assign — Palworld throw, RS click.</p>
+      <p class="hint">Select a pal, then click a station — Palworld throw. Twin B mimics Twin A.</p>
       ${runtime.agents
         .map((a) => {
           const def = AGENTS.find((d) => d.id === a.id)!;
@@ -76,7 +81,7 @@ function html(): string {
             <span>
               <b>${esc(def.name)}</b>
               <small>${esc(def.model)} · ${esc(a.detail)}</small>
-              <small>${b ? hubById(b.hubId).short : "unassigned"} · skills ${a.skills.length}</small>
+              <small>${b ? hubById(b.hubId).short : "unassigned"} · ${esc(def.work.join("/"))}</small>
             </span>
           </button>`;
         })
@@ -86,7 +91,7 @@ function html(): string {
     <aside class="panel right">
       ${inspect(selA?.id ?? null, selB?.uid ?? null)}
       <h2>SkillSpector</h2>
-      <p class="hint">NVIDIA scan gate. Place Spector Gate, scan, then Skill Rack to install. That <em>changes</em> the pal.</p>
+      <p class="hint">NVIDIA scan gate. Place Spector Gate, scan, then Skill Rack to install.</p>
       ${SKILLS.map((s) => {
         const r = runtime.scans[s.id];
         const reco = r?.risk_assessment.recommendation;
@@ -122,13 +127,20 @@ function html(): string {
       <div class="modes">
         <button data-mode="play" class="${mode === "play" ? "on" : ""}">Walk (ESC)</button>
         <button data-mode="build" class="${mode === "build" ? "on" : ""}">Build (B)</button>
-        <button data-mode="demolish" class="${mode === "demolish" ? "on" : ""}">Move-out (X)</button>
+        <button data-mode="move" class="${mode === "move" ? "on" : ""}">Move (M)</button>
+        <button data-mode="demolish" class="${mode === "demolish" ? "on" : ""}">Dismantle (X)</button>
         <button id="reset">Reset base</button>
+      </div>
+      <div class="tabs">
+        ${BUILD_TABS.map((t) => {
+          const on = runtime.buildTab === t.id ? "on" : "";
+          return `<button class="tab ${on}" data-tab="${t.id}" title="${esc(t.hint)}">${esc(t.label)}</button>`;
+        }).join("")}
       </div>
       <div class="hotbar">
         ${placeable
           .map((h) => {
-            const on = runtime.ghostHub === h.id && mode === "build" ? "on" : "";
+            const on = runtime.ghostHub === h.id && (mode === "build" || mode === "move") ? "on" : "";
             return `<button class="hot ${on}" data-hub="${h.id}" title="${esc(h.blurb)}">
               <span class="swatch" style="background:${h.color}"></span>
               ${esc(h.short)}
@@ -136,7 +148,7 @@ function html(): string {
           })
           .join("")}
       </div>
-      <p class="hint">WASD / click-to-walk · wheel zoom · buildings are workstations that grant MCP tools / gates</p>
+      <p class="hint">Palworld: ghost snaps to grid · green = inside Palbox ring · WASD walk · wheel zoom</p>
     </footer>
   `;
 }
@@ -148,7 +160,7 @@ function inspect(agentId: string | null, buildingUid: string | null): string {
     const grants = grantsFor(agentId);
     return `<h2>${esc(def.name)}</h2>
       <p>${esc(def.bio)}</p>
-      <p class="hint">${esc(def.role)} · ${esc(def.account)} · ${def.discordChannel ? "#" + def.discordChannel : "no channel"}</p>
+      <p class="hint">${esc(def.role)} · ${esc(def.account)} · work ${esc(def.work.join(", "))} · ${def.discordChannel ? "#" + def.discordChannel : "no channel"}</p>
       <p>Status: ${esc(a.detail)}</p>
       <p>AI grants: ${grants.length ? grants.map(esc).join(", ") : "(none — assign to a station)"}</p>
       <p>Skills: ${a.skills.length ? a.skills.join(", ") : "none equipped"}</p>
@@ -161,13 +173,13 @@ function inspect(agentId: string | null, buildingUid: string | null): string {
     const pals = runtime.agents.filter((a) => a.buildingUid === b.uid);
     return `<h2>${esc(hub.name)}</h2>
       <p>${esc(hub.blurb)}</p>
-      <p class="hint">${mod ? esc(mod.aiChange) : ""}</p>
+      <p class="hint">${mod ? esc(mod.aiChange) : ""} · tab ${tabFor(hub)}</p>
       <p>Work: ${esc(mod?.work ?? "—")} · slots ${pals.length}/${mod?.slots ?? "?"}</p>
       <p>Grants: ${(mod?.grants ?? []).map(esc).join(", ") || "—"}</p>
       <p>Pals: ${pals.length ? pals.map((p) => esc(AGENTS.find((d) => d.id === p.id)?.name ?? p.id)).join(", ") : "empty"}</p>
-      ${hub.placeable ? `<button data-demo="${b.uid}">Remove station</button>` : ""}`;
+      ${hub.placeable ? `<button data-lift="${b.uid}">Pick up (move)</button><button data-demo="${b.uid}">Dismantle</button>` : ""}`;
   }
-  return `<h2>Commander</h2><p class="hint">Walk the plaza. Build stations around the well. Assign pals. Spector scans skills before they rewrite an agent.</p>`;
+  return `<h2>AREA 67</h2><p class="hint">Palbox is the well. Build only inside the green ring. Assign pals to stations to change their MCP grants. Spector scans skills before they rewrite an agent.</p>`;
 }
 
 function bind(root: HTMLElement): void {
@@ -181,7 +193,18 @@ function bind(root: HTMLElement): void {
   root.querySelectorAll<HTMLButtonElement>("[data-mode]").forEach((btn) => {
     btn.onclick = () => {
       runtime.mode = (btn.dataset.mode as typeof runtime.mode) ?? "play";
-      if (runtime.mode !== "build") runtime.ghostHub = null;
+      if (runtime.mode !== "build" && runtime.mode !== "move") runtime.ghostHub = null;
+      bus.emit({ type: "changed" });
+    };
+  });
+  root.querySelectorAll<HTMLButtonElement>("[data-tab]").forEach((btn) => {
+    btn.onclick = () => {
+      const id = btn.dataset.tab as (typeof BUILD_TABS)[number]["id"] | undefined;
+      if (!id) return;
+      runtime.buildTab = id;
+      runtime.mode = "build";
+      const first = catalogForTab(id)[0];
+      runtime.ghostHub = first?.id ?? null;
       bus.emit({ type: "changed" });
     };
   });
@@ -203,6 +226,9 @@ function bind(root: HTMLElement): void {
   });
   root.querySelectorAll<HTMLButtonElement>("[data-demo]").forEach((btn) => {
     btn.onclick = () => demolish(btn.dataset.demo ?? "");
+  });
+  root.querySelectorAll<HTMLButtonElement>("[data-lift]").forEach((btn) => {
+    btn.onclick = () => beginMove(btn.dataset.lift ?? "");
   });
   const chk = root.querySelector<HTMLInputElement>("#caution-block");
   if (chk) {

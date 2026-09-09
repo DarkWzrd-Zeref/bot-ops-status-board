@@ -16,7 +16,8 @@
       "color": "#7dd3fc",
       "mimicOf": null,
       "homeHub": "discord",
-      "bio": "Primary Grok account-manager. Twin B copies its moves."
+      "bio": "Primary Grok account-manager. Twin B copies its moves.",
+      "work": ["comms"]
     },
     {
       "id": "grok-am-b",
@@ -28,7 +29,8 @@
       "color": "#38bdf8",
       "mimicOf": "grok-am-a",
       "homeHub": "discord",
-      "bio": "Second Grok account. Paths after Twin A so you can see echo / drift."
+      "bio": "Second Grok account. Paths after Twin A so you can see echo / drift.",
+      "work": ["comms"]
     },
     {
       "id": "chief-of-staff",
@@ -40,7 +42,8 @@
       "color": "#f5c16c",
       "mimicOf": null,
       "homeHub": "bank",
-      "bio": "Queue, park/go, handoffs. Banks memory at the ledger."
+      "bio": "Queue, park/go, handoffs. Banks memory at the ledger.",
+      "work": ["memory", "quests"]
     },
     {
       "id": "police",
@@ -52,7 +55,8 @@
       "color": "#60a5fa",
       "mimicOf": null,
       "homeHub": "github",
-      "bio": "MCP-first rules, no-clone, waste flags."
+      "bio": "MCP-first rules, no-clone, waste flags.",
+      "work": ["scan", "code"]
     },
     {
       "id": "researcher",
@@ -64,7 +68,8 @@
       "color": "#c4b5fd",
       "mimicOf": null,
       "homeHub": "firecrawl",
-      "bio": "Web insight, vision board, proposals."
+      "bio": "Web insight, vision board, proposals.",
+      "work": ["research"]
     },
     {
       "id": "engineer",
@@ -76,7 +81,8 @@
       "color": "#34d399",
       "mimicOf": null,
       "homeHub": "cursor",
-      "bio": "Boarding packets, PRs, cloud-agent handoff."
+      "bio": "Boarding packets, PRs, cloud-agent handoff.",
+      "work": ["code"]
     },
     {
       "id": "stay-on-track",
@@ -88,7 +94,8 @@
       "color": "#fb7185",
       "mimicOf": null,
       "homeHub": "calendar",
-      "bio": "One-LIVE rule, syllabus, done artifacts."
+      "bio": "One-LIVE rule, syllabus, done artifacts.",
+      "work": ["ops"]
     },
     {
       "id": "director",
@@ -100,7 +107,8 @@
       "color": "#f97316",
       "mimicOf": null,
       "homeHub": "grand-exchange",
-      "bio": "Sets the quest board. Watches the plaza."
+      "bio": "Sets the quest board. Watches the plaza.",
+      "work": ["quests", "command"]
     },
     {
       "id": "cursor-ultra",
@@ -112,7 +120,8 @@
       "color": "#a3e635",
       "mimicOf": null,
       "homeHub": "cursor",
-      "bio": "Live Cursor cloud agents. This run is one of them."
+      "bio": "Live Cursor cloud agents. This run is one of them.",
+      "work": ["code", "cloud-agent"]
     },
     {
       "id": "n8n",
@@ -124,7 +133,8 @@
       "color": "#f472b6",
       "mimicOf": null,
       "homeHub": "railway",
-      "bio": "Already in Community Brain Discord. Workflows as a workstation."
+      "bio": "Already in Community Brain Discord. Workflows as a workstation.",
+      "work": ["infra"]
     }
   ]
 }
