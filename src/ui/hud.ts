@@ -7,7 +7,7 @@ import { projectSchema, safeLink } from "../../shared/workspace.ts";
 import { mountEcosystem, showEcosystem, ecosystemNav } from "./ecosystem.ts";
 import { applyHubUpdate, currentReleaseChip, reconnectHub, startReleaseWatch } from "./release.ts";
 import { buildPanelKind, dismissInteraction } from "./panels.ts";
-import { CHAT_DRAFT_KEY, QUICK_DRAFT_KEY, readDraft, saveDraft } from "./drafts.ts";
+import { CHAT_DRAFT_KEY, QUICK_DRAFT_KEY, composerAfterAttempt, persistComposerDrafts, readDraft, saveDraft } from "./drafts.ts";
 
 let channel: Channel = "team";
 let onlyDirectives = false;
@@ -343,8 +343,8 @@ function bind() {
     }
     if (b.dataset.reply) { const note = radioNotes.find(n => n.id === b.dataset.reply); openChat(note?.projectUid); replyTo = b.dataset.reply; channel = note?.channel ?? "team"; directive = false; host.querySelector<HTMLSelectElement>("#message-type")!.value = "message"; host.querySelector("#send-message")!.textContent = "Send message ↗"; recipient = note?.from ?? "all"; host.querySelector<HTMLSelectElement>("#recipient")!.value = recipient === "zeref" ? "all" : recipient; if (recipient === "zeref") recipient = "all"; host.querySelector<HTMLTextAreaElement>("#radio-text")!.focus(); }
     if (b.hasAttribute("data-cancel-reply")) replyTo = undefined;
-    if (b.id === "hub-reconnect") { void reconnectHub().catch(() => flash("Reconnect failed. Your drafts are still here.", "bad")); return; }
-    if (b.id === "hub-update") { applyHubUpdate(); return; }
+    if (b.id === "hub-reconnect") { persistComposerDrafts(draft, host.querySelector<HTMLInputElement>("#quick-text")?.value ?? ""); void reconnectHub().catch(() => flash("Reconnect failed. Your drafts are still here.", "bad")); return; }
+    if (b.id === "hub-update") { persistComposerDrafts(draft, host.querySelector<HTMLInputElement>("#quick-text")?.value ?? ""); applyHubUpdate(); return; }
     if (b.id === "connect-button") host.querySelector<HTMLDialogElement>("#connect-dialog")!.showModal();
     if (b.hasAttribute("data-close-dialog")) host.querySelector<HTMLDialogElement>("#connect-dialog")!.close();
     if (b.dataset.copy) void navigator.clipboard.writeText(location.origin + "/mcp/" + b.dataset.copy).then(() => flash("Endpoint copied")).catch(() => flash("Copy unavailable. Select the endpoint text to copy it.", "warn"));
@@ -371,7 +371,7 @@ function bind() {
     const send = host.querySelector<HTMLButtonElement>("#quick-chat button")!; if (send.disabled) return;
     send.disabled = true;
     try { await postRadio("zeref", text, { channel: "team", to: "all" }); if (quick.value.trim() === text) { quick.value = ""; saveDraft(QUICK_DRAFT_KEY, ""); } flash("Sent to team chat as Zeref"); }
-    catch (e) { flash(e instanceof Error ? e.message : "Could not send. Your draft is retained.", "bad"); }
+    catch (e) { persistComposerDrafts(draft, quick.value); flash(e instanceof Error ? e.message : "Could not send. Your draft is retained.", "bad"); }
     finally { send.disabled = false; }
   };
   input.oninput = () => { draft = input.value; saveDraft(CHAT_DRAFT_KEY, draft); host.querySelector("#character-count")!.textContent = draft.length + " / 2000"; };
@@ -384,11 +384,17 @@ function bind() {
     const submitted = draft;
     try {
       await postRadio("zeref", submitted, { channel, to: recipient, directive, replyTo, projectUid: chatProject });
-      if (draft === submitted) { draft = ""; input.value = ""; saveDraft(CHAT_DRAFT_KEY, ""); }
+      draft = composerAfterAttempt(draft, submitted, true);
+      input.value = draft;
+      saveDraft(CHAT_DRAFT_KEY, draft);
       replyTo = undefined;
       flash(directive ? "Directive queued. Receipts appear when teammates check in." : "Message sent");
       render(); host.querySelector<HTMLElement>("#message-log")!.scrollTop = 1e9;
-    } catch (e) { flash(e instanceof Error ? e.message : "Send failed. Your draft is safe.", "bad"); }
+    } catch (e) {
+      draft = composerAfterAttempt(draft, submitted, false);
+      saveDraft(CHAT_DRAFT_KEY, draft);
+      flash(e instanceof Error ? e.message : "Send failed. Your draft is safe.", "bad");
+    }
     finally { sending = false; button.disabled = false; button.textContent = directive ? "Send directive ↗" : "Send message ↗"; host.querySelector("#character-count")!.textContent = draft.length + " / 2000"; }
   };
   host.querySelector<HTMLFormElement>("#project-form")!.onsubmit = event => {

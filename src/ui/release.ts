@@ -1,7 +1,7 @@
 import { bus } from "../core/events.ts";
 import { radioLive, reconnectLive } from "../core/live.ts";
 
-export { CHAT_DRAFT_KEY, QUICK_DRAFT_KEY } from "./drafts.ts";
+export { CHAT_DRAFT_KEY, QUICK_DRAFT_KEY, persistComposerDrafts, snapshotDrafts } from "./drafts.ts";
 const HEALTH_TIMEOUT_MS = 4000;
 const bundleCommit: string | null = import.meta.env?.VITE_AREA67_BUNDLE_COMMIT || null;
 

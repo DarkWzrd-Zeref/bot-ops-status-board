@@ -1,11 +1,13 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
+import { persistComposerDrafts, snapshotDrafts } from "../src/ui/drafts.ts";
 
 test("automatic and manual reconnect wait for fresh hello and discard stale-stream events", async () => {
   const timers = new Map<number, () => void>();
   let timerId = 0;
   const requests: string[] = [];
   const cache = new Map<string, string>();
+  const drafts = new Map<string, string>();
   class FakeStream {
     static all: FakeStream[] = [];
     onopen?: () => void;
@@ -15,8 +17,14 @@ test("automatic and manual reconnect wait for fresh hello and discard stale-stre
     close() {}
     hello(base: unknown, revision: number) { this.onmessage?.({ data: JSON.stringify({ type: "hello", base, revision, notes: [], presence: [], work: [] }) }); }
   }
+  const session = {
+    getItem: (k: string) => drafts.get(k) ?? null,
+    setItem: (k: string, v: string) => { drafts.set(k, v); },
+    removeItem: (k: string) => { drafts.delete(k); },
+  };
   Object.defineProperties(globalThis, {
     localStorage: { configurable: true, value: { getItem: (k: string) => cache.get(k) ?? null, setItem: (k: string, v: string) => cache.set(k, v) } },
+    sessionStorage: { configurable: true, value: session },
     window: { configurable: true, value: { setTimeout: (fn: () => void) => { timers.set(++timerId, fn); return timerId; }, clearTimeout: (id: number) => timers.delete(id), setInterval: () => 0, addEventListener: () => {} } },
     document: { configurable: true, value: { visibilityState: "hidden", addEventListener: () => {} } },
     EventSource: { configurable: true, value: FakeStream },
@@ -25,6 +33,8 @@ test("automatic and manual reconnect wait for fresh hello and discard stale-stre
   const game = await import("../src/core/runtime.ts");
   const live = await import("../src/core/live.ts");
   game.bootRuntime();
+  persistComposerDrafts("unsent radio", "unsent quick", session);
+  const held = snapshotDrafts(session);
   live.connectLive();
   const first = FakeStream.all[0];
   first.onopen?.();
@@ -54,4 +64,5 @@ test("automatic and manual reconnect wait for fresh hello and discard stale-stre
   game.assignAgent("codex", bank.uid);
   assert.equal(timers.size, 1);
   assert.equal(requests.filter(p => p === "/api/base").length, 0);
+  assert.deepEqual(snapshotDrafts(session), held, "live hello replacement must not touch chat drafts");
 });
