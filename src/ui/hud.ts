@@ -23,6 +23,12 @@ const qFile = questionsFile as { questions: { id: string; category: string; prio
 
 export function mountHud(root: HTMLElement): void {
   const render = () => {
+    const typing = document.activeElement instanceof HTMLInputElement && document.activeElement.id === "radio-text";
+    if (typing && root.querySelector("#radio-form")) {
+      const log = root.querySelector(".radio-log");
+      if (log) log.innerHTML = radioItems();
+      return;
+    }
     root.innerHTML = html();
     bind(root);
   };
@@ -43,6 +49,16 @@ function flash(text: string, tone: string): void {
   el.textContent = text;
   el.classList.add("show");
   window.setTimeout(() => el.classList.remove("show"), 2200);
+}
+
+function radioItems(): string {
+  if (!radioNotes.length) {
+    return `<li class="muted">Silent. Claude connects at /mcp. Grok posts here. You type below.</li>`;
+  }
+  return radioNotes
+    .slice(0, 8)
+    .map((n) => `<li><b class="who ${esc(n.from)}">${esc(n.from)}</b> ${esc(n.text)}</li>`)
+    .join("");
 }
 
 function html(): string {
@@ -76,17 +92,7 @@ function html(): string {
         <span class="muted">Claude MCP + Grok · Zeref directs</span>
       </div>
       <ol class="radio-log">
-        ${
-          radioNotes.length
-            ? radioNotes
-                .slice(0, 8)
-                .map(
-                  (n) =>
-                    `<li><b class="who ${esc(n.from)}">${esc(n.from)}</b> ${esc(n.text)}</li>`,
-                )
-                .join("")
-            : `<li class="muted">Silent. Claude connects at /mcp. Grok posts here. You type below.</li>`
-        }
+        ${radioItems()}
       </ol>
       <form id="radio-form">
         <input id="radio-text" maxlength="2000" autocomplete="off" placeholder="Zeref → Claude and Grok" />

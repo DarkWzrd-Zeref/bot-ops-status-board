@@ -23,6 +23,11 @@ import {
 import { bus } from "../core/events.ts";
 import type { GameEvent } from "../core/types.ts";
 
+function typingInHud(): boolean {
+  const el = document.activeElement;
+  return el instanceof HTMLInputElement || el instanceof HTMLTextAreaElement;
+}
+
 const TILE_KEY: Record<TileKind, string> = {
   sand: "tile-sand",
   sand2: "tile-sand2",
@@ -81,22 +86,26 @@ export class HubScene extends Phaser.Scene {
     });
 
     this.input.keyboard!.on("keydown-ESC", () => {
+      if (typingInHud()) return;
       if (runtime.lifting) cancelMove();
       runtime.mode = "play";
       runtime.ghostHub = null;
       bus.emit({ type: "changed" });
     });
     this.input.keyboard!.on("keydown-B", () => {
+      if (typingInHud()) return;
       runtime.mode = runtime.mode === "build" ? "play" : "build";
       if (runtime.lifting) cancelMove();
       bus.emit({ type: "changed" });
     });
     this.input.keyboard!.on("keydown-X", () => {
+      if (typingInHud()) return;
       runtime.mode = runtime.mode === "demolish" ? "play" : "demolish";
       if (runtime.lifting) cancelMove();
       bus.emit({ type: "changed" });
     });
     this.input.keyboard!.on("keydown-M", () => {
+      if (typingInHud()) return;
       runtime.mode = runtime.mode === "move" ? "play" : "move";
       if (runtime.mode !== "move" && runtime.lifting) cancelMove();
       bus.emit({ type: "changed" });
@@ -106,6 +115,12 @@ export class HubScene extends Phaser.Scene {
       if (e.type === "changed") this.syncBuildings();
       if (e.type === "say") this.showBubble(e.agentId, e.text);
     });
+
+    const syncKb = () => {
+      if (this.input.keyboard) this.input.keyboard.enabled = !typingInHud();
+    };
+    document.addEventListener("focusin", syncKb);
+    document.addEventListener("focusout", syncKb);
   }
 
   private showBubble(agentId: string, text: string): void {
@@ -261,6 +276,7 @@ export class HubScene extends Phaser.Scene {
   }
 
   update(_t: number, dt: number): void {
+    if (this.input.keyboard) this.input.keyboard.enabled = !typingInHud();
     this.stepCool -= dt;
     const dx = (this.cursors.right.isDown || this.wasd.D.isDown ? 1 : 0) + (this.cursors.left.isDown || this.wasd.A.isDown ? -1 : 0);
     const dy = (this.cursors.down.isDown || this.wasd.S.isDown ? 1 : 0) + (this.cursors.up.isDown || this.wasd.W.isDown ? -1 : 0);
