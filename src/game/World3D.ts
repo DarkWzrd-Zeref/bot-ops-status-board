@@ -234,25 +234,41 @@ export class World3D {
       (window.material as THREE.MeshStandardMaterial).emissive.setHex(0x3d8e82);
     }
     const banner = this.label("", "map-station-label station-banner", b.project ? 3.5 : 3.3, group);
+    const chip = document.createElement("span"); chip.className = "station-chip";
     const name = document.createElement("strong"); name.textContent = buildingName(b);
+    chip.append(name);
+    const details = document.createElement("span"); details.className = "station-details";
+    details.id = "station-preview-" + uid; details.setAttribute("role", "tooltip");
+    const card = document.createElement("span"); card.className = "station-detail-card";
+    const heading = document.createElement("strong"); heading.textContent = buildingName(b);
     const scope = document.createElement("span"); scope.className = "station-scope";
     scope.textContent = b.project?.workspace || (b.project?.repoUrl ? new URL(b.project.repoUrl).pathname.slice(1) : h.kind + " · " + h.short);
     const contents = document.createElement("span"); contents.className = "station-contents";
     contents.textContent = b.project?.contents.slice(0, 3).join(" · ") || b.project?.summary || h.blurb;
     const signal = document.createElement("span"); signal.className = "station-signal";
-    banner.append(name, scope, contents, signal);
-    banner.title = buildingName(b) + "\n" + (b.project?.summary || h.blurb);
+    const hint = document.createElement("span"); hint.className = "station-hint"; hint.textContent = "Select to open workspace";
+    card.append(heading, scope, contents, signal, hint); details.append(card);
+    banner.append(chip, details);
     banner.style.setProperty("--station-color", h.color);
     banner.addEventListener("click", event => { event.stopPropagation(); runtime.selectedAgent = null; runtime.selectedBuilding = uid; bus.emit({ type: "changed" }); });
     banner.setAttribute("role", "button"); banner.tabIndex = 0;
     banner.setAttribute("aria-label", "Inspect " + buildingName(b));
+    banner.setAttribute("aria-describedby", details.id);
     banner.addEventListener("keydown", e => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); banner.click(); } });
+    // Escape dismisses the preview without moving the pointer or keyboard focus.
+    const dismissPreview = (e: KeyboardEvent) => { if (e.key === "Escape") banner.classList.add("preview-dismissed"); };
+    banner.addEventListener("pointerenter", () => { banner.classList.remove("preview-dismissed"); window.addEventListener("keydown", dismissPreview); });
+    banner.addEventListener("pointerleave", () => { if (document.activeElement !== banner) window.removeEventListener("keydown", dismissPreview); });
+    banner.addEventListener("focus", () => { banner.classList.remove("preview-dismissed"); window.addEventListener("keydown", dismissPreview); });
+    banner.addEventListener("blur", () => { banner.classList.add("preview-dismissed"); window.removeEventListener("keydown", dismissPreview); });
+    group.userData.disposeLabel = () => window.removeEventListener("keydown", dismissPreview);
     const beacon = this.glowRing(Math.max(h.w, h.h) * .62, 0x82c9ff, .3, group, .9);
     beacon.name = "work-beacon"; beacon.visible = false;
     group.userData.banner = banner; group.userData.signal = signal;
     this.scene.add(group); this.stations.set(uid, group);
   }
   private disposeGroup(group: THREE.Group) {
+    group.userData.disposeLabel?.();
     group.traverse(o => {
       if (o instanceof THREE.Mesh) { o.geometry.dispose(); if (Array.isArray(o.material)) o.material.forEach(m => m.dispose()); else o.material.dispose(); }
       if (o instanceof CSS2DObject) o.element.remove();

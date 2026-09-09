@@ -17,8 +17,9 @@ let recipient: Speaker | "all" = "all";
 let directive = false;
 let audio: AudioContext | undefined;
 let host: HTMLElement;
-let friendsOpen = localStorage.getItem("area67-friends") ? localStorage.getItem("area67-friends") !== "collapsed" : innerWidth > 700;
-let chatOpen = localStorage.getItem("area67-chat") !== "collapsed";
+// A saved desktop layout should never fill a phone's first view with panels.
+let friendsOpen = innerWidth > 700 && localStorage.getItem("area67-friends") !== "collapsed";
+let chatOpen = innerWidth > 700 && localStorage.getItem("area67-chat") !== "collapsed";
 let chatProject: string | undefined;
 let editingProject: string | undefined;
 let friendsOnlineOnly = false;
@@ -77,7 +78,7 @@ function roster() {
       ${tasks ? `<span class="count-badge" title="${tasks} pending directives">${tasks}</span>` : ""}
       <span class="seat-arrow">›</span></button>
       ${runtime.selectedAgent === s.palId ? `<div class="seat-extra">${s.model}<br>Last check-in: ${ago(p?.lastSeen)}<br>${building ? esc(hubById(building.hubId).name) : "No station assigned"}</div>` : ""}`;
-  }).join("") || `<p class="microcopy">No seats checking in. Show all friends to ping someone.</p>`;
+  }).join("") || `<p class="microcopy">No agents online. Turn off Online only to see all agents.</p>`;
 }
 function messageItems() {
   const rows = radioNotes.filter(n => n.channel === channel && (!chatProject || n.projectUid === chatProject) && (!onlyDirectives || n.directive)).filter((n, i) => i < 100 || (n.directive && n.recipients.some(s => n.receipts[s]?.state !== "completed")) || (n.ping && n.recipients.some(s => !n.receipts[s]))).reverse();
@@ -119,7 +120,7 @@ function inspector() {
     return `<div class="project-banner"><span class="eyebrow">${project ? "PROJECT WORKSPACE" : "STATION / " + esc(h.kind)}</span><button data-clear class="subtle close-inspector" aria-label="Close detail">×</button><h2>${esc(buildingName(b))}</h2><p>${esc(project?.summary || h.blurb)}</p></div>
       ${project ? `<div class="project-links">${project.repoUrl && safeLink(project.repoUrl) ? `<a href="${esc(project.repoUrl)}" target="_blank" rel="noopener noreferrer">Open repository ↗</a>` : ""}${project.workspace ? `<label>Workspace<code>${esc(project.workspace)}</code></label>` : ""}</div><div class="contents-tags">${project.contents.map(c => `<span>${esc(c)}</span>`).join("")}</div>` : ""}
       <div class="detail-actions">${h.kind === "ecosystem" ? `<button class="primary" data-ecosystem="${h.id}">Open ${esc(h.name)}</button>` : ""}<button data-project-chat="${b.uid}">${h.kind === "ecosystem" ? "Discussion" : "Open project chat"}</button><button data-ping-project="${b.uid}">Ping assigned crew</button></div>
-      <label class="field-label">Gather a teammate<select id="project-assign" data-building="${b.uid}"><option value="">Choose a friend…</option>${SEATS.map(s => `<option value="${s.palId}">${s.label}</option>`).join("")}</select></label>
+      <label class="field-label">Assign an agent<select id="project-assign" data-building="${b.uid}"><option value="">Choose an agent…</option>${SEATS.map(s => `<option value="${s.palId}">${s.label}</option>`).join("")}</select></label>
       <p class="microcopy">Assigned: ${runtime.agents.filter(a => a.buildingUid === b.uid).map(a => esc(AGENTS.find(d => d.id === a.id)!.name)).join(", ") || "No pals yet"}</p>
       <div class="workspace-work">${workReports.filter(w => w.buildingUid === b.uid).map(workCard).join("") || '<p class="microcopy">No work reported yet. Connected agents use work_report with this building’s ID.</p>'}</div><code class="building-id">${esc(b.uid)}</code>
       <div class="detail-actions">${project ? `<button data-edit-project="${b.uid}">Edit sign</button>` : ""}${h.placeable ? `<button data-lift="${b.uid}">Move</button><button class="danger" data-demo="${b.uid}">${project ? "Remove from map" : "Dismantle"}</button>` : "Command core"}</div>`;
@@ -150,7 +151,10 @@ function buildTools() {
 function render() {
   const c = counts();
   const selected = runtime.selectedAgent || runtime.selectedBuilding || "";
-  if (selected && selected !== inspectedKey && innerWidth < 1000) chatOpen = false;
+  if (selected && selected !== inspectedKey) {
+    if (innerWidth < 1000) chatOpen = false;
+    if (innerWidth <= 700) friendsOpen = false;
+  }
   inspectedKey = selected;
   document.documentElement.classList.toggle("friends-collapsed", !friendsOpen);
   document.documentElement.classList.toggle("chat-collapsed", !chatOpen);
@@ -165,7 +169,7 @@ function render() {
   update("#project-list", projects());
   update("#chat-scope", chatProject ? `<span>${esc(scopeName(chatProject))}</span><button data-global-chat>All chat ×</button>` : `<span>Everyone in the hub</span><button data-ping="all">Ping crew</button>`);
   host.querySelector(".comms-heading h2")!.textContent = channel === "command" ? "Command channel" : "Team chat";
-  update("#team-count", c.seats + " / " + SEATS.length + " active");
+  update("#team-count", c.seats + " / " + SEATS.length + " online");
   update("#inspector-content", inspector());
   update("#build-tools", buildTools());
   update("#mission-summary", `<span class="eyebrow">ACTIVE OPERATIONS</span><strong>${c.pending.length ? c.pending.length + " open directive" + (c.pending.length === 1 ? "" : "s") : "Ready for your next directive"}</strong><span>${c.blocked ? c.blocked + " need your attention" : c.seats + " teammates checking in"}</span>`);
@@ -183,7 +187,7 @@ export function mountHud(root: HTMLElement) {
     <header class="app-header"><a class="brand" href="/" aria-label="AREA 67 home"><span class="brand-mark">67</span><span>AREA <b>67</b><small>COMMAND CENTER</small></span></a>
       <div class="header-center"><span class="breadcrumb">Operations</span><span>/</span><strong>Command deck</strong></div>
       <div class="header-actions"><span id="connection" class="connection"></span><button class="subtle" id="connect-button">Connect AI ↗</button><span class="commander-avatar">Z</span><span class="commander-name">Zeref<small>Commander</small></span></div></header>
-    <aside class="crew-panel"><div class="friends-heading"><button id="friends-toggle" aria-label="Toggle friends list" aria-controls="roster">☷</button><div><h2>Friends</h2><span id="team-count"></span></div></div><label class="friends-filter"><input id="online-only" type="checkbox"> Online only</label><div id="roster"></div><div class="crew-footer"><b>Live check-ins</b><p>Online lights fade when a seat stops checking in.</p></div><div id="project-list"></div></aside>
+    <aside class="crew-panel" aria-label="Agent online list"><div class="friends-heading"><button id="friends-toggle" aria-label="Toggle agent online list" title="Agents — online list" aria-controls="roster">☷</button><div><h2>Agents</h2><span id="team-count"></span></div></div><label class="friends-filter"><input id="online-only" type="checkbox"> Online only</label><div id="roster"></div><div class="crew-footer"><b>Live agent status</b><p>Dots reflect real check-ins. They fade when an agent stops responding.</p></div><div id="project-list"></div></aside>
     <div class="world-overlay"><div class="world-heading"><span class="eyebrow">SECTOR 01 / THE PALBOX</span><h1>AREA 67</h1><span>Alien minds. Machine muscle.</span></div><div id="mission-summary"></div><div class="world-controls"><button data-camera="out" aria-label="Zoom out">−</button><button data-camera="home" aria-label="Center map">⌖</button><button data-camera="in" aria-label="Zoom in">+</button></div><div class="world-caption"><span>Click to explore · select a pal to assign</span><span>WASD move · scroll to zoom</span></div></div>
     <section class="operations-panel"><div id="build-tools"></div><div id="inspector-content"></div></section>
     <button id="chat-launcher" aria-controls="chat-panel" aria-expanded="true">Chat</button><aside class="comms-panel" id="chat-panel"><div class="comms-heading"><div><span class="eyebrow">LIVE COMMUNICATIONS</span><h2>Team chat</h2></div><button id="sound-toggle" class="subtle" aria-pressed="false" title="Toggle message sound">Sound off</button><button id="chat-minimize" class="subtle" aria-label="Minimize chat">−</button></div>
