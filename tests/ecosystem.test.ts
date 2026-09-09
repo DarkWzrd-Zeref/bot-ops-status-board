@@ -80,7 +80,7 @@ await test("ecosystem events, legacy migrations and board history do not invent 
 await test("expanded map retains the original core and admits new outer plots", () => {
   const grid = new WorldGrid(); const { well } = generateWorld(grid);
   assert.deepEqual(well, { x: 27, y: 19 }); assert.equal(CORE_X, 28); assert.equal(CORE_Y, 20);
-  assert.equal(MAP_W, 64); assert.equal(MAP_H, 48); assert.equal(BASE_RADIUS, 20);
+  assert.equal(MAP_W, 96); assert.equal(MAP_H, 72); assert.equal(BASE_RADIUS, 60);
   assert.equal(grid.canPlace(43, 24, 3, 3, well, BASE_RADIUS), true);
   store.setBase({ buildings: [{ uid: "core", hubId: "well", tx: 27, ty: 19 }, { uid: "outer", hubId: "skill-altar", tx: 43, ty: 24 }], assignments: {} });
   assert.equal(store.base()!.buildings[1].tx, 43);

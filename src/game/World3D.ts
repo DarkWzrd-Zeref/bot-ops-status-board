@@ -5,7 +5,7 @@ import { AGENTS, HUBS, BASE_RADIUS, MAP_W, MAP_H, assignAgent, beginMove, buildi
 import { bus } from "../core/events.ts";
 import { attention, liveWork } from "../core/live.ts";
 import { seatForPal, speakerLabel } from "../../shared/protocol.ts";
-import { CORE_X, CORE_Y } from "../../shared/map.ts";
+import { CORE_X, CORE_Y, DISTRICTS } from "../../shared/map.ts";
 
 const colors = { attentive: 0x80f5b8, busy: 0x80c8ff, away: 0xe4b76a, offline: 0x536570 };
 const cx = CORE_X, cz = CORE_Y;
@@ -15,7 +15,7 @@ const typing = () => !!document.activeElement?.closest("input, textarea, select,
 /** The existing grid, building rules and pathfinder drive a real 3D presentation. */
 export class World3D {
   private scene = new THREE.Scene();
-  private camera = new THREE.OrthographicCamera(-20, 20, 15, -15, .1, 180);
+  private camera = new THREE.OrthographicCamera(-20, 20, 15, -15, .1, 400);
   private renderer: THREE.WebGLRenderer;
   private labels = new CSS2DRenderer();
   private controls: OrbitControls;
@@ -51,18 +51,18 @@ export class World3D {
     this.controls.enableRotate = true;
     this.controls.minPolarAngle = .45;
     this.controls.maxPolarAngle = 1.15;
-    this.controls.minZoom = .55;
+    this.controls.minZoom = .12;
     this.controls.maxZoom = 3;
     this.controls.mouseButtons = { LEFT: undefined as unknown as THREE.MOUSE, MIDDLE: THREE.MOUSE.PAN, RIGHT: THREE.MOUSE.ROTATE };
     this.controls.touches = { ONE: THREE.TOUCH.PAN, TWO: THREE.TOUCH.DOLLY_ROTATE };
     this.resetCamera();
-    this.scene.fog = new THREE.FogExp2(0x0c171e, .011);
+    this.scene.fog = new THREE.FogExp2(0x0c171e, .004);
     this.scene.add(new THREE.HemisphereLight(0xbde8e5, 0x182832, 2));
     const key = new THREE.DirectionalLight(0xe5fff2, 3.5);
     key.position.set(cx - 14, 28, cz - 8); key.target.position.set(cx, 0, cz);
     key.castShadow = true;
     key.shadow.mapSize.set(2048, 2048);
-    Object.assign(key.shadow.camera, { left: -25, right: 25, top: 25, bottom: -25, far: 80 });
+    Object.assign(key.shadow.camera, { left: -75, right: 75, top: 75, bottom: -75, far: 150 });
     key.shadow.normalBias = .04;
     this.scene.add(key, key.target);
     const rim = new THREE.DirectionalLight(0x43b7d5, 2);
@@ -117,34 +117,43 @@ export class World3D {
     m.rotation.x = -Math.PI / 2; m.position.y = y; parent.add(m); return m;
   }
   private createTerrain() {
-    const platform = new THREE.Group(); platform.position.set(cx, -.44, cz);
-    this.mesh(new THREE.CylinderGeometry(BASE_RADIUS + .6, BASE_RADIUS + 1.2, .85, 96), 0x14252a, 0, 0, 0, platform);
-    this.mesh(new THREE.CylinderGeometry(BASE_RADIUS + .3, BASE_RADIUS + .6, .18, 96), 0x314b4a, 0, .49, 0, platform);
-    this.glowRing(BASE_RADIUS + .68, 0x6ae9bc, .43, platform, .6);
+    const platform = new THREE.Group(); platform.position.set(MAP_W / 2, -.44, MAP_H / 2);
+    this.box(MAP_W + .6, .85, MAP_H + .6, 0x14252a, 0, 0, 0, platform);
+    this.box(MAP_W, .18, MAP_H, 0x314b4a, 0, .49, 0, platform);
     this.scene.add(platform);
     const tileGeo = new THREE.BoxGeometry(.97, .09, .97);
     const tileMats: Record<string, THREE.MeshStandardMaterial> = {
       sand: this.material(0x304c46, .1), sand2: this.material(0x34514b, .1),
       plaza: this.material(0x415d59), pad: this.material(0x55716a),
-      path: this.material(0x718b7d), water: this.material(0x123b49),
+      path: this.material(0x718b7d), water: this.material(0x123b49), fence: this.material(0x293f47),
+      blocked: this.material(0x14252a),
     };
     // Instancing keeps the raised tile deck light enough for laptop GPUs.
     for (const [kind, material] of Object.entries(tileMats)) {
       const tiles: [number, number][] = [];
       for (let y = 0; y < MAP_H; y++) for (let x = 0; x < MAP_W; x++) {
-        if (runtime.grid.kinds[y][x] === kind && Math.hypot(x + .5 - cx, y + .5 - cz) < BASE_RADIUS + .1) tiles.push([x, y]);
+        const groundKind = runtime.grid.kinds[y][x];
+        const displayed = runtime.grid.blocked[y][x] && !["water", "fence"].includes(groundKind) ? "blocked" : groundKind;
+        if (displayed === kind) tiles.push([x, y]);
       }
       const batch = new THREE.InstancedMesh(tileGeo, material, tiles.length);
       const matrix = new THREE.Matrix4();
       tiles.forEach(([x, y], i) => batch.setMatrixAt(i, matrix.makeTranslation(x + .5, .12, y + .5)));
       batch.receiveShadow = true; this.scene.add(batch);
     }
-    const boundary = new THREE.Group(); boundary.position.set(cx, 0, cz);
-    this.glowRing(BASE_RADIUS, 0x80f5cd, .2, boundary, .45); this.scene.add(boundary);
+    // Clip the build-limit arc to the map; outer terrain remains explorable.
+    const boundary: THREE.Vector3[] = [];
+    for (let i = 0; i < 360; i++) {
+      const point = (a: number) => new THREE.Vector3(cx + Math.cos(a) * BASE_RADIUS, .2, cz + Math.sin(a) * BASE_RADIUS);
+      const a = point(i * Math.PI / 180), b = point((i + 1) * Math.PI / 180);
+      if ([a, b].every(p => p.x >= 0 && p.z >= 0 && p.x <= MAP_W && p.z <= MAP_H)) boundary.push(a, b);
+    }
+    this.scene.add(new THREE.LineSegments(new THREE.BufferGeometry().setFromPoints(boundary), new THREE.LineBasicMaterial({ color: 0x80f5cd, transparent: true, opacity: .45 })));
     for (let i = 0; i < 32; i++) {
       const angle = i / 32 * Math.PI * 2;
       if (i % 8 === 0) continue;
       const x = cx + Math.cos(angle) * BASE_RADIUS, z = cz + Math.sin(angle) * BASE_RADIUS;
+      if (x < 0 || z < 0 || x > MAP_W || z > MAP_H) continue;
       this.box(.18, .8, .18, 0x293f47, x, .4, z, this.scene);
       const lamp = this.mesh(new THREE.SphereGeometry(.08, 8, 6), 0x80f5cd, x, .86, z, this.scene);
       (lamp.material as THREE.MeshStandardMaterial).emissive.setHex(0x80f5cd);
@@ -370,14 +379,27 @@ export class World3D {
     window.addEventListener("area67-camera", e => {
       const action = (e as CustomEvent<string>).detail;
       if (action === "home") this.resetCamera();
-      else this.camera.zoom = THREE.MathUtils.clamp(this.camera.zoom * (action === "in" ? 1.2 : 1 / 1.2), .55, 3);
+      else this.camera.zoom = THREE.MathUtils.clamp(this.camera.zoom * (action === "in" ? 1.2 : 1 / 1.2), .12, 3);
+      this.camera.updateProjectionMatrix();
+    });
+    window.addEventListener("area67-district", e => {
+      const id = (e as CustomEvent<string>).detail;
+      if (id === "overview") {
+        this.resetCamera(); this.focus(MAP_W / 2, MAP_H / 2);
+        this.camera.position.copy(this.controls.target).add(new THREE.Vector3(100, 120, 100));
+        const aspect = (this.camera.right - this.camera.left) / (this.camera.top - this.camera.bottom);
+        this.camera.zoom = Math.max(.12, Math.min(.28, 34 * aspect / ((MAP_W + MAP_H) * .8)));
+      } else {
+        const d = DISTRICTS.find(d => d.id === id); if (!d) return;
+        this.resetCamera(); this.focus(d.x, d.y); this.camera.zoom = .7;
+      }
       this.camera.updateProjectionMatrix();
     });
   }
   private resetCamera() {
     this.camera.position.set(cx + 25, 30, cz + 25);
     this.controls.target.set(cx, 0, cz);
-    this.camera.zoom = .85; this.camera.lookAt(cx, 0, cz); this.camera.updateProjectionMatrix();
+    this.camera.zoom = .65; this.camera.lookAt(cx, 0, cz); this.camera.updateProjectionMatrix();
   }
   private focus(x: number, z: number) {
     const offset = this.camera.position.clone().sub(this.controls.target);
@@ -429,6 +451,9 @@ export class World3D {
       const scale = !this.reduced && group.userData.working ? 1 + Math.sin(now * .003) * .09 : 1;
       beacon.scale.set(scale, scale, 1);
     }
-    this.drawGhost(); this.controls.update(); this.renderer.render(this.scene, this.camera); this.labels.render(this.scene, this.camera);
+    this.drawGhost(); this.controls.update();
+    const target = this.controls.target;
+    if (target.x < 0 || target.x > MAP_W || target.z < 0 || target.z > MAP_H) this.focus(THREE.MathUtils.clamp(target.x, 0, MAP_W), THREE.MathUtils.clamp(target.z, 0, MAP_H));
+    this.renderer.render(this.scene, this.camera); this.labels.render(this.scene, this.camera);
   }
 }

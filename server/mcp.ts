@@ -21,7 +21,7 @@ export function createMcpServer(seat?: Seat, ecosystemWrite = false): McpServer 
 
   const server = new McpServer({
     name,
-    version: "1.2.3",
+    version: "1.2.4",
     description,
   });
 

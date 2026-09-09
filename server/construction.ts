@@ -4,7 +4,7 @@ import type { BaseSnapshot, PlacedBuilding } from "./store.ts";
 import type { Speaker } from "../shared/protocol.ts";
 import type { StationPlan } from "../shared/construction.ts";
 import { WorldGrid, generateWorld } from "../src/core/grid.ts";
-import { BASE_RADIUS, CORE_X, CORE_Y, MAP_W, MAP_H } from "../shared/map.ts";
+import { BASE_RADIUS, CORE_X, CORE_Y, MAP_W, MAP_H, DISTRICTS } from "../shared/map.ts";
 
 // Match bootRuntime's fixed player and pal starts. Keep the civic plaza open.
 const spawnTiles = [{ x: CORE_X, y: CORE_Y + 4 }, ...AGENTS.map((_, i) => ({
@@ -18,7 +18,7 @@ export function constructionInventory(base: BaseSnapshot | null, revision: numbe
   for (let y = 0; y < MAP_H; y++) for (let x = 0; x < MAP_W; x++) if (!grid.walkable(x, y)) blockedTiles.push({ x, y });
   return {
     revision, base,
-    map: { width: MAP_W, height: MAP_H, core: { x: CORE_X, y: CORE_Y }, radius: BASE_RADIUS, reservedPlaza: { min: plazaMin, max: plazaMax }, spawnTiles, blockedTiles },
+    map: { width: MAP_W, height: MAP_H, core: { x: CORE_X, y: CORE_Y }, radius: BASE_RADIUS, districts: DISTRICTS, reservedPlaza: { min: plazaMin, max: plazaMax }, spawnTiles, blockedTiles },
     stations: HUBS.map(h => ({ ...h, placed: base?.buildings.filter(b => b.hubId === h.id) ?? [], connectionStatus: "unverified" as const })),
     missing: HUBS.filter(h => h.placeable && !base?.buildings.some(b => b.hubId === h.id)).map(h => h.id),
   };

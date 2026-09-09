@@ -3,6 +3,8 @@ import assert from "node:assert/strict";
 import { mkdtempSync, readFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
+import { createHash } from "node:crypto";
+import { WorldGrid, generateWorld } from "../src/core/grid.ts";
 import { planConstruction } from "../server/construction.ts";
 import { stationPlanSchema, type StationPlan } from "../shared/construction.ts";
 import type { BaseSnapshot } from "../server/store.ts";
@@ -31,12 +33,25 @@ async function call(seat: string, name: string, args = {}, token?: string) {
 const content = (r: { content: { text: string }[] }) => JSON.parse(r.content[0].text);
 const disk = () => readFileSync(join(process.env.DATA_DIR!, "area67.json"), "utf8");
 
+await test("district expansion preserves legacy walkability except the explicit river bridges", () => {
+  const grid = new WorldGrid(); generateWorld(grid);
+  const mask = Array.from({ length: 48 }, (_, y) => Array.from({ length: 64 }, (_, x) => grid.walkable(x, y) ? "." : "#").join("")).join("\n");
+  assert.equal(createHash("sha256").update(mask).digest("hex"), "6698c68b749e509f3a408d43a1cc878f337996cad30ddea3f0a56793d034fa31");
+  for (const [tx, ty] of [[68,20], [72,50], [28,60], [76,50]]) {
+    const result = planConstruction(seed, "codex", { requestId: "outer-check", buildings: [{ hubId: "neon", tx, ty }] });
+    assert.equal(result.ok, true, JSON.stringify(result.errors));
+  }
+  store.setBase({ ...structuredClone(seed), buildings: [...structuredClone(seed.buildings), { uid: "outer-new", hubId: "neon", tx: 72, ty: 50 }] });
+  store.loadStore(); assert.equal(store.base()!.buildings.find(b => b.uid === "outer-new")!.tx, 72);
+});
+
 await test("inventory and preview are read-only, usable without keys, and explain the actual map", async () => {
   assert.equal(planConstruction(null, "claude", plan).errors[0].code, "base_missing");
   store.setBase(structuredClone(seed)); delete process.env.AREA67_ECOSYSTEM_KEYS;
   const before = disk(); const rev = store.revision();
   const inventory = content(await call("claude", "station_inventory"));
   assert.equal(inventory.canWrite, false); assert.equal(inventory.revision, rev);
+  assert.equal(inventory.map.width, 96); assert.equal(inventory.map.height, 72); assert.equal(inventory.map.districts.length, 6);
   assert.equal(inventory.missing.length, 18); assert.equal(inventory.stations.find((s: {id:string}) => s.id === "railway").w, 4);
   assert.ok(inventory.map.blockedTiles.length); assert.equal(inventory.stations[0].connectionStatus, "unverified");
   const preview = content(await call("claude", "station_build_preview", plan));
@@ -84,7 +99,7 @@ await test("placement rejects unknown/fixed structures, terrain, overlap, radius
   const checks = [
     ["no-such-hub", 40, 25, "not_buildable"], ["bank", 40, 25, "not_buildable"],
     ["neon", -1, 20, "oob"], ["neon", 1, 46, "blocked"], ["neon", 27, 19, "palbox"],
-    ["neon", 17, 19, "occupied"], ["neon", 0, 20, "radius"], ["neon", 45, 30, "blocked"],
+    ["neon", 17, 19, "occupied"], ["neon", 88, 20, "radius"], ["neon", 45, 30, "blocked"],
     ["neon", 22, 15, "reserved_plaza"], ["neon", 27, 27, "occupied"],
   ] as const;
   for (const [hubId, tx, ty, code] of checks) {
