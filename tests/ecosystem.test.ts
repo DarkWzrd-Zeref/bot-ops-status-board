@@ -85,3 +85,25 @@ await test("expanded map retains the original core and admits new outer plots", 
   store.setBase({ buildings: [{ uid: "core", hubId: "well", tx: 27, ty: 19 }, { uid: "outer", hubId: "skill-altar", tx: 43, ty: 24 }], assignments: {} });
   assert.equal(store.base()!.buildings[1].tx, 43);
 });
+
+await test("bug board retains findings and enforces revisioned claims across park, fix and reopen", async () => {
+  const input = { board: "bug-board", title: "Sprite stretch", body: "Reproduce on draft; preserve image aspect", priority: "high", finding: "confirmed" };
+  assert.equal((await call("codex", "board_post", input)).isError, true);
+  const card = content(await call("codex", "board_post", input, keys.codex));
+  assert.equal(card.status, "open"); assert.equal(card.finding, "confirmed");
+  assert.equal((await call("claude", "board_action", { id: card.id, revision: 1, action: "complete" }, keys.claude)).isError, true);
+  const claimed = content(await call("codex", "board_action", { id: card.id, revision: 1, action: "claim" }, keys.codex));
+  assert.equal(claimed.claimedBy, "codex");
+  assert.equal((await call("claude", "board_action", { id: card.id, revision: 1, action: "claim" }, keys.claude)).isError, true);
+  assert.equal((await call("claude", "board_action", { id: card.id, revision: 2, action: "park" }, keys.claude)).isError, true);
+  assert.equal((await call("codex", "board_action", { id: card.id, revision: 2, action: "discuss" }, keys.codex)).isError, true);
+  const parked = content(await call("codex", "board_action", { id: card.id, revision: 2, action: "park" }, keys.codex));
+  assert.equal(parked.board, "bug-board"); assert.equal(parked.claimedBy, null);
+  await call("claude", "board_action", { id: card.id, revision: 3, action: "claim" }, keys.claude);
+  const done = content(await call("claude", "board_action", { id: card.id, revision: 4, action: "complete" }, keys.claude));
+  assert.equal(done.status, "done"); assert.equal(done.claimedBy, "claude");
+  const reopened = await post("/api/ecosystem/cards/action", { id: card.id, revision: 5, action: "reopen" }, keys.zeref);
+  assert.equal(reopened.status, 200);
+  store.loadStore(); const saved = store.ecosystem().cards.find(c => c.id === card.id)!;
+  assert.equal(saved.status, "open"); assert.equal(saved.board, "bug-board"); assert.equal(saved.priority, "high"); assert.equal(saved.body, input.body);
+});

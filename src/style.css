@@ -363,6 +363,10 @@ html, body, #app { height: 100%; overflow: hidden; }
 .ecosystem-nav button { font-size: 14px; padding: 8px 10px; background: #142631; border-color: #335469; }
 .ecosystem-nav button[data-ecosystem=vision-board] { color: #d3a3ff; }
 .ecosystem-nav button[data-ecosystem=pending-work] { color: #f5c16c; }
+.ecosystem-nav button[data-ecosystem=bug-board] { color: #ff9c94; }
+.bug-tags { display: flex; flex-wrap: wrap; gap: 8px; margin: 8px 0; }
+.bug-tags span { font-size: 14px; padding: 4px 8px; border: 1px solid #73504e; border-radius: 6px; color: #ffc1bb; }
+#bug-fields { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 12px; }
 .ecosystem-nav button[data-ecosystem=skill-altar] { color: #7bf1c8; }
 .ecosystem-nav button.active { border-color: #9bd6ed; background: #264451; }
 .crew-footer .ecosystem-nav { margin-top: 16px; }
