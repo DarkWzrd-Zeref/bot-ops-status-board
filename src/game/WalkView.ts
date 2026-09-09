@@ -1,7 +1,10 @@
 import * as THREE from "three";
-import { canStand, findWalkStart, moveWalker, type WalkGrid } from "./walk.ts";
+import { canStand, findWalkStart, moveWalker, walkEscapeAction, walkLookStep, type WalkGrid } from "./walk.ts";
 
-const blockedInput = () => !!document.activeElement?.closest("input,textarea,select,[contenteditable=true],dialog") || !!document.querySelector("dialog[open],#hud.operations-open,#hud:not(.chat-collapsed) #chat-panel:not([hidden]),#hud .crew-panel:not([hidden])");
+const composerFocused = () => !!document.activeElement?.closest("input,textarea,select,[contenteditable=true],dialog");
+const overlayOpen = () => !!document.querySelector("dialog[open],#hud.operations-open,#chat-panel:not([hidden]),#hud .crew-panel:not([hidden])");
+/** WASD/look only yield to a focused composer or modal, not a merely-visible chat drawer. */
+const blockedInput = () => composerFocused() || !!document.querySelector("dialog[open]");
 
 /** Optional first-person spectator camera. No pointer-lock, permissions or shared writes. */
 export class WalkView {
@@ -10,7 +13,7 @@ export class WalkView {
   private yaw = 0;
   private pitch = -.08;
   private keys = new Set<string>();
-  private pointer: { id: number; x: number; y: number } | null = null;
+  private pointer: { id: number; x: number; y: number; armed: boolean } | null = null;
   private touchKeys = new Map<number, string>();
   private ui = document.createElement("section");
   private target: HTMLButtonElement;
@@ -32,18 +35,27 @@ export class WalkView {
     });
     canvas.addEventListener("pointerdown", e => {
       if (!this.active || blockedInput() || e.button !== 0 || this.pointer) return;
-      this.pointer = { id: e.pointerId, x: e.clientX, y: e.clientY }; canvas.setPointerCapture(e.pointerId);
+      this.pointer = { id: e.pointerId, x: e.clientX, y: e.clientY, armed: false }; canvas.setPointerCapture(e.pointerId);
     });
     canvas.addEventListener("pointermove", e => {
       if (!this.active || this.pointer?.id !== e.pointerId || blockedInput()) return;
-      this.yaw -= (e.clientX - this.pointer.x) * .004;
-      this.pitch = THREE.MathUtils.clamp(this.pitch - (e.clientY - this.pointer.y) * .004, -1.2, 1.15);
-      this.pointer.x = e.clientX; this.pointer.y = e.clientY;
+      const step = walkLookStep(this.pointer, e.clientX, e.clientY);
+      this.pointer = { id: this.pointer.id, x: step.x, y: step.y, armed: step.armed };
+      this.yaw += step.yaw;
+      this.pitch = THREE.MathUtils.clamp(this.pitch + step.pitch, -1.2, 1.15);
     });
     for (const event of ["pointerup", "pointercancel", "lostpointercapture"]) canvas.addEventListener(event, e => { if (this.pointer?.id === (e as PointerEvent).pointerId) this.pointer = null; });
     window.addEventListener("keydown", e => {
       if (!this.active) return;
-      if (e.key === "Escape" && !document.querySelector("dialog[open]")) { this.leave(); e.preventDefault(); return; }
+      if (e.key === "Escape") {
+        const focused = composerFocused();
+        if (walkEscapeAction({ dialogOpen: !!document.querySelector("dialog[open]"), overlayOpen: overlayOpen(), composerFocused: focused }) === "defer") {
+          if (focused && document.activeElement instanceof HTMLElement) document.activeElement.blur();
+          this.clear();
+          return;
+        }
+        this.leave(); e.preventDefault(); return;
+      }
       if (blockedInput() || e.isComposing || e.ctrlKey || e.metaKey || e.altKey) return;
       const k = e.key.toLowerCase();
       if (["w", "a", "s", "d", "arrowup", "arrowdown", "arrowleft", "arrowright"].includes(k)) { this.keys.add(k); e.preventDefault(); }

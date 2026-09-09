@@ -1,7 +1,7 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import * as THREE from "three";
-import { canStand, findWalkStart, moveWalker } from "../src/game/walk.ts";
+import { canStand, findWalkStart, moveWalker, walkEscapeAction, walkLookStep } from "../src/game/walk.ts";
 import { packLabels } from "../src/game/labelLayout.ts";
 import { createArchitecture, createCharacter } from "../src/game/architecture.ts";
 import hubs from "../src/content/hubs.json";
@@ -28,6 +28,22 @@ test("walk helpers preserve input and reject unreasonable movement", () => {
   const p = { x: 1.5, z: 1.5 };
   assert.deepEqual(moveWalker(grid, p, 1000, 0), p);
   moveWalker(grid, p, .5, 0); assert.deepEqual(p, { x: 1.5, z: 1.5 });
+});
+test("Escape leaves first person only when no composer, overlay or dialog is open", () => {
+  assert.equal(walkEscapeAction({}), "leave");
+  assert.equal(walkEscapeAction({ composerFocused: true }), "defer");
+  assert.equal(walkEscapeAction({ overlayOpen: true }), "defer");
+  assert.equal(walkEscapeAction({ dialogOpen: true }), "defer");
+  assert.equal(walkEscapeAction({ composerFocused: false, overlayOpen: false, dialogOpen: false }), "leave");
+});
+test("look drag ignores tap-sized pointer noise then arms after the slop", () => {
+  const start = { x: 10, y: 10, armed: false };
+  const tap = walkLookStep(start, 12, 11, 6);
+  assert.equal(tap.armed, false); assert.equal(tap.yaw, 0); assert.equal(tap.pitch, 0);
+  const drag = walkLookStep(start, 20, 10, 6);
+  assert.equal(drag.armed, true); assert.ok(drag.yaw < 0);
+  const follow = walkLookStep({ x: drag.x, y: drag.y, armed: true }, 22, 10, 6);
+  assert.equal(follow.armed, true); assert.ok(follow.yaw < 0);
 });
 test("label packing suppresses collisions, bounds count and retains focused selection", () => {
   const base = { x: 200, y: 150, width: 100, height: 28, priority: 0 };

@@ -295,7 +295,13 @@ function bind() {
     closeOperations(); friendsOpen = false; chatOpen = false; render();
   });
   window.addEventListener("keydown", event => {
-    if (event.key !== "Escape" || document.activeElement?.closest("input, textarea, select, dialog")) return;
+    if (event.key !== "Escape" || document.querySelector("dialog[open]")) return;
+    const composer = document.activeElement?.closest("input, textarea, select, [contenteditable=true]");
+    if (composer instanceof HTMLElement) {
+      composer.blur();
+      event.preventDefault();
+      return;
+    }
     closeOperations(); friendsOpen = false; chatOpen = false;
     host.querySelectorAll<HTMLDetailsElement>(".district-nav").forEach(d => { d.open = false; });
     render(); bus.emit({ type: "changed" });
