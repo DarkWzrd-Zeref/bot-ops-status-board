@@ -1,30 +1,12 @@
-import Phaser from "phaser";
-import { cookTextures } from "./textures.ts";
-import { HubScene } from "./HubScene.ts";
+import { World3D } from "./World3D.ts";
 
-export class BootScene extends Phaser.Scene {
-  constructor() {
-    super("boot");
+// The legacy renderer is downloaded only when WebGL is unavailable.
+export async function makeGame(parent: HTMLElement) {
+  try { return new World3D(parent); }
+  catch (error) {
+    console.warn("3D unavailable; using the canvas map", error);
+    parent.replaceChildren();
+    const { makeFallback } = await import("./fallback.ts");
+    return makeFallback(parent);
   }
-  create(): void {
-    cookTextures(this);
-    this.scene.start("hub");
-  }
-}
-
-export function makeGame(parent: HTMLElement): Phaser.Game {
-  return new Phaser.Game({
-    type: Phaser.AUTO,
-    parent,
-    backgroundColor: "#0b100c",
-    pixelArt: true,
-    roundPixels: true,
-    scale: {
-      mode: Phaser.Scale.RESIZE,
-      autoCenter: Phaser.Scale.CENTER_BOTH,
-      width: 960,
-      height: 640,
-    },
-    scene: [BootScene, HubScene],
-  });
 }

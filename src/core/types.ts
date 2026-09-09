@@ -103,17 +103,12 @@ export interface LogLine {
   tone: "ok" | "warn" | "bad" | "info";
 }
 
-export type Speaker = "claude" | "grok" | "cursor" | "grok-a" | "grok-b" | "chatgpt" | "grok-heavy" | "zeref";
-
-export interface RadioNote {
-  id: string;
-  from: Speaker;
-  palId: string | null;
-  text: string;
-  at: number;
-}
+import type { RadioNote } from "../../shared/protocol.ts";
+export type { Speaker, RadioNote } from "../../shared/protocol.ts";
 
 export type GameEvent =
+  | { type: "presence" }
+  | { type: "focus-agent"; agentId: string }
   | { type: "changed" }
   | { type: "log"; line: LogLine }
   | { type: "toast"; text: string; tone: LogLine["tone"] }

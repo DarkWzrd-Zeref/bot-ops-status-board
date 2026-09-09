@@ -7,6 +7,12 @@
   },
   "agents": [
     {
+      "id": "codex", "name": "Codex", "role": "Builder", "model": "Codex desktop", "account": "codex",
+      "discordChannel": null, "color": "#6ff5c3", "mimicOf": null, "homeHub": "cursor",
+      "bio": "Your Codex desktop teammate. Builds, tests and ships from the repository, then reports back to the command center.",
+      "work": ["code", "research", "command"]
+    },
+    {
       "id": "grok-am-a",
       "name": "AM Twin A",
       "role": "Account Manager",

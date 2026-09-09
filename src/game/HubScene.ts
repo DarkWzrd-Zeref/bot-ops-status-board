@@ -217,7 +217,8 @@ export class HubScene extends Phaser.Scene {
 
   private spawnActors(): void {
     for (const a of runtime.agents) {
-      const spr = this.add.image(a.tx * TILE + 16, a.ty * TILE + 10, "chibi-" + a.id).setDepth(5);
+      const model = AGENTS.find(d => d.id === a.id)?.model ?? "";
+      const spr = this.add.image(a.tx * TILE + 16, a.ty * TILE + 10, /grok/i.test(model) ? "robot" : "alien").setDisplaySize(40, 40).setDepth(5);
       this.agentSprites.set(a.id, spr);
       const def = AGENTS.find((x) => x.id === a.id);
       const t = this.add
