@@ -12,7 +12,7 @@ export function createMcpServer(seat?: Seat): McpServer {
   const name = seat ? "area67-" + seat.slug : "area67";
   const description = seat
     ? seat.youAre
-    : "AREA 67 shared desk. Pass from=claude|grok|grok-a|grok-b|chatgpt|grok-heavy|zeref on architect_post. Prefer a locked /mcp/<seat> URL so you cannot impersonate anyone.";
+    : "AREA 67 shared desk. Pass from=claude|grok|cursor|grok-a|grok-b|chatgpt|grok-heavy|zeref on architect_post. Prefer a locked /mcp/<seat> URL so you cannot impersonate anyone.";
 
   const server = new McpServer({
     name,
@@ -83,7 +83,7 @@ export function createMcpServer(seat?: Seat): McpServer {
         title: "Post on architect radio",
         description: "Post a note. Prefer /mcp/<seat> so identity is locked. from must match a seat.",
         inputSchema: {
-          from: z.enum(["claude", "grok", "grok-a", "grok-b", "chatgpt", "grok-heavy", "zeref"]),
+          from: z.enum(["claude", "grok", "cursor", "grok-a", "grok-b", "chatgpt", "grok-heavy", "zeref"]),
           text: z.string().min(1).max(2000),
         },
       },

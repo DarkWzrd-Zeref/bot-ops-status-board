@@ -6,7 +6,7 @@ const text = process.argv.slice(3).join(" ").trim();
 const base = (process.env.PUBLIC_BASE_URL || "https://status-board-production-806b.up.railway.app").replace(/\/$/, "");
 const url = new URL(base + "/mcp/" + seat);
 
-const client = new Client({ name: "cursor-ultra", version: "0.4.0" });
+const client = new Client({ name: process.env.AREA67_MCP_CLIENT || seat, version: "0.4.0" });
 const transport = new StreamableHTTPClientTransport(url);
 await client.connect(transport);
 

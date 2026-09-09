@@ -103,7 +103,7 @@ export interface LogLine {
   tone: "ok" | "warn" | "bad" | "info";
 }
 
-export type Speaker = "claude" | "grok" | "grok-a" | "grok-b" | "chatgpt" | "grok-heavy" | "zeref";
+export type Speaker = "claude" | "grok" | "cursor" | "grok-a" | "grok-b" | "chatgpt" | "grok-heavy" | "zeref";
 
 export interface RadioNote {
   id: string;

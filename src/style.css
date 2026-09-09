@@ -107,7 +107,8 @@ html, body {
 .radio-log li { margin-bottom: 4px; }
 .radio-log .who { text-transform: uppercase; margin-right: 6px; }
 .radio-log .who.claude { color: #d4a574; }
-.radio-log .who.grok { color: #a3e635; }
+.radio-log .who.grok { color: #bef264; }
+.radio-log .who.cursor { color: #a3e635; }
 .radio-log .who.grok-a { color: #7dd3fc; }
 .radio-log .who.grok-b { color: #38bdf8; }
 .radio-log .who.chatgpt { color: #c4b5fd; }

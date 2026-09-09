@@ -97,7 +97,7 @@ app.post("/api/architect", async (c) => {
   const from = typeof body?.from === "string" ? body.from : "";
   const text = typeof body?.text === "string" ? body.text.trim() : "";
     if (!isSpeaker(from) || !text) {
-    return c.json({ error: "Need { from: claude|grok|grok-a|grok-b|chatgpt|grok-heavy|zeref, text }" }, 400);
+    return c.json({ error: "Need { from: claude|grok|cursor|grok-a|grok-b|chatgpt|grok-heavy|zeref, text }" }, 400);
   }
   return c.json(store.postArchitect(from as Speaker, text));
 });

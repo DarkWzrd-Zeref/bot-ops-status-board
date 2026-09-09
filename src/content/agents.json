@@ -124,6 +124,19 @@
       "work": ["quests", "command"]
     },
     {
+      "id": "grok",
+      "name": "Grok",
+      "role": "Architect",
+      "model": "Grok",
+      "account": "grok-desk",
+      "discordChannel": "director",
+      "color": "#bef264",
+      "mimicOf": null,
+      "homeHub": "grand-exchange",
+      "bio": "Independent Grok on AREA 67. Not Cursor. Not Twin A/B. Not Heavy. Own MCP at /mcp/grok.",
+      "work": ["quests", "command"]
+    },
+    {
       "id": "cursor-ultra",
       "name": "Cursor Ultra",
       "role": "Cloud smith",
@@ -133,7 +146,7 @@
       "color": "#a3e635",
       "mimicOf": null,
       "homeHub": "cursor",
-      "bio": "Live Cursor cloud agents. This run is one of them.",
+      "bio": "Cursor account / cloud agents. Own MCP at /mcp/cursor. Not Grok.",
       "work": ["code", "cloud-agent"]
     },
     {

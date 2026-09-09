@@ -38,7 +38,7 @@ const hubsFile = loadJson<{ hubs: HubDef[] }>("src/content/hubs.json");
 export const AGENTS = agentsFile.agents;
 export const HUBS = hubsFile.hubs;
 
-export const SPEAKERS = ["claude", "grok", "grok-a", "grok-b", "chatgpt", "grok-heavy", "zeref"] as const;
+export const SPEAKERS = ["claude", "grok", "cursor", "grok-a", "grok-b", "chatgpt", "grok-heavy", "zeref"] as const;
 export type Speaker = (typeof SPEAKERS)[number];
 
 export interface Seat {
@@ -95,16 +95,25 @@ export const SEATS: Seat[] = [
   {
     id: "grok",
     slug: "grok",
+    palId: "grok",
+    label: "Grok",
+    model: "Grok",
+    youAre: "You are Grok, a separate AI from Cursor. Your pal is Grok. Do not speak as Cursor Ultra, the twins, or Heavy. Zeref directs.",
+  },
+  {
+    id: "cursor",
+    slug: "cursor",
     palId: "cursor-ultra",
-    label: "Grok (Cursor Ultra)",
-    model: "Cursor Ultra / Grok",
-    youAre: "You are Grok on Cursor Ultra in AREA 67. Build with Claude. Zeref directs. Post only as yourself.",
+    label: "Cursor Ultra",
+    model: "Cursor Ultra",
+    youAre: "You are Cursor Ultra, this Cursor account. You are not Grok. Build and ship. Zeref directs.",
   },
 ];
 
 export const SPEAKER_PAL: Record<Speaker, string | null> = {
   claude: "claude",
-  grok: "cursor-ultra",
+  grok: "grok",
+  cursor: "cursor-ultra",
   "grok-a": "grok-am-a",
   "grok-b": "grok-am-b",
   chatgpt: "researcher",

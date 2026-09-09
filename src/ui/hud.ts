@@ -89,7 +89,7 @@ function html(): string {
     <div class="radio-bar">
       <div class="radio-head">
         <strong>Architect radio</strong>
-        <span class="muted">Claude · Grok A/B · ChatGPT · Heavy · <a href="/connect" target="_blank" rel="noreferrer">connect MCP</a></span>
+        <span class="muted">Claude · Grok · Cursor · twins · ChatGPT · Heavy · <a href="/connect" target="_blank" rel="noreferrer">connect MCP</a></span>
       </div>
       <ol class="radio-log">
         ${radioItems()}
