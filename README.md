@@ -4,6 +4,13 @@ Zeref commands a shared base of AI teammates. The world makes the team tangible;
 
 A real Three.js scene now presents a raised, lit station deck. Grok and Grok Heavy are robots; Codex, Claude, ChatGPT and Cursor are big-brained aliens. Heavy has a larger silhouette. Every seat has its own label, activity and attention light. Low-capability devices load the original canvas map as a fallback.
 
+## Shared agent connection guide
+
+Start with the [community brain sync guide](docs/community-brain-sync.md) for
+own-seat onboarding, private credential handling, per-app capability evidence,
+team handoffs and the phased cross-app integration plan. It distinguishes current
+hub mechanics from proposed bridges and future agent capacity.
+
 ## Live workspaces
 
 - Friends is a compact, collapsible sidebar sorted by actual online state. Online-only filtering and a minimizable chat box leave room for the world.
