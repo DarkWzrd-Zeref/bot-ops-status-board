@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { readDraft, saveDraft } from "../src/ui/drafts.ts";
+import { composerAfterAttempt, persistComposerDrafts, readDraft, saveDraft, snapshotDrafts } from "../src/ui/drafts.ts";
 import {
   CHAT_DRAFT_KEY,
   QUICK_DRAFT_KEY,
@@ -87,10 +87,15 @@ test("boot identity stays the bundle commit; /health is validated and never adop
 test("reconnect preserves chat drafts and does not reload or mark agents resumed", async () => {
   resetReleaseWatchForTests();
   const store = new Map<string, string>();
-  const storage = { getItem: (k: string) => store.get(k) ?? null, setItem: (k: string, v: string) => { store.set(k, v); }, removeItem: (k: string) => { store.delete(k); } };
-  saveDraft(CHAT_DRAFT_KEY, "keep this radio draft", storage);
-  saveDraft(QUICK_DRAFT_KEY, "keep this quick draft", storage);
-  const snapshot = { [CHAT_DRAFT_KEY]: "keep this radio draft", [QUICK_DRAFT_KEY]: "keep this quick draft" };
+  const writes: string[] = [];
+  const storage = {
+    getItem: (k: string) => store.get(k) ?? null,
+    setItem: (k: string, v: string) => { writes.push("set:" + k); store.set(k, v); },
+    removeItem: (k: string) => { writes.push("remove:" + k); store.delete(k); },
+  };
+  persistComposerDrafts("keep this radio draft", "keep this quick draft", storage);
+  const snapshot = snapshotDrafts(storage);
+  writes.length = 0;
 
   let reloads = 0;
   let streams = 0;
@@ -101,6 +106,7 @@ test("reconnect preserves chat drafts and does not reload or mark agents resumed
   });
   assert.equal(streams, 1);
   assert.equal(reloads, 0);
+  assert.equal(writes.length, 0, "reconnect must not mutate draft storage");
   assert.equal(draftsStillHeld(storage, snapshot), true);
 
   applyHubUpdate();
@@ -111,4 +117,43 @@ test("reconnect preserves chat drafts and does not reload or mark agents resumed
   saveDraft(CHAT_DRAFT_KEY, "", storage);
   assert.equal(readDraft(CHAT_DRAFT_KEY, storage), "");
   assert.equal(readDraft(QUICK_DRAFT_KEY, storage), snapshot[QUICK_DRAFT_KEY]);
+});
+
+test("failed health poll and a second reconnect click still leave drafts in place", async () => {
+  resetReleaseWatchForTests();
+  const store = new Map<string, string>([[CHAT_DRAFT_KEY, "unsent directive"], [QUICK_DRAFT_KEY, "quick ping"]]);
+  const storage = {
+    getItem: (k: string) => store.get(k) ?? null,
+    setItem: (k: string, v: string) => { store.set(k, v); },
+    removeItem: (k: string) => { store.delete(k); },
+  };
+  const snapshot = snapshotDrafts(storage);
+  let streams = 0;
+  let reloads = 0;
+  setReleaseReload(() => { reloads += 1; });
+  await reconnectHub({
+    reconnectStream: () => { streams += 1; },
+    fetchImpl: (async () => { throw new Error("network down"); }) as unknown as typeof fetch,
+  });
+  assert.equal(streams, 1);
+  assert.equal(reloads, 0);
+  assert.equal(draftsStillHeld(storage, snapshot), true);
+  assert.equal(composerAfterAttempt("unsent directive", "unsent directive", false), "unsent directive");
+
+  let second = 0;
+  const first = reconnectHub({
+    reconnectStream: () => { streams += 1; second += 1; },
+    fetchImpl: (async () => {
+      await new Promise(resolve => setTimeout(resolve, 20));
+      return { ok: true, json: async () => ({ ok: true, version: "1.2.6", commit: "bb1cf2d" }) };
+    }) as unknown as typeof fetch,
+  });
+  await reconnectHub({
+    reconnectStream: () => { streams += 1; second += 1; },
+    fetchImpl: (async () => ({ ok: true, json: async () => ({ ok: true, version: "1.2.6", commit: "bb1cf2d" }) })) as unknown as typeof fetch,
+  });
+  await first;
+  assert.equal(second, 1, "a reconnect already in flight must ignore a second click");
+  assert.equal(draftsStillHeld(storage, snapshot), true);
+  assert.equal(releaseStatus({ radioLive: true, health: { ok: true, version: "1.3.0", commit: "aaaaaaaa" }, bootCommit: "bbbbbbbb" }).showUpdate, true);
 });
