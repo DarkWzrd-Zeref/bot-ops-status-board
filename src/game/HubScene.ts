@@ -64,13 +64,23 @@ export class HubScene extends Phaser.Scene {
     this.cameras.main.setZoom(0.78);
     this.cameras.main.setBackgroundColor("#0b100c");
 
-    this.cursors = this.input.keyboard!.createCursorKeys();
+    const kb = this.input.keyboard!;
+    this.cursors = kb.addKeys(
+      {
+        up: Phaser.Input.Keyboard.KeyCodes.UP,
+        down: Phaser.Input.Keyboard.KeyCodes.DOWN,
+        left: Phaser.Input.Keyboard.KeyCodes.LEFT,
+        right: Phaser.Input.Keyboard.KeyCodes.RIGHT,
+      },
+      false,
+    ) as Phaser.Types.Input.Keyboard.CursorKeys;
     this.wasd = {
-      W: this.input.keyboard!.addKey("W"),
-      A: this.input.keyboard!.addKey("A"),
-      S: this.input.keyboard!.addKey("S"),
-      D: this.input.keyboard!.addKey("D"),
+      W: kb.addKey("W", false),
+      A: kb.addKey("A", false),
+      S: kb.addKey("S", false),
+      D: kb.addKey("D", false),
     };
+    kb.disableGlobalCapture();
 
     this.input.on("pointerdown", (p: Phaser.Input.Pointer) => {
       if (p.event && (p.event.target as HTMLElement | null)?.closest?.("#hud")) return;
