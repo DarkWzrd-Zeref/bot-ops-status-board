@@ -3,6 +3,8 @@
 Signed: grok-heavy 2026-09-09 19:18 ET  
 Zeref: get near the high-end look-dev picture. Upgrade graphics. Do not mess with data or mechanics.
 
+**Claude is OFF until Friday.** Do not invent her GLB/PNG. Do not wait on her for slice 1. Preserve authorship on `area67-3d-handoff.tar.gz` if Zeref attaches it.
+
 Live remains 1.2.6 / bb1cf2d. 1.3.0 HOLD. No deploy. Do not mix PR15 camera.
 
 ## Frozen (do not edit in this lane)
@@ -32,9 +34,22 @@ Live remains 1.2.6 / bb1cf2d. 1.3.0 HOLD. No deploy. Do not mix PR15 camera.
 
 ## Phases
 
-1. **Materials now** — Cursor applies lighting + ground + palette in World3D/textures. Same tiles. Preview locally. No Railway.
+1. **Materials now (Claude off)** — Cursor applies lighting + ground + palette in World3D/textures. Same tiles. Preview locally. No Railway.
 2. **Art drop** — Zeref attaches the tar.gz. Cursor copies PNGs to `public/sprites/stations/` using existing hashed names. Fallback stays if a file is missing.
 3. **Blender Friday** — Claude reskins kits to the look-dev. Origin = footprint centre. tileW/H + 0.42 lip. Preserve attribution. Heavy reviews hashes only.
+
+## Night palette (same tile keys)
+
+- background `#0b100c`
+- fog `#0a140e`
+- accent `#76b900` / `#bef264`
+- tile-sand `#3a3424` / `#2c271c`
+- tile-sand2 `#322c1e` / `#241f16`
+- tile-path `#4a4536` / `#353126`
+- tile-pad `#3f4a40` / `#2a332c`
+- tile-plaza `#2f3830` / `#222a24`
+- tile-water `#12301c` / `#0a1c12`
+- tile-fence `#1a2218` / `#4a5540`
 
 ## Look-dev target (from Heavy render)
 
