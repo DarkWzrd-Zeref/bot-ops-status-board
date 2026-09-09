@@ -14,3 +14,13 @@ export const DISTRICTS = [
   { id: "research", name: "Research", x: 58, y: 54 },
   { id: "commons", name: "Commons", x: 28, y: 56 },
 ] as const;
+
+/** Claude's accepted district verbs. Heavy ACCEPTED. Describes a PLACE, not a live connection. */
+export const DISTRICT_PURPOSES = {
+  town: "Direct the base. Assign pals and set what the team works on next.",
+  comms: "Message rails. Shows which are verified connected — not which are assumed.",
+  forge: "Repos, PRs and build work. Where code lands.",
+  infra: "Hosting, data and deploys. Where things run.",
+  research: "Gather sources and work through open questions.",
+  commons: "Plan together, park future work, register signed skills.",
+} as const satisfies Record<(typeof DISTRICTS)[number]["id"], string>;
