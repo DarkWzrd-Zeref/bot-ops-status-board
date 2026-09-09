@@ -97,16 +97,12 @@ function userHeartbeat() {
   const active = document.visibilityState === "visible" && Date.now() - lastInteraction < 120_000;
   void request("/api/presence/zeref", { method: "POST", body: JSON.stringify({ state: active ? "attentive" : "away", activity: active ? "At the command deck" : "Away from the command deck" }) }).catch(() => {});
 }
-export function connectLive() {
-  if (started) return;
-  started = true;
-  onPersist(data => {
-    if (data.lifting) return;
-    if (remoteChange || !ready) return;
-    window.clearTimeout(persistTimer);
-    persistTimer = window.setTimeout(() => void pushBase(), 400);
-  });
+let stream: EventSource | undefined;
+
+function openStream() {
+  stream?.close();
   const es = new EventSource("/api/events");
+  stream = es;
   es.onopen = () => { radioLive = true; bus.emit({ type: "presence" }); userHeartbeat(); };
   es.onmessage = event => {
     try {
@@ -130,6 +126,18 @@ export function connectLive() {
     } catch (error) { console.error("Hub event failed", error); }
   };
   es.onerror = () => { radioLive = false; updateWorkTargets(); bus.emit({ type: "presence" }); };
+}
+
+export function connectLive() {
+  if (started) return;
+  started = true;
+  onPersist(data => {
+    if (data.lifting) return;
+    if (remoteChange || !ready) return;
+    window.clearTimeout(persistTimer);
+    persistTimer = window.setTimeout(() => void pushBase(), 400);
+  });
+  openStream();
   document.addEventListener("pointerdown", () => { lastInteraction = Date.now(); }, { passive: true });
   document.addEventListener("keydown", () => { lastInteraction = Date.now(); });
   document.addEventListener("visibilitychange", userHeartbeat);
@@ -137,4 +145,16 @@ export function connectLive() {
   window.setInterval(() => { updateWorkTargets(); bus.emit({ type: "presence" }); }, 10_000);
   window.addEventListener("pagehide", () => navigator.sendBeacon("/api/presence/zeref",
     new Blob([JSON.stringify({ state: "away", activity: "Closed the command deck" })], { type: "application/json" })));
+}
+
+/** Re-open the hub stream. Does not reload the page or claim that agents resumed. */
+export function reconnectLive() {
+  radioLive = false;
+  updateWorkTargets();
+  bus.emit({ type: "presence" });
+  if (!started) {
+    connectLive();
+    return;
+  }
+  openStream();
 }

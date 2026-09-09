@@ -5,6 +5,7 @@ import { attention, postRadio, presenceBySeat, radioLive, radioNotes, workReport
 import { SEATS, seatForPal, speakerLabel, type Speaker, type Channel } from "../../shared/protocol.ts";
 import { projectSchema, safeLink } from "../../shared/workspace.ts";
 import { mountEcosystem, showEcosystem, ecosystemNav } from "./ecosystem.ts";
+import { applyHubUpdate, currentReleaseChip, reconnectHub, startReleaseWatch } from "./release.ts";
 
 let channel: Channel = "team";
 let onlyDirectives = false;
@@ -163,7 +164,7 @@ function render() {
   host.querySelector("#chat-launcher")?.setAttribute("aria-expanded", String(chatOpen));
   update("#chat-launcher", `Chat <span>${unread.command + unread.team || "⌁"}</span>`);
   host.querySelectorAll<HTMLButtonElement>("[data-channel]").forEach(b => { const ch = b.dataset.channel as Channel; b.classList.toggle("active", ch === channel); b.textContent = "# " + ch + (unread[ch] ? " · " + unread[ch] + " new" : ""); });
-  update("#connection", `<span class="status-light ${radioLive ? "attentive" : "offline"}"></span>${radioLive ? "Hub connected" : "Reconnecting…"}`);
+  update("#connection", currentReleaseChip());
   update("#roster", roster());
   update("#human-presence", `<span class="status-light ${attention("zeref")}" aria-hidden="true"></span>Zeref <small>${stateLabels[attention("zeref")]}</small>`);
   update("#project-list", projects());
@@ -186,7 +187,7 @@ export function mountHud(root: HTMLElement) {
   root.innerHTML = `
     <header class="app-header"><a class="brand" href="/" aria-label="AREA 67 home"><span class="brand-mark">67</span><span>AREA <b>67</b><small>COMMAND CENTER</small></span></a>
       <div class="header-center"><span class="breadcrumb">Operations</span><span>/</span><strong>Command deck</strong></div>
-      <div class="header-actions"><span id="connection" class="connection"></span><button class="subtle" id="connect-button">Connect AI ↗</button><span class="commander-avatar">Z</span><span class="commander-name">Zeref<small>Commander</small></span></div></header>
+      <div class="header-actions"><span id="connection" class="connection" role="status" aria-live="polite"></span><button class="subtle" id="connect-button">Connect AI ↗</button><span class="commander-avatar">Z</span><span class="commander-name">Zeref<small>Commander</small></span></div></header>
     <aside class="crew-panel" aria-label="Agent online list"><div class="friends-heading"><button id="friends-toggle" aria-label="Toggle agent online list" title="Agents — online list" aria-controls="roster">☷</button><div><h2>Agents</h2><span id="team-count"></span></div></div><label class="friends-filter"><input id="online-only" type="checkbox"> Online only</label><div id="roster"></div><div class="crew-footer"><b>Live agent status</b><p>Dots reflect real check-ins. They fade when an agent stops responding.</p></div><div id="project-list"></div></aside>
     <div class="world-overlay"><div class="world-heading"><span class="eyebrow">SECTOR 01 / THE PALBOX</span><h1>AREA 67</h1><span>Alien minds. Machine muscle.</span></div><div id="mission-summary"></div><div class="world-controls"><button data-camera="out" aria-label="Zoom out">−</button><button data-camera="home" aria-label="Center map">⌖</button><button data-camera="in" aria-label="Zoom in">+</button></div><div class="world-caption"><span>Click to explore · select a pal to assign</span><span>WASD move · scroll to zoom</span></div></div>
     <section class="operations-panel"><div id="build-tools"></div><div id="inspector-content"></div></section>
@@ -206,6 +207,7 @@ export function mountHud(root: HTMLElement) {
   root.insertAdjacentHTML("beforeend", '<form id="quick-chat" aria-label="Quick team message"><label for="quick-text" class="sr-only">Message everyone as Zeref</label><input id="quick-text" maxlength="2000" placeholder="Message everyone as Zeref…" autocomplete="off"><button type="submit">Send</button></form>');
   mountEcosystem(root, openChat);
   bind();
+  startReleaseWatch();
   render();
   host.querySelector<HTMLElement>("#message-log")!.scrollTop = 1e9;
   bus.on(e => {
@@ -291,6 +293,8 @@ function bind() {
     }
     if (b.dataset.reply) { const note = radioNotes.find(n => n.id === b.dataset.reply); openChat(note?.projectUid); replyTo = b.dataset.reply; channel = note?.channel ?? "team"; directive = false; host.querySelector<HTMLSelectElement>("#message-type")!.value = "message"; host.querySelector("#send-message")!.textContent = "Send message ↗"; recipient = note?.from ?? "all"; host.querySelector<HTMLSelectElement>("#recipient")!.value = recipient === "zeref" ? "all" : recipient; if (recipient === "zeref") recipient = "all"; host.querySelector<HTMLTextAreaElement>("#radio-text")!.focus(); }
     if (b.hasAttribute("data-cancel-reply")) replyTo = undefined;
+    if (b.id === "hub-reconnect") { void reconnectHub().catch(() => flash("Reconnect failed. Your drafts are still here.", "bad")); return; }
+    if (b.id === "hub-update") { applyHubUpdate(); return; }
     if (b.id === "connect-button") host.querySelector<HTMLDialogElement>("#connect-dialog")!.showModal();
     if (b.hasAttribute("data-close-dialog")) host.querySelector<HTMLDialogElement>("#connect-dialog")!.close();
     if (b.dataset.copy) void navigator.clipboard.writeText(location.origin + "/mcp/" + b.dataset.copy).then(() => flash("Endpoint copied")).catch(() => flash("Copy unavailable. Select the endpoint text to copy it.", "warn"));
