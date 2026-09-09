@@ -1,4 +1,5 @@
 import type { Point } from "./grid.ts";
+import type { ProjectInfo } from "../../shared/workspace.ts";
 
 export type Mode = "play" | "build" | "demolish" | "move";
 export type AgentStatus = "idle" | "walk" | "work" | "scan" | "blocked";
@@ -77,6 +78,7 @@ export interface PlacedBuilding {
   hubId: string;
   tx: number;
   ty: number;
+  project?: ProjectInfo;
 }
 
 export interface LiftedBuilding {
@@ -84,6 +86,7 @@ export interface LiftedBuilding {
   hubId: string;
   fromTx: number;
   fromTy: number;
+  project?: ProjectInfo;
 }
 
 export interface AgentRuntime {

@@ -2,6 +2,7 @@ import { mkdirSync, readFileSync, writeFileSync, renameSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { AGENTS, HUBS, MODS, SKILL_IDS, SEATS, SPEAKER_PAL, agentById, hubById, publicBase as siteBase, seatUrl, type Speaker } from "./catalog.ts";
 import { randomUUID } from "node:crypto";
+import { projectSchema, workSchema, type ProjectInfo, type WorkInput, type WorkReport } from "../shared/workspace.ts";
 import { effectiveAttention, isSpeaker, type RadioNote, type Presence, type Attention, type Channel, type ReceiptState } from "../shared/protocol.ts";
 
 export interface PlacedBuilding {
@@ -9,6 +10,7 @@ export interface PlacedBuilding {
   hubId: string;
   tx: number;
   ty: number;
+  project?: ProjectInfo;
 }
 
 export interface BaseSnapshot {
@@ -26,7 +28,8 @@ export interface PalUtterance {
 }
 
 export type BusEvent =
-  | { type: "hello"; notes: ArchitectNote[]; base: BaseSnapshot | null; presence: Presence[]; revision: number }
+  | { type: "hello"; notes: ArchitectNote[]; base: BaseSnapshot | null; presence: Presence[]; revision: number; work: WorkReport[] }
+  | { type: "work"; work: WorkReport[] }
   | { type: "presence"; presence: Presence[] }
   | { type: "receipt"; note: ArchitectNote }
   | { type: "architect"; note: ArchitectNote }
@@ -40,6 +43,7 @@ interface DiskState {
   lastSay: Record<string, PalUtterance>;
   base: BaseSnapshot | null;
   revision: number;
+  work: WorkReport[];
 }
 
 const DATA_DIR = process.env.DATA_DIR || join(process.cwd(), "data");
@@ -48,7 +52,7 @@ const MAX_NOTES = 200;
 
 const listeners = new Set<(ev: BusEvent) => void>();
 
-let state: DiskState = { notes: [], lastSay: {}, base: null, revision: 0 };
+let state: DiskState = { notes: [], lastSay: {}, base: null, revision: 0, work: [] };
 // Presence is never restored from disk or inferred from an animated pal.
 const heartbeats = new Map<Speaker, Presence>();
 let committedState = JSON.stringify(state);
@@ -65,6 +69,7 @@ function readState(raw: string): DiskState {
     lastSay: parsed.lastSay && typeof parsed.lastSay === "object" ? parsed.lastSay : {},
     base: parsed.base ?? null,
     revision: parsed.revision ?? 0,
+    work: Array.isArray(parsed.work) ? parsed.work.map(w => ({ ...w, sessionActive: false })) : [],
   };
 }
 
@@ -131,7 +136,7 @@ export function notes(limit = 40): ArchitectNote[] {
   // Open directives never disappear behind the recent-message window.
   return state.notes.filter((n, i) => i < Math.max(1, limit) || isOpen(n));
 }
-function isOpen(n: ArchitectNote): boolean { return n.directive && n.recipients.some(s => n.receipts[s]?.state !== "completed"); }
+function isOpen(n: ArchitectNote): boolean { return n.ping ? n.recipients.some(s => !n.receipts[s]) : n.directive && n.recipients.some(s => n.receipts[s]?.state !== "completed"); }
 
 export function base(): BaseSnapshot | null {
   return state.base;
@@ -152,7 +157,7 @@ export function heartbeat(seat: Speaker, attention: Attention = "attentive", act
 export function inbox(seat: Speaker, limit = 80): ArchitectNote[] {
   const addressed = state.notes.filter(n => n.from !== seat && (n.to === "all" || n.to === seat));
   // The limit bounds context, never unfinished directives.
-  const rows = addressed.filter((n, i) => i < limit || (n.recipients.includes(seat) && n.receipts[seat]?.state !== "completed"));
+  const rows = addressed.filter((n, i) => i < limit || (n.recipients.includes(seat) && isOpen(n)));
   let changed = false;
   for (const n of rows) {
     if (n.recipients.includes(seat) && !n.receipts[seat]) {
@@ -168,12 +173,13 @@ export function inbox(seat: Speaker, limit = 80): ArchitectNote[] {
 export function acknowledge(seat: Speaker, noteId: string, next: ReceiptState, detail = ""): ArchitectNote {
   const n = state.notes.find(n => n.id === noteId);
   if (!n || !n.recipients.includes(seat)) throw new Error("Directive not addressed to this seat");
+  if (n.ping && next !== "seen") throw new Error("A ping requests attention, not task acceptance");
   const previous = n.receipts[seat]?.state;
   if (previous === "completed" && next !== "completed") throw new Error("Completed directives cannot regress");
   if (previous && previous !== "seen" && next === "seen") return n;
   n.receipts[seat] = { state: next, at: Date.now(), detail: detail.slice(0, 500) };
-  heartbeat(seat, next === "accepted" ? "busy" : "attentive", detail || next);
-  persist(); publish({ type: "receipt", note: n }); return n;
+  persist(); heartbeat(seat, next === "accepted" ? "busy" : "attentive", detail || next);
+  publish({ type: "receipt", note: n }); return n;
 }
 
 export function lastSay(): Record<string, PalUtterance> {
@@ -187,6 +193,8 @@ export function setBase(next: BaseSnapshot): void {
     const hub = hubById(b.hubId);
     if (!hub || ids.has(b.uid)) throw new Error("Unknown station or duplicate building ID");
     ids.add(b.uid);
+    if (b.hubId === "project-site") b.project = projectSchema.parse(b.project);
+    else if (b.project) throw new Error("Project metadata requires a project building");
     if (!Number.isInteger(b.tx) || !Number.isInteger(b.ty) || b.tx < 0 || b.ty < 0 || b.tx + hub.w > 56 || b.ty + hub.h > 40) throw new Error("Station footprint is outside the map");
     if (b.hubId === "well" && (b.tx !== 27 || b.ty !== 19)) throw new Error("The command core cannot be moved");
     for (let x = b.tx; x < b.tx + hub.w; x++) for (let y = b.ty; y < b.ty + hub.h; y++) {
@@ -207,26 +215,44 @@ export function setBase(next: BaseSnapshot): void {
   for (const [pal, skills] of Object.entries(next.equipped ?? {})) {
     if (!agentById(pal) || skills.some(id => !SKILL_IDS.has(id))) throw new Error("Unknown pal or skill loadout");
   }
+  const changedScopes = new Set(next.buildings.filter(b => {
+    const old = state.base?.buildings.find(previous => previous.uid === b.uid);
+    return old && (old.project?.repoUrl !== b.project?.repoUrl || old.project?.workspace !== b.project?.workspace);
+  }).map(b => b.uid));
   state.base = {
     buildings: next.buildings ?? [],
     assignments: next.assignments ?? {},
     equipped: next.equipped,
   };
+  state.work = state.work.filter(w => ids.has(w.buildingUid) && !changedScopes.has(w.buildingUid));
   state.revision++;
   persist();
   publish({ type: "base", base: state.base, revision: state.revision });
+  publish({ type: "work", work: state.work });
 }
 
-export function postArchitect(from: Speaker, text: string, options: { channel?: Channel; to?: Speaker | "all"; directive?: boolean; replyTo?: string } = {}): ArchitectNote {
+export function postArchitect(from: Speaker, text: string, options: { channel?: Channel; to?: Speaker | "all"; directive?: boolean; replyTo?: string; ping?: boolean; projectUid?: string } = {}): ArchitectNote {
   const palId = SPEAKER_PAL[from];
   if (!text.trim() || text.trim().length > 2000) throw new Error("Message must contain 1–2000 characters");
-  if (options.replyTo && !state.notes.some(n => n.id === options.replyTo)) throw new Error("Reply target no longer exists");
+  const parent = options.replyTo ? state.notes.find(n => n.id === options.replyTo) : undefined;
+  if (options.replyTo && !parent) throw new Error("Reply target no longer exists");
+  if (parent?.projectUid) {
+    if (options.projectUid && options.projectUid !== parent.projectUid) throw new Error("Reply belongs to a different project");
+    options = { ...options, projectUid: parent.projectUid };
+  }
   const to = options.to ?? "all";
-  const directive = from === "zeref" && (options.directive ?? false);
+  if (options.projectUid && !state.base?.buildings.some(b => b.uid === options.projectUid)) throw new Error("Project building no longer exists");
+  if (options.ping && to === from) throw new Error("Choose another teammate to ping");
+  if (options.ping) {
+    const recent = state.notes.find(n => n.ping && n.from === from && n.to === to && n.projectUid === options.projectUid && Date.now() - n.at < 60_000);
+    if (recent) return recent;
+  }
+  const directive = !options.ping && from === "zeref" && (options.directive ?? false);
   const note: ArchitectNote = { id: nid(), from, palId, text: text.trim(), at: Date.now(), channel: options.channel ?? "command", to, directive, replyTo: options.replyTo,
-    recipients: directive ? (to === "all" ? SEATS.map(s => s.id) : [to]).filter(s => s !== from) : [], receipts: {} };
+    ping: options.ping, projectUid: options.projectUid,
+    recipients: directive || options.ping ? (to === "all" ? SEATS.map(s => s.id) : [to]).filter(s => s !== from) : [], receipts: {} };
   state.notes.unshift(note);
-  state.notes = state.notes.filter((n, i) => i < MAX_NOTES || (n.directive && n.recipients.some(s => n.receipts[s]?.state !== "completed")));
+  state.notes = state.notes.filter((n, i) => i < MAX_NOTES || isOpen(n));
   if (palId) {
     state.lastSay[palId] = { palId, text: note.text, at: note.at };
   }
@@ -234,6 +260,19 @@ export function postArchitect(from: Speaker, text: string, options: { channel?: 
   publish({ type: "architect", note });
   heartbeat(from, "attentive", "Posted to " + note.channel, "rest");
   return note;
+}
+
+export function workReports(): WorkReport[] { return state.work; }
+export function reportWork(seat: Speaker, input: WorkInput): WorkReport {
+  if (!SEATS.some(s => s.id === seat)) throw new Error("Only an AI seat can report its own work");
+  const data = workSchema.parse(input);
+  if (!state.base?.buildings.some(b => b.uid === data.buildingUid)) throw new Error("Work target no longer exists");
+  const report: WorkReport = { ...data, seat, updatedAt: Date.now(), sessionActive: true };
+  state.work = [...state.work.filter(w => w.seat !== seat), report];
+  persist();
+  heartbeat(seat, data.state === "working" ? "busy" : "attentive", data.activity);
+  publish({ type: "work", work: state.work });
+  return report;
 }
 
 export function say(palId: string, text: string): PalUtterance | { error: string } {
@@ -249,6 +288,7 @@ export function say(palId: string, text: string): PalUtterance | { error: string
 export function assignPal(
   palId: string,
   hubId: string | null,
+  buildingUid?: string,
 ): { ok: true; buildingUid: string | null; hubId: string | null } | { ok: false; error: string } {
   if (!agentById(palId)) return { ok: false, error: "unknown pal " + palId };
   if (!state.base) {
@@ -263,7 +303,8 @@ export function assignPal(
     return { ok: true, buildingUid: null, hubId: null };
   }
   if (!hubById(hubId)) return { ok: false, error: "unknown station " + hubId };
-  const b = state.base.buildings.find((x) => x.hubId === hubId);
+  if (hubId === "project-site" && !buildingUid) return { ok: false, error: "Choose an exact project buildingUid from hub_sync.base" };
+  const b = state.base.buildings.find((x) => x.hubId === hubId && (!buildingUid || x.uid === buildingUid));
   if (!b) return { ok: false, error: "Station " + hubId + " is not placed on this Palbox yet." };
   const slots = MODS[hubId]?.slots ?? 1;
   const used = Object.entries(state.base.assignments).filter(([id, uid]) => id !== palId && uid === b.uid).length;
@@ -291,7 +332,7 @@ export function palList() {
       model: a.model,
       work: a.work,
       station: hub?.id ?? null,
-      stationName: hub?.name ?? null,
+      stationName: b?.project?.name ?? hub?.name ?? null,
       lastSay: uttered?.text ?? null,
       presence: presence().find(p => SPEAKER_PAL[p.seat] === a.id) ?? null,
     };

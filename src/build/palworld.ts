@@ -20,6 +20,7 @@ export const PALBOX_SLOTS = 15;
 export const PALBOX_LEVEL = 1;
 
 export const BUILD_TABS = [
+  { id: "projects", label: "Projects", hint: "Your repositories and workspaces as buildings" },
   { id: "production", label: "Production", hint: "Workbenches — Cursor, GitHub, Firecrawl, Apify" },
   { id: "infra", label: "Infra", hint: "Power & pipes — Railway, Neon, Cloudflare" },
   { id: "comms", label: "Comms", hint: "Radios — Discord, Mail, Slack, X, Voice" },
@@ -31,6 +32,7 @@ export const BUILD_TABS = [
 export type BuildTabId = (typeof BUILD_TABS)[number]["id"];
 
 export function tabFor(hub: HubDef): BuildTabId | "core" {
+  if (hub.kind === "project") return "projects";
   if (hub.id === "github") return "defense";
   if (hub.id === "calendar" || hub.id === "drive" || hub.id === "bank" || hub.id === "grand-exchange") return "storage";
   switch (hub.kind) {

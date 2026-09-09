@@ -5,6 +5,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { effectiveAttention, SEATS, type Presence } from "../shared/protocol.ts";
 import type { BusEvent } from "../server/store.ts";
+import { workIsLive } from "../shared/workspace.ts";
 
 const testDir = mkdtempSync(join(tmpdir(), "area67-test-"));
 process.env.DATA_DIR = testDir;
@@ -196,6 +197,81 @@ await test("cutover recovery adds historical messages once without replacing liv
   assert.equal(readFileSync(file, "utf8"), good);
   delete process.env.AREA67_RECOVERY_NOTES;
   store.loadStore();
+});
+
+await test("attention pings are durable, deduplicated and never imply accepted work", () => {
+  const ping = store.postArchitect("codex", "Please read the workspace", { ping: true, to: "claude", channel: "team" });
+  assert.equal(ping.directive, false);
+  assert.equal(store.postArchitect("codex", "Retry", { ping: true, to: "claude", channel: "team" }).id, ping.id);
+  assert.equal(store.presence().find(p => p.seat === "claude")!.state, "offline");
+  for (let i = 0; i < 205; i++) store.postArchitect("cursor", "Context " + i, { channel: "team" });
+  store.loadStore();
+  assert.ok(store.notes(1).some(n => n.id === ping.id));
+  assert.deepEqual(store.notes(1).find(n => n.id === ping.id)!.receipts, {});
+  store.inbox("grok", 1);
+  assert.deepEqual(store.notes(1).find(n => n.id === ping.id)!.receipts, {});
+  assert.ok(store.inbox("claude", 1).some(n => n.id === ping.id));
+  assert.throws(() => store.acknowledge("claude", ping.id, "accepted"), /attention/);
+  assert.equal(store.notes(1000).find(n => n.id === ping.id)!.receipts.claude!.state, "seen");
+});
+await test("project buildings validate metadata and exact assignments while preserving versioned saves", async () => {
+  const project = { name: "Hub", repoUrl: "https://github.com/example/hub", workspace: "workspace-a", summary: "API and UI", contents: ["src", "server"] };
+  const buildings = [...snapshot().buildings, { uid: "project-a", hubId: "project-site", tx: 19, ty: 24, project }, { uid: "project-b", hubId: "project-site", tx: 22, ty: 24, project: { ...project, workspace: "workspace-b" } }];
+  const response = await post("/api/base", { ...snapshot(), buildings, revision: store.revision() });
+  assert.equal(response.status, 200, await response.text());
+  assert.equal(store.assignPal("codex", "project-site").ok, false);
+  assert.equal(store.assignPal("codex", "project-site", "project-b").ok, true);
+  assert.equal(store.base()!.assignments.codex, "project-b");
+  store.loadStore();
+  assert.deepEqual(store.base()!.buildings.find(b => b.uid === "project-a")!.project, project);
+  assert.equal((await post("/api/base", { ...snapshot(), buildings, revision: 0 })).status, 409);
+  for (const repoUrl of ["javascript:alert(1)", "file:///private", "https://user:secret@example.com/repo"]) {
+    assert.equal((await post("/api/base", { ...snapshot(), buildings: [{ ...buildings[3], project: { ...project, repoUrl } }], revision: store.revision() })).status, 400);
+  }
+});
+await test("work reports require existing targets and explicit fresh seat-owned reports; restart is not work", async () => {
+  const input = { buildingUid: "project-a", taskId: "HUB-42", activity: "Testing API", state: "working" as const, artifacts: [] };
+  assert.throws(() => store.reportWork("codex", { ...input, buildingUid: "missing" }));
+  const result = await call("codex", "work_report", { ...input, seat: "claude" });
+  assert.equal(JSON.parse(result.content[0].text).seat, "codex");
+  const work = store.workReports().find(w => w.seat === "codex")!;
+  const presence = store.presence().find(p => p.seat === "codex")!;
+  assert.equal(workIsLive(work, presence), true);
+  assert.equal(workIsLive(work, presence, work.updatedAt + 120_000), false);
+  const other = store.reportWork("claude", { ...input, buildingUid: "project-b" });
+  assert.notEqual(other.buildingUid, work.buildingUid);
+  store.loadStore();
+  store.heartbeat("codex");
+  assert.equal(workIsLive(store.workReports().find(w => w.seat === "codex")!, store.presence().find(p => p.seat === "codex")), false);
+  const finished = store.reportWork("codex", { ...input, state: "done", artifacts: ["https://github.com/example/hub/pull/42"] });
+  assert.equal(workIsLive(finished, store.presence().find(p => p.seat === "codex")), false);
+  const ping = await call("codex", "agent_ping", { to: "grok", text: "Review this task", projectUid: "project-a" });
+  const queued = JSON.parse(ping.content[0].text);
+  assert.equal(queued.externalWake, false);
+  assert.equal(queued.note.from, "codex");
+  assert.equal(queued.note.projectUid, "project-a");
+});
+await test("removing a project clears its work and assignments, preserving other projects and chat history", () => {
+  const note = store.postArchitect("claude", "Project evidence", { projectUid: "project-a", channel: "team" });
+  store.assignPal("claude", "project-site", "project-a");
+  const before = store.base()!;
+  const assignments = { ...before.assignments, claude: null };
+  store.setBase({ ...before, buildings: before.buildings.filter(b => b.uid !== "project-a"), assignments });
+  assert.ok(store.base()!.buildings.some(b => b.uid === "project-b"));
+  assert.equal(store.base()!.assignments.codex, "project-b");
+  assert.ok(store.workReports().every(w => w.buildingUid !== "project-a"));
+  assert.ok(store.notes(1000).some(n => n.id === note.id));
+});
+await test("editing workspace scope invalidates reports and project replies retain their context", () => {
+  const input = { buildingUid: "project-b", taskId: "HUB-43", activity: "Working in workspace B", state: "working" as const, artifacts: [] };
+  store.reportWork("codex", input);
+  const before = store.base()!;
+  store.setBase({ ...before, buildings: before.buildings.map(b => b.uid === "project-b" ? { ...b, project: { ...b.project!, workspace: "different-folder" } } : b) });
+  assert.ok(!store.workReports().some(w => w.buildingUid === "project-b"));
+  const parent = store.postArchitect("claude", "Scoped discussion", { channel: "team", projectUid: "project-b" });
+  const reply = store.postArchitect("codex", "Reply from all chat", { replyTo: parent.id, channel: "team" });
+  assert.equal(reply.projectUid, "project-b");
+  assert.throws(() => store.postArchitect("codex", "Wrong scope", { replyTo: parent.id, projectUid: "core" }), /different project/);
 });
 
 after(() => { console.log("Isolated test data: " + testDir); });
