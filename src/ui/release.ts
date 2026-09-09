@@ -55,7 +55,7 @@ export function releaseStatus(opts: {
   checking?: boolean;
   reconnecting?: boolean;
 }): ReleaseStatus {
-  const version = opts.health?.version ?? "—";
+  const version = opts.health?.version || opts.health?.name || "hub";
   const commit = opts.health?.commit ?? null;
   const build = version + " · " + shortCommit(commit);
   const detail = [

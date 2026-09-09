@@ -23,6 +23,12 @@ test("build chip uses /health commit and version, not a fake timer", () => {
   assert.equal(live.label, "1.2.0 · 07245b5");
   assert.equal(live.showUpdate, false);
   assert.equal(shortCommit("e2d216a5d664dd60"), "e2d216a");
+  const nameless = releaseStatus({
+    radioLive: true,
+    health: { ok: true, name: "area67", commit: null },
+    bootCommit: null,
+  });
+  assert.equal(nameless.label, "area67 · unknown");
 });
 
 test("stale deploy offers Update; disconnect offers Reconnect; neither auto-reloads", () => {
