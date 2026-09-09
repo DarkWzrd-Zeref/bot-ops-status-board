@@ -5,9 +5,10 @@ import { AGENTS, HUBS, BASE_RADIUS, MAP_W, MAP_H, assignAgent, beginMove, buildi
 import { bus } from "../core/events.ts";
 import { attention, liveWork } from "../core/live.ts";
 import { seatForPal, speakerLabel } from "../../shared/protocol.ts";
+import { CORE_X, CORE_Y } from "../../shared/map.ts";
 
 const colors = { attentive: 0x80f5b8, busy: 0x80c8ff, away: 0xe4b76a, offline: 0x536570 };
-const cx = MAP_W / 2, cz = MAP_H / 2;
+const cx = CORE_X, cz = CORE_Y;
 type Actor = { group: THREE.Group; sprite: THREE.Sprite; light: THREE.Mesh<THREE.SphereGeometry, THREE.MeshBasicMaterial>; ring: THREE.Mesh; label: HTMLElement };
 const typing = () => !!document.activeElement?.closest("input, textarea, select, dialog");
 
@@ -117,9 +118,9 @@ export class World3D {
   }
   private createTerrain() {
     const platform = new THREE.Group(); platform.position.set(cx, -.44, cz);
-    this.mesh(new THREE.CylinderGeometry(16.6, 17.2, .85, 96), 0x14252a, 0, 0, 0, platform);
-    this.mesh(new THREE.CylinderGeometry(16.3, 16.6, .18, 96), 0x314b4a, 0, .49, 0, platform);
-    this.glowRing(16.68, 0x6ae9bc, .43, platform, .6);
+    this.mesh(new THREE.CylinderGeometry(BASE_RADIUS + .6, BASE_RADIUS + 1.2, .85, 96), 0x14252a, 0, 0, 0, platform);
+    this.mesh(new THREE.CylinderGeometry(BASE_RADIUS + .3, BASE_RADIUS + .6, .18, 96), 0x314b4a, 0, .49, 0, platform);
+    this.glowRing(BASE_RADIUS + .68, 0x6ae9bc, .43, platform, .6);
     this.scene.add(platform);
     const tileGeo = new THREE.BoxGeometry(.97, .09, .97);
     const tileMats: Record<string, THREE.MeshStandardMaterial> = {
@@ -131,7 +132,7 @@ export class World3D {
     for (const [kind, material] of Object.entries(tileMats)) {
       const tiles: [number, number][] = [];
       for (let y = 0; y < MAP_H; y++) for (let x = 0; x < MAP_W; x++) {
-        if (runtime.grid.kinds[y][x] === kind && Math.hypot(x + .5 - cx, y + .5 - cz) < 16.1) tiles.push([x, y]);
+        if (runtime.grid.kinds[y][x] === kind && Math.hypot(x + .5 - cx, y + .5 - cz) < BASE_RADIUS + .1) tiles.push([x, y]);
       }
       const batch = new THREE.InstancedMesh(tileGeo, material, tiles.length);
       const matrix = new THREE.Matrix4();
@@ -143,7 +144,7 @@ export class World3D {
     for (let i = 0; i < 32; i++) {
       const angle = i / 32 * Math.PI * 2;
       if (i % 8 === 0) continue;
-      const x = cx + Math.cos(angle) * 16, z = cz + Math.sin(angle) * 16;
+      const x = cx + Math.cos(angle) * BASE_RADIUS, z = cz + Math.sin(angle) * BASE_RADIUS;
       this.box(.18, .8, .18, 0x293f47, x, .4, z, this.scene);
       const lamp = this.mesh(new THREE.SphereGeometry(.08, 8, 6), 0x80f5cd, x, .86, z, this.scene);
       (lamp.material as THREE.MeshStandardMaterial).emissive.setHex(0x80f5cd);
@@ -170,6 +171,30 @@ export class World3D {
       }
       this.box(.18, 1.1, .18, 0x557aa1, 1, 2.5, 0, group);
       this.box(.95, .5, .1, color, .6, 2.85, 0, group);
+    } else if (b.hubId === "war-table") {
+      this.mesh(new THREE.CylinderGeometry(1.65, 1.8, .18, 12), 0x29435e, 0, .3, 0, group);
+      this.mesh(new THREE.CylinderGeometry(.75, .95, .7, 8), 0x34516a, 0, .75, 0, group);
+      this.mesh(new THREE.CylinderGeometry(1.35, 1.4, .17, 12), color, 0, 1.17, 0, group);
+      this.mesh(new THREE.CylinderGeometry(1.15, 1.15, .04, 12), 0x183c56, 0, 1.28, 0, group);
+      this.glowRing(1.08, color, 1.32, group);
+      for (let i = 0; i < 6; i++) { const a = i * Math.PI / 3; this.box(.42, .45, .42, 0x426882, Math.cos(a) * 1.7, .6, Math.sin(a) * 1.7, group); }
+    } else if (b.hubId === "vision-board") {
+      this.box(3.5, .15, 2.5, 0x433954, 0, .3, 0, group);
+      this.box(.15, 2.3, .2, 0x7c6a9b, -1.3, 1.4, -.5, group);
+      this.box(.15, 2.3, .2, 0x7c6a9b, 1.3, 1.4, -.5, group);
+      this.box(3, 1.65, .2, 0x614785, 0, 1.9, -.5, group);
+      for (let i = 0; i < 6; i++) this.box(.65, .5, .05, i % 2 ? 0xc8b5e2 : color, (i % 3 - 1) * .9, 1.56 + Math.floor(i / 3) * .72, -.37, group);
+    } else if (b.hubId === "pending-work") {
+      for (const x of [-1.5, 1.5]) this.box(.15, 2, 1.8, 0x765a35, x, 1.2, 0, group);
+      for (let row = 0; row < 3; row++) {
+        this.box(3.2, .1, 2, color, 0, .4 + row * .7, 0, group);
+        for (let col = -1; col <= 1; col++) { this.box(.7, .45, 1.2, 0x526373, col, .66 + row * .7, 0, group); this.box(.42, .13, .02, color, col, .7 + row * .7, .61, group); }
+      }
+    } else if (b.hubId === "skill-altar") {
+      this.mesh(new THREE.CylinderGeometry(1.25, 1.45, .3, 8), 0x2b594f, 0, .4, 0, group);
+      this.mesh(new THREE.CylinderGeometry(.75, 1, .6, 8), 0x42746b, 0, .85, 0, group);
+      this.mesh(new THREE.OctahedronGeometry(.6), color, 0, 1.8, 0, group);
+      this.glowRing(.9, color, 1.25, group); this.glowRing(.65, color, 2.55, group, .4);
     } else if (b.hubId === "well") {
       this.mesh(new THREE.CylinderGeometry(.85, 1.1, .6, 12), 0x426b68, 0, .5, 0, group);
       this.mesh(new THREE.CylinderGeometry(.55, .55, .15, 32), 0x102c2c, 0, .87, 0, group);

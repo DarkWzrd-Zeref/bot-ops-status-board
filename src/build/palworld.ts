@@ -15,11 +15,13 @@ import type { Point } from "../core/grid.ts";
 import type { HubDef } from "../core/types.ts";
 
 export const PALBOX_ID = "well";
-export const BASE_RADIUS = 16;
+import { BASE_RADIUS } from "../../shared/map.ts";
+export { BASE_RADIUS };
 export const PALBOX_SLOTS = 15;
 export const PALBOX_LEVEL = 1;
 
 export const BUILD_TABS = [
+  { id: "ecosystem", label: "Ecosystem", hint: "War Table, Vision Board, Pending Work and Skill Altar" },
   { id: "projects", label: "Projects", hint: "Your repositories and workspaces as buildings" },
   { id: "production", label: "Production", hint: "Workbenches — Cursor, GitHub, Firecrawl, Apify" },
   { id: "infra", label: "Infra", hint: "Power & pipes — Railway, Neon, Cloudflare" },
@@ -32,6 +34,7 @@ export const BUILD_TABS = [
 export type BuildTabId = (typeof BUILD_TABS)[number]["id"];
 
 export function tabFor(hub: HubDef): BuildTabId | "core" {
+  if (hub.kind === "ecosystem") return "ecosystem";
   if (hub.kind === "project") return "projects";
   if (hub.id === "github") return "defense";
   if (hub.id === "calendar" || hub.id === "drive" || hub.id === "bank" || hub.id === "grand-exchange") return "storage";

@@ -3,7 +3,9 @@ import { dirname, join } from "node:path";
 import { AGENTS, HUBS, MODS, SKILL_IDS, SEATS, SPEAKER_PAL, agentById, hubById, publicBase as siteBase, seatUrl, type Speaker } from "./catalog.ts";
 import { randomUUID } from "node:crypto";
 import { projectSchema, workSchema, type ProjectInfo, type WorkInput, type WorkReport } from "../shared/workspace.ts";
-import { effectiveAttention, isSpeaker, type RadioNote, type Presence, type Attention, type Channel, type ReceiptState } from "../shared/protocol.ts";
+import { effectiveAttention, isSpeaker, speakerLabel, seatForPal, type RadioNote, type Presence, type Attention, type Channel, type ReceiptState } from "../shared/protocol.ts";
+import { MAP_W, MAP_H, CORE_X, CORE_Y, BASE_RADIUS } from "../shared/map.ts";
+import { cardSchema, cardActionSchema, registrationSchema, type Ecosystem, type CardInput, type CardAction, type BoardCard, type RegistrationInput, type SkillRegistration } from "../shared/ecosystem.ts";
 
 export interface PlacedBuilding {
   uid: string;
@@ -28,7 +30,8 @@ export interface PalUtterance {
 }
 
 export type BusEvent =
-  | { type: "hello"; notes: ArchitectNote[]; base: BaseSnapshot | null; presence: Presence[]; revision: number; work: WorkReport[] }
+  | { type: "hello"; notes: ArchitectNote[]; base: BaseSnapshot | null; presence: Presence[]; revision: number; work: WorkReport[]; ecosystem: Ecosystem }
+  | { type: "ecosystem"; ecosystem: Ecosystem }
   | { type: "work"; work: WorkReport[] }
   | { type: "presence"; presence: Presence[] }
   | { type: "receipt"; note: ArchitectNote }
@@ -44,6 +47,7 @@ interface DiskState {
   base: BaseSnapshot | null;
   revision: number;
   work: WorkReport[];
+  ecosystem: Ecosystem;
 }
 
 const DATA_DIR = process.env.DATA_DIR || join(process.cwd(), "data");
@@ -52,7 +56,7 @@ const MAX_NOTES = 200;
 
 const listeners = new Set<(ev: BusEvent) => void>();
 
-let state: DiskState = { notes: [], lastSay: {}, base: null, revision: 0, work: [] };
+let state: DiskState = { notes: [], lastSay: {}, base: null, revision: 0, work: [], ecosystem: { cards: [], skills: [] } };
 // Presence is never restored from disk or inferred from an animated pal.
 const heartbeats = new Map<Speaker, Presence>();
 let committedState = JSON.stringify(state);
@@ -70,6 +74,7 @@ function readState(raw: string): DiskState {
     base: parsed.base ?? null,
     revision: parsed.revision ?? 0,
     work: Array.isArray(parsed.work) ? parsed.work.map(w => ({ ...w, sessionActive: false })) : [],
+    ecosystem: { cards: parsed.ecosystem?.cards ?? [], skills: parsed.ecosystem?.skills ?? [] },
   };
 }
 
@@ -195,12 +200,12 @@ export function setBase(next: BaseSnapshot): void {
     ids.add(b.uid);
     if (b.hubId === "project-site") b.project = projectSchema.parse(b.project);
     else if (b.project) throw new Error("Project metadata requires a project building");
-    if (!Number.isInteger(b.tx) || !Number.isInteger(b.ty) || b.tx < 0 || b.ty < 0 || b.tx + hub.w > 56 || b.ty + hub.h > 40) throw new Error("Station footprint is outside the map");
-    if (b.hubId === "well" && (b.tx !== 27 || b.ty !== 19)) throw new Error("The command core cannot be moved");
+    if (!Number.isInteger(b.tx) || !Number.isInteger(b.ty) || b.tx < 0 || b.ty < 0 || b.tx + hub.w > MAP_W || b.ty + hub.h > MAP_H) throw new Error("Station footprint is outside the map");
+    if (b.hubId === "well" && (b.tx !== CORE_X - 1 || b.ty !== CORE_Y - 1)) throw new Error("The command core cannot be moved");
     for (let x = b.tx; x < b.tx + hub.w; x++) for (let y = b.ty; y < b.ty + hub.h; y++) {
       const key = x + ":" + y;
       if (occupied.has(key)) throw new Error("Station footprints overlap");
-      if (Math.hypot(x - 28, y - 20) > 16) throw new Error("Station is outside the Palbox radius");
+      if (Math.hypot(x - CORE_X, y - CORE_Y) > BASE_RADIUS) throw new Error("Station is outside the Palbox radius");
       occupied.add(key);
     }
   }
@@ -327,7 +332,7 @@ export function palList() {
     const uttered = state.lastSay[a.id];
     return {
       id: a.id,
-      name: a.name,
+      name: seatForPal(a.id)?.label ?? a.name,
       role: a.role,
       model: a.model,
       work: a.work,
@@ -360,6 +365,59 @@ export function stationList() {
       blurb: h.blurb,
     };
   });
+}
+
+export class RecordConflict extends Error {}
+export function ecosystem(): Ecosystem { return state.ecosystem; }
+function ecosystemChanged() { persist(); publish({ type: "ecosystem", ecosystem: state.ecosystem }); }
+export function createCard(actor: Speaker, input: CardInput): BoardCard {
+  if (!isSpeaker(actor)) throw new Error("Unknown author");
+  const data = cardSchema.parse(input);
+  if (data.projectUid && !state.base?.buildings.some(b => b.uid === data.projectUid && b.project)) throw new Error("Choose an existing project workspace");
+  if (state.ecosystem.cards.length >= 1000) throw new Error("Board storage is full; contact the hub owner");
+  const at = Date.now();
+  const card: BoardCard = { ...data, id: nid(), createdBy: actor, updatedBy: actor, claimedBy: null, status: data.board === "pending-work" ? "parked" : "open", createdAt: at, updatedAt: at, revision: 1 };
+  state.ecosystem.cards.unshift(card); ecosystemChanged(); return card;
+}
+export function actOnCard(actor: Speaker, input: CardAction): BoardCard {
+  if (!isSpeaker(actor)) throw new Error("Unknown author");
+  const data = cardActionSchema.parse(input);
+  const card = state.ecosystem.cards.find(c => c.id === data.id);
+  if (!card) throw new Error("Card no longer exists");
+  if (card.revision !== data.revision) throw new RecordConflict("Someone updated this card. Read the latest version and try again.");
+  if (card.claimedBy && card.claimedBy !== actor && actor !== "zeref") throw new Error("This task is claimed by " + speakerLabel(card.claimedBy));
+  if (data.action === "claim") {
+    if (card.board !== "pending-work" || !["parked", "open"].includes(card.status)) throw new Error("Only parked work can be picked up");
+    card.claimedBy = actor; card.status = "claimed";
+  } else if (data.action === "park") {
+    card.board = "pending-work"; card.status = "parked"; card.claimedBy = null;
+  } else if (data.action === "discuss") {
+    card.board = "war-table"; card.status = "open"; card.claimedBy = null;
+  } else if (data.action === "complete") {
+    if (card.board === "pending-work" && card.claimedBy !== actor && actor !== "zeref") throw new Error("Pick up this work before completing it");
+    card.status = "done";
+  } else if (data.action === "archive") {
+    if (actor !== card.createdBy && actor !== "zeref" && actor !== card.claimedBy) throw new Error("Only the author, claimant or Zeref can archive this card");
+    card.status = "archived";
+  } else {
+    if (!["done", "archived"].includes(card.status)) throw new Error("This card is already open");
+    card.status = card.board === "pending-work" ? "parked" : "open"; card.claimedBy = null;
+  }
+  card.updatedAt = Date.now(); card.updatedBy = actor; card.revision++;
+  ecosystemChanged(); return card;
+}
+export function registerSkill(owner: Speaker, input: RegistrationInput, source: SkillRegistration["source"]): SkillRegistration {
+  if (!isSpeaker(owner)) throw new Error("Unknown skill owner");
+  const data = registrationSchema.parse(input);
+  if (data.signature !== speakerLabel(owner)) throw new Error("Sign with your seat's exact name: " + speakerLabel(owner));
+  const old = state.ecosystem.skills.find(s => s.owner === owner && s.name.toLocaleLowerCase() === data.name.toLocaleLowerCase());
+  if (old) {
+    if (old.description === data.description && old.sourceUrl === data.sourceUrl) return old;
+    throw new Error("This name is already signed by your seat. Use a versioned name for a changed skill.");
+  }
+  if (state.ecosystem.skills.length >= 500) throw new Error("Skill registry is full; contact the hub owner");
+  const skill: SkillRegistration = { ...data, signature: speakerLabel(owner), id: nid(), owner, signedAt: Date.now(), source, verification: "self-declared" };
+  state.ecosystem.skills.unshift(skill); ecosystemChanged(); return skill;
 }
 
 export function statusText(forSeat?: string): string {

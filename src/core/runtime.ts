@@ -9,11 +9,13 @@ import hubsFile from "../content/hubs.json";
 import modsFile from "../content/modifiers.json";
 import skillsFile from "../content/skills.json";
 import { projectSchema, type ProjectInfo } from "../../shared/workspace.ts";
+import { CORE_X, CORE_Y } from "../../shared/map.ts";
+import { seatForPal } from "../../shared/protocol.ts";
 
 const SAVE_KEY = "area67-base-v1";
 
 export const HUBS: HubDef[] = hubsFile.hubs as HubDef[];
-export const AGENTS: AgentDef[] = agentsFile.agents as AgentDef[];
+export const AGENTS: AgentDef[] = agentsFile.agents.map(a => ({ ...a, name: seatForPal(a.id)?.label ?? a.name })) as AgentDef[];
 export const SKILLS: SkillDef[] = skillsFile.skills as SkillDef[];
 export const MODS = modsFile.stations as Record<string, StationMod>;
 
@@ -80,8 +82,8 @@ export function bootRuntime(): void {
     seedStarter();
   }
 
-  const cx = Math.floor(MAP_W / 2);
-  const cy = Math.floor(MAP_H / 2);
+  const cx = CORE_X;
+  const cy = CORE_Y;
   runtime.player.tx = cx;
   runtime.player.ty = cy + 4;
   runtime.player.x = runtime.player.tx * TILE + TILE / 2;
@@ -109,8 +111,8 @@ export function bootRuntime(): void {
 }
 
 function ringSpot(i: number): Point {
-  const cx = Math.floor(MAP_W / 2);
-  const cy = Math.floor(MAP_H / 2);
+  const cx = CORE_X;
+  const cy = CORE_Y;
   const ang = (i / Math.max(AGENTS.length, 1)) * Math.PI * 2;
   const r = 5;
   return {
@@ -127,6 +129,10 @@ function seedStarter(): void {
   forcePlace("discord", plazaMin.x - 5, Math.floor((plazaMin.y + plazaMax.y) / 2) - 1);
   forcePlace("cursor", Math.floor((plazaMin.x + plazaMax.x) / 2) - 1, plazaMax.y + 2);
   forcePlace("skillspector", plazaMax.x + 2, plazaMin.y - 4);
+  forcePlace("war-table", 18, 10);
+  forcePlace("vision-board", 15, 27);
+  forcePlace("pending-work", 34, 28);
+  forcePlace("skill-altar", 42, 18);
 }
 
 function forcePlace(hubId: string, tx: number, ty: number): void {

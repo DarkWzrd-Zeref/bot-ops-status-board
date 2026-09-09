@@ -1,6 +1,6 @@
 // Minimal app-shell service worker: same-origin assets are served stale-while-revalidate,
 // cross-origin requests (Google Sheets) always go to the network.
-const CACHE = "area67-workspaces-v4";
+const CACHE = "area67-ecosystem-v5";
 
 self.addEventListener("install", (event) => {
   event.waitUntil(

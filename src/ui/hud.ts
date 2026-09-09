@@ -4,6 +4,7 @@ import { AGENTS, SKILLS, assignAgent, beginMove, cancelMove, catalogForTab, demo
 import { attention, postRadio, presenceBySeat, radioLive, radioNotes, workReports, liveWork, markHumanPingSeen } from "../core/live.ts";
 import { SEATS, seatForPal, speakerLabel, type Speaker, type Channel } from "../../shared/protocol.ts";
 import { projectSchema, safeLink } from "../../shared/workspace.ts";
+import { mountEcosystem, showEcosystem, ecosystemNav } from "./ecosystem.ts";
 
 let channel: Channel = "team";
 let onlyDirectives = false;
@@ -22,7 +23,7 @@ let chatProject: string | undefined;
 let editingProject: string | undefined;
 let friendsOnlineOnly = false;
 let inspectedKey = "";
-const stateLabels = { attentive: "Listening", busy: "Working", away: "Away", offline: "Offline" };
+const stateLabels = { attentive: "Online", busy: "Online · working", away: "Away", offline: "Offline" };
 const receiptLabels = { seen: "Seen", accepted: "Working", completed: "Done", blocked: "Blocked" };
 export function characterKind(model: string) { return /grok/i.test(model) ? "robot" : "alien"; }
 function esc(s: string) { return s.replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]!); }
@@ -72,7 +73,7 @@ function roster() {
     const state = attention(s.id);
     const tasks = radioNotes.filter(n => n.directive && n.recipients.includes(s.id) && n.receipts[s.id]?.state !== "completed").length;
     return `<button class="seat-row ${runtime.selectedAgent === s.palId ? "selected" : ""} ${state}" data-agent="${s.palId}" aria-label="${s.label}: ${stateLabels[state]}" title="${s.label} · ${esc(p?.activity ?? "Waiting for this AI to connect")}">
-      ${portrait(s.palId!)}<span class="seat-copy"><strong>${s.label}</strong><span class="seat-state">${light(s.id)}</span><small>${esc(p?.activity ?? "Waiting for a check-in")}</small></span>
+      ${portrait(s.palId!)}<span class="seat-copy"><strong><span class="status-light ${state}" aria-hidden="true"></span>${s.label}</strong><span class="seat-state">${stateLabels[state]} · ${ago(p?.lastSeen)}</span><small>${esc(p?.activity ?? "Waiting for a check-in")}</small></span>
       ${tasks ? `<span class="count-badge" title="${tasks} pending directives">${tasks}</span>` : ""}
       <span class="seat-arrow">›</span></button>
       ${runtime.selectedAgent === s.palId ? `<div class="seat-extra">${s.model}<br>Last check-in: ${ago(p?.lastSeen)}<br>${building ? esc(hubById(building.hubId).name) : "No station assigned"}</div>` : ""}`;
@@ -86,7 +87,7 @@ function messageItems() {
     return `<article class="message ${n.directive ? "directive" : ""} ${n.from === "zeref" ? "commander-message" : ""}">
       <div class="message-meta"><span class="message-author">${esc(speakerLabel(n.from))}</span><span>${n.to === "all" ? "Everyone" : "→ " + esc(speakerLabel(n.to))}</span><time datetime="${new Date(n.at).toISOString()}">${time(n.at)}</time></div>
       ${n.directive ? '<span class="directive-label">DIRECTIVE</span>' : n.ping ? '<span class="directive-label ping-label">ATTENTION PING</span>' : ""}
-      ${n.projectUid ? `<span class="message-project">${esc(runtime.buildings.find(b => b.uid === n.projectUid)?.project?.name ?? "Project history")}</span>` : ""}
+      ${n.projectUid ? `<span class="message-project">${esc(scopeName(n.projectUid))}</span>` : ""}
       ${replies ? `<blockquote>Reply to ${esc(speakerLabel(replies.from))}: ${esc(replies.text.slice(0, 100))}</blockquote>` : ""}
       <p class="message-body">${esc(n.text)}</p>
       ${n.directive || n.ping ? `<div class="receipt-grid">${n.recipients.map(s => {
@@ -117,7 +118,7 @@ function inspector() {
     const project = b.project;
     return `<div class="project-banner"><span class="eyebrow">${project ? "PROJECT WORKSPACE" : "STATION / " + esc(h.kind)}</span><button data-clear class="subtle close-inspector" aria-label="Close detail">×</button><h2>${esc(buildingName(b))}</h2><p>${esc(project?.summary || h.blurb)}</p></div>
       ${project ? `<div class="project-links">${project.repoUrl && safeLink(project.repoUrl) ? `<a href="${esc(project.repoUrl)}" target="_blank" rel="noopener noreferrer">Open repository ↗</a>` : ""}${project.workspace ? `<label>Workspace<code>${esc(project.workspace)}</code></label>` : ""}</div><div class="contents-tags">${project.contents.map(c => `<span>${esc(c)}</span>`).join("")}</div>` : ""}
-      <div class="detail-actions"><button class="primary" data-project-chat="${b.uid}">Open project chat</button><button data-ping-project="${b.uid}">Ping assigned crew</button></div>
+      <div class="detail-actions">${h.kind === "ecosystem" ? `<button class="primary" data-ecosystem="${h.id}">Open ${esc(h.name)}</button>` : ""}<button data-project-chat="${b.uid}">${h.kind === "ecosystem" ? "Discussion" : "Open project chat"}</button><button data-ping-project="${b.uid}">Ping assigned crew</button></div>
       <label class="field-label">Gather a teammate<select id="project-assign" data-building="${b.uid}"><option value="">Choose a friend…</option>${SEATS.map(s => `<option value="${s.palId}">${s.label}</option>`).join("")}</select></label>
       <p class="microcopy">Assigned: ${runtime.agents.filter(a => a.buildingUid === b.uid).map(a => esc(AGENTS.find(d => d.id === a.id)!.name)).join(", ") || "No pals yet"}</p>
       <div class="workspace-work">${workReports.filter(w => w.buildingUid === b.uid).map(workCard).join("") || '<p class="microcopy">No work reported yet. Connected agents use work_report with this building’s ID.</p>'}</div><code class="building-id">${esc(b.uid)}</code>
@@ -160,8 +161,9 @@ function render() {
   host.querySelectorAll<HTMLButtonElement>("[data-channel]").forEach(b => { const ch = b.dataset.channel as Channel; b.classList.toggle("active", ch === channel); b.textContent = "# " + ch + (unread[ch] ? " · " + unread[ch] + " new" : ""); });
   update("#connection", `<span class="status-light ${radioLive ? "attentive" : "offline"}"></span>${radioLive ? "Hub connected" : "Reconnecting…"}`);
   update("#roster", roster());
+  update("#human-presence", `<span class="status-light ${attention("zeref")}" aria-hidden="true"></span>Zeref <small>${stateLabels[attention("zeref")]}</small>`);
   update("#project-list", projects());
-  update("#chat-scope", chatProject ? `<span>${esc(runtime.buildings.find(b => b.uid === chatProject)?.project?.name ?? runtime.buildings.find(b => b.uid === chatProject)?.hubId ?? "Removed project")}</span><button data-global-chat>All chat ×</button>` : `<span>Everyone in the hub</span><button data-ping="all">Ping crew</button>`);
+  update("#chat-scope", chatProject ? `<span>${esc(scopeName(chatProject))}</span><button data-global-chat>All chat ×</button>` : `<span>Everyone in the hub</span><button data-ping="all">Ping crew</button>`);
   host.querySelector(".comms-heading h2")!.textContent = channel === "command" ? "Command channel" : "Team chat";
   update("#team-count", c.seats + " / " + SEATS.length + " active");
   update("#inspector-content", inspector());
@@ -194,6 +196,11 @@ export function mountHud(root: HTMLElement) {
     <dialog id="project-dialog"><form id="project-form"><div class="dialog-heading"><div><span class="eyebrow">BUILD A SHARED WORKSPACE</span><h2 id="project-dialog-title">Add project building</h2></div><button type="button" data-close-project aria-label="Close project form">×</button></div><p>Link a repo or name a project folder, then place its building on the map. No repository or files are created, accessed, or deleted.</p><label class="field-label">Building name<input name="name" required maxlength="64" placeholder="My project"></label><label class="field-label">Repository URL<input name="repoUrl" type="url" maxlength="300" placeholder="https://github.com/owner/repository"></label><label class="field-label">Workspace or project folder<input name="workspace" maxlength="240" placeholder="e.g. projects / web-app"></label><label class="field-label">What happens here?<input name="summary" maxlength="300" placeholder="Purpose, scope, or current mission"></label><label class="field-label">Contents — one item per line<textarea name="contents" rows="3" placeholder="src / interface&#10;server / API&#10;tests / verification"></textarea></label><p id="project-error" role="alert"></p><div class="detail-actions"><button class="primary" id="project-submit" type="submit">Choose a plot ↗</button><button type="button" data-close-project>Cancel</button></div></form></dialog>
     <dialog id="connect-dialog"><div class="dialog-heading"><div><span class="eyebrow">BRING YOUR TEAM ONLINE</span><h2>Connect a teammate</h2></div><button data-close-dialog aria-label="Close">×</button></div><p>Give each AI its own endpoint. Once connected, ask it to check its inbox and acknowledge your directive.</p><div class="connect-seats">${SEATS.map(s => `<div><strong>${s.label}</strong><code>${location.origin}/mcp/${s.slug}</code><button data-copy="${s.slug}">Copy</button></div>`).join("")}</div><div class="connection-note"><b>The AI must be running.</b><p>Connecting tools does not wake an idle AI app. Ask it to call <code>hub_sync</code> while active and <code>directive_ack</code> to report progress. Attention expires after two minutes without a check-in.</p></div></dialog>
     <div id="toast" role="status" aria-live="polite"></div>`;
+  root.querySelector(".header-center")!.innerHTML = ecosystemNav();
+  root.querySelector(".friends-filter")!.insertAdjacentHTML("beforebegin", '<div id="human-presence" class="human-presence"></div>');
+  root.querySelector(".crew-footer")!.insertAdjacentHTML("beforeend", ecosystemNav());
+  root.insertAdjacentHTML("beforeend", '<form id="quick-chat" aria-label="Quick team message"><label for="quick-text" class="sr-only">Message everyone as Zeref</label><input id="quick-text" maxlength="2000" placeholder="Message everyone as Zeref…" autocomplete="off"><button type="submit">Send</button></form>');
+  mountEcosystem(root, openChat);
   bind();
   render();
   host.querySelector<HTMLElement>("#message-log")!.scrollTop = 1e9;
@@ -220,6 +227,7 @@ function showProjectForm(uid?: string) {
   host.querySelector("#project-error")!.textContent = "";
   dialog.showModal();
 }
+function scopeName(uid: string) { const b = runtime.buildings.find(b => b.uid === uid); return b ? buildingName(b) : "Removed station · history"; }
 function openChat(projectUid?: string) {
   if (chatProject !== projectUid) replyTo = undefined;
   chatProject = projectUid; chatOpen = true; channel = "team"; onlyDirectives = false;
@@ -243,6 +251,7 @@ function bind() {
   host.addEventListener("click", event => {
     const b = (event.target as HTMLElement).closest<HTMLButtonElement>("button");
     if (!b) return;
+    if (b.dataset.ecosystem) showEcosystem(b.dataset.ecosystem);
     if (b.dataset.seenPing) void markHumanPingSeen(b.dataset.seenPing).catch(() => flash("Could not acknowledge ping. Please retry.", "bad"));
     if (b.hasAttribute("data-new-project")) showProjectForm();
     if (b.dataset.editProject) showProjectForm(b.dataset.editProject);
@@ -296,6 +305,17 @@ function bind() {
     render();
   });
   const input = host.querySelector<HTMLTextAreaElement>("#radio-text")!;
+  const quick = host.querySelector<HTMLInputElement>("#quick-text")!;
+  quick.value = sessionStorage.getItem("area67-quick-draft") ?? "";
+  quick.oninput = () => sessionStorage.setItem("area67-quick-draft", quick.value);
+  host.querySelector<HTMLFormElement>("#quick-chat")!.onsubmit = async event => {
+    event.preventDefault(); const text = quick.value.trim(); if (!text) return;
+    const send = host.querySelector<HTMLButtonElement>("#quick-chat button")!; if (send.disabled) return;
+    send.disabled = true;
+    try { await postRadio("zeref", text, { channel: "team", to: "all" }); if (quick.value.trim() === text) { quick.value = ""; sessionStorage.removeItem("area67-quick-draft"); } flash("Sent to team chat as Zeref"); }
+    catch (e) { flash(e instanceof Error ? e.message : "Could not send. Your draft is retained.", "bad"); }
+    finally { send.disabled = false; }
+  };
   input.oninput = () => { draft = input.value; sessionStorage.setItem("area67-draft", draft); host.querySelector("#character-count")!.textContent = draft.length + " / 2000"; };
   input.onkeydown = event => { if (event.key === "Enter" && (event.ctrlKey || event.metaKey)) { event.preventDefault(); host.querySelector<HTMLFormElement>("#radio-form")!.requestSubmit(); } };
   host.querySelector<HTMLFormElement>("#radio-form")!.onsubmit = async event => {
