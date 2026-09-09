@@ -1,7 +1,7 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import * as THREE from "three";
-import { canStand, findWalkStart, moveWalker, walkEscapeAction, walkLookStep } from "../src/game/walk.ts";
+import { canStand, findWalkStart, moveWalker, walkEscapeAction, walkLookStep, walkMovementBlocked } from "../src/game/walk.ts";
 import { packLabels } from "../src/game/labelLayout.ts";
 import { createArchitecture, createCharacter } from "../src/game/architecture.ts";
 import hubs from "../src/content/hubs.json";
@@ -34,16 +34,35 @@ test("Escape leaves first person only when no composer, overlay or dialog is ope
   assert.equal(walkEscapeAction({ composerFocused: true }), "defer");
   assert.equal(walkEscapeAction({ overlayOpen: true }), "defer");
   assert.equal(walkEscapeAction({ dialogOpen: true }), "defer");
-  assert.equal(walkEscapeAction({ composerFocused: false, overlayOpen: false, dialogOpen: false }), "leave");
+  assert.equal(walkEscapeAction({ alreadyHandled: true }), "defer");
+  assert.equal(walkEscapeAction({ composerFocused: false, overlayOpen: false, dialogOpen: false, alreadyHandled: false }), "leave");
 });
 test("look drag ignores tap-sized pointer noise then arms after the slop", () => {
-  const start = { x: 10, y: 10, armed: false };
+  const start = { x: 10, y: 10, originX: 10, originY: 10, armed: false };
   const tap = walkLookStep(start, 12, 11, 6);
   assert.equal(tap.armed, false); assert.equal(tap.yaw, 0); assert.equal(tap.pitch, 0);
   const drag = walkLookStep(start, 20, 10, 6);
   assert.equal(drag.armed, true); assert.ok(drag.yaw < 0);
-  const follow = walkLookStep({ x: drag.x, y: drag.y, armed: true }, 22, 10, 6);
+  const follow = walkLookStep({ x: drag.x, y: drag.y, originX: drag.originX, originY: drag.originY, armed: true }, 22, 10, 6);
   assert.equal(follow.armed, true); assert.ok(follow.yaw < 0);
+});
+test("slow successive look moves accumulate from pointerdown until the slop arms", () => {
+  let p: { x: number; y: number; originX: number; originY: number; armed: boolean } = { x: 0, y: 0, originX: 0, originY: 0, armed: false };
+  let yaw = 0;
+  for (let i = 0; i < 20; i++) {
+    const step = walkLookStep(p, p.x + 2, 0, 6);
+    p = { x: step.x, y: step.y, originX: step.originX, originY: step.originY, armed: step.armed };
+    yaw += step.yaw;
+  }
+  assert.equal(p.armed, true);
+  assert.ok(Math.abs(p.x - 40) < .001);
+  assert.ok(yaw < 0);
+});
+test("inspector pause blocks movement even when chat is only visible", () => {
+  assert.equal(walkMovementBlocked({}), false);
+  assert.equal(walkMovementBlocked({ inspectorOpen: true }), true);
+  assert.equal(walkMovementBlocked({ composerFocused: true }), true);
+  assert.equal(walkMovementBlocked({ dialogOpen: true }), true);
 });
 test("label packing suppresses collisions, bounds count and retains focused selection", () => {
   const base = { x: 200, y: 150, width: 100, height: 28, priority: 0 };
