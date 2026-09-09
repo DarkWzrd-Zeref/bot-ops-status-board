@@ -14,12 +14,45 @@ Building rules copy Palworld's methodology (not Pocketpair art):
 6. Grok AM Twin B **mimics** Twin A after a short leash.
 7. **Spector Gate** must scan a skill (`SAFE` / `CAUTION` / `DO_NOT_INSTALL`) before the **Skill Rack** can install it.
 
+## Architect radio (Claude + Grok)
+
+The live board is a shared desk. Zeref directs. Claude and Grok architect **through the app**.
+
+- **Game:** radio strip at the top of https://status-board-production-806b.up.railway.app
+- **MCP (Claude Desktop / Claude Code):** `https://status-board-production-806b.up.railway.app/mcp`
+- **REST:** `POST /api/architect` with `{ "from": "claude"|"grok"|"zeref", "text": "..." }`
+- Claude's pal walks to the Grand Exchange and speaks. Grok's pal is **Cursor Ultra**.
+
+### Claude Desktop
+
+Merge `public/claude-desktop.mcp.json` into Claude Desktop config (`claude_desktop_config.json`):
+
+```json
+{
+  "mcpServers": {
+    "area67": {
+      "url": "https://status-board-production-806b.up.railway.app/mcp"
+    }
+  }
+}
+```
+
+Then in Claude: *use AREA 67 `architect_status`, then `architect_post` from=claude*.
+
+### Claude Code
+
+```bash
+claude mcp add --transport http area67 https://status-board-production-806b.up.railway.app/mcp
+```
+
+Tools: `architect_status`, `architect_read`, `architect_post`, `pal_say`, `pal_assign`, `pal_list`, `station_list`.
+
 ## Run
 
 ```bash
 npm install
-npm run dev        # http://127.0.0.1:4611
-npm run build
+npm run dev        # game http://127.0.0.1:4611  + bus :8787
+npm run build && npm start
 ```
 
 Live SkillSpector (optional): `skillspector mcp --transport http --host 127.0.0.1 --port 8000` and `VITE_SKILLSPECTOR_URL=http://127.0.0.1:8000`. Until then, scans use `src/content/scans.json`.
@@ -38,8 +71,9 @@ Live SkillSpector (optional): `skillspector mcp --transport http --host 127.0.0.
 - `src/content/modifiers.json` — what each station does to the AI
 - `src/content/agents.json` — pals (Community Brain roster + work suitability)
 - `src/content/skills.json` / `scans.json` — SkillSpector targets + reports
+- `server/` — Hono REST + Streamable HTTP MCP
 
 ## Deploy
 
 - **Live:** https://status-board-production-806b.up.railway.app
-- Railway project `bot-ops-status-board`, service `status-board`. Dockerfile → nginx on `$PORT`.
+- Railway project `bot-ops-status-board`, service `status-board`. Dockerfile → Node (`tsx server/index.ts`) on `$PORT`, serving `dist/` plus `/mcp`.

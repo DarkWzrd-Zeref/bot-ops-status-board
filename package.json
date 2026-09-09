@@ -1,17 +1,25 @@
 {
   "name": "area-67",
   "private": true,
-  "version": "0.2.0",
-  "description": "AREA 67 — Palworld-style agent base. Palbox radius, build ghosts, pal tracker.",
+  "version": "0.3.0",
+  "description": "AREA 67 — Palworld-style agent base with a live MCP architect radio for Claude and Grok.",
   "type": "module",
   "scripts": {
-    "dev": "node scripts/gen-icons.mjs && vite --host 127.0.0.1 --port 4611",
+    "dev": "node scripts/gen-icons.mjs && node scripts/dev.mjs",
+    "dev:game": "vite --host 127.0.0.1 --port 4611",
+    "dev:bus": "PORT=8787 SERVE_STATIC=0 tsx server/index.ts",
+    "start": "tsx server/index.ts",
     "build": "tsc && node scripts/gen-icons.mjs && vite build",
     "preview": "vite preview --host 127.0.0.1 --port 4611",
     "test": "tsc --noEmit"
   },
   "dependencies": {
-    "phaser": "3.88.2"
+    "@hono/node-server": "^2.1.1",
+    "@modelcontextprotocol/sdk": "^1.30.0",
+    "hono": "^4.13.7",
+    "phaser": "3.88.2",
+    "tsx": "^4.23.13",
+    "zod": "^4.5.4"
   },
   "devDependencies": {
     "typescript": "5.9.2",

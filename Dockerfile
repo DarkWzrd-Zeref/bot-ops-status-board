@@ -5,8 +5,14 @@ RUN npm install --no-audit --no-fund
 COPY . .
 RUN npm run build
 
-FROM nginx:1.27-alpine
+FROM node:22-alpine
+WORKDIR /app
+ENV NODE_ENV=production
 ENV PORT=8080
-COPY nginx.conf.template /etc/nginx/templates/default.conf.template
-COPY --from=build /app/dist /usr/share/nginx/html
+COPY package.json ./
+RUN npm install --no-audit --no-fund
+COPY --from=build /app/dist ./dist
+COPY --from=build /app/server ./server
+COPY --from=build /app/src/content ./src/content
 EXPOSE 8080
+CMD ["npx", "tsx", "server/index.ts"]

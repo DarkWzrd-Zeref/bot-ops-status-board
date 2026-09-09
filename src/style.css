@@ -75,6 +75,49 @@ html, body {
 .panel.right { right: 12px; }
 .panel h2 { margin: 0 0 8px; font-size: 13px; color: var(--gold); letter-spacing: 0.06em; }
 
+.radio-bar {
+  position: absolute;
+  left: 304px;
+  right: 304px;
+  top: 64px;
+  max-height: 168px;
+  overflow: hidden;
+  background: var(--panel);
+  border: 1px solid var(--gold);
+  padding: 8px 10px;
+  pointer-events: auto;
+  box-shadow: 0 0 18px #76b90033;
+}
+.radio-head {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 6px;
+}
+.radio-head strong { color: var(--gold); letter-spacing: 0.08em; font-size: 12px; }
+.radio-log {
+  margin: 0 0 6px;
+  padding: 0;
+  list-style: none;
+  max-height: 88px;
+  overflow: auto;
+  font-size: 11px;
+}
+.radio-log li { margin-bottom: 4px; }
+.radio-log .who { text-transform: uppercase; margin-right: 6px; }
+.radio-log .who.claude { color: #d4a574; }
+.radio-log .who.grok { color: #a3e635; }
+.radio-log .who.zeref { color: #f4d03f; }
+#radio-form { display: flex; gap: 6px; }
+#radio-text {
+  flex: 1;
+  background: #102014;
+  color: var(--ink);
+  border: 1px solid var(--gold);
+  padding: 6px 8px;
+  font: inherit;
+}
+
 .row {
   display: flex;
   gap: 8px;
@@ -92,7 +135,7 @@ html, body {
 .row small { display: block; color: var(--muted); font-size: 10px; }
 
 .hotbar, .tabs { display: flex; flex-wrap: wrap; gap: 6px; }
-.hot, .modes button, .skill button, .panel button, .tab {
+.hot, .modes button, .skill button, .panel button, .tab, #radio-form button {
   background: #102014;
   color: var(--ink);
   border: 1px solid var(--gold);
@@ -134,4 +177,5 @@ html, body {
 @media (max-width: 900px) {
   .panel { display: none; }
   .bar.bottom { bottom: 0; left: 0; right: 0; }
+  .radio-bar { left: 12px; right: 12px; top: 58px; }
 }

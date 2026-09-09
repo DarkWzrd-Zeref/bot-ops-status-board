@@ -300,6 +300,27 @@ function agentName(id: string): string {
   return AGENTS.find((x) => x.id === id)?.name ?? id;
 }
 
+export function walkAgentToHub(agentId: string, hubId: string): void {
+  const b = runtime.buildings.find((x) => x.hubId === hubId);
+  if (!b) return;
+  const a = runtime.agents.find((x) => x.id === agentId);
+  if (!a) return;
+  const hub = hubById(b.hubId);
+  const dock = runtime.grid.dockFor(b.tx, b.ty, hub.w, hub.h);
+  a.path = findPath(runtime.grid, { x: a.tx, y: a.ty }, dock);
+  a.status = a.path.length ? "walk" : "work";
+  a.detail = "on radio at " + hub.short;
+  bus.emit({ type: "changed" });
+}
+
+export function palSay(agentId: string, text: string): void {
+  const a = runtime.agents.find((x) => x.id === agentId);
+  if (!a) return;
+  walkAgentToHub(agentId, "grand-exchange");
+  a.detail = text.length > 72 ? text.slice(0, 69) + "…" : text;
+  bus.emit({ type: "say", agentId, text });
+}
+
 export function walkToBuilding(agentId: string, buildingUid: string): void {
   const a = runtime.agents.find((x) => x.id === agentId);
   const b = runtime.buildings.find((x) => x.uid === buildingUid);
@@ -433,7 +454,7 @@ export function equipSkill(agentId: string, skillId: string): void {
   log("Installed " + (SKILLS.find((s) => s.id === skillId)?.name ?? skillId) + " on " + agentName(agentId) + ". " + gate.reason, gate.reason.includes("CAUTION") ? "warn" : "ok");
 }
 
-interface SaveShape {
+export interface SaveShape {
   buildings: PlacedBuilding[];
   equipped: Record<string, string[]>;
   scans: Record<string, ScanReport>;
@@ -442,8 +463,14 @@ interface SaveShape {
   lifting: LiftedBuilding | null;
 }
 
-function persist(): void {
-  const data: SaveShape = {
+let persistHook: ((data: SaveShape) => void) | null = null;
+
+export function onPersist(fn: (data: SaveShape) => void): void {
+  persistHook = fn;
+}
+
+export function exportSave(): SaveShape {
+  return {
     buildings: runtime.buildings,
     equipped: runtime.equipped,
     scans: runtime.scans,
@@ -451,11 +478,16 @@ function persist(): void {
     cautionBlocks: runtime.cautionBlocks,
     lifting: runtime.lifting,
   };
+}
+
+function persist(): void {
+  const data = exportSave();
   try {
     localStorage.setItem(SAVE_KEY, JSON.stringify(data));
   } catch {
     /* ignore quota */
   }
+  persistHook?.(data);
   bus.emit({ type: "changed" });
 }
 

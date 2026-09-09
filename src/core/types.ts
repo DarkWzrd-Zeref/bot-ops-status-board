@@ -103,7 +103,19 @@ export interface LogLine {
   tone: "ok" | "warn" | "bad" | "info";
 }
 
+export type Speaker = "claude" | "grok" | "zeref";
+
+export interface RadioNote {
+  id: string;
+  from: Speaker;
+  palId: string | null;
+  text: string;
+  at: number;
+}
+
 export type GameEvent =
   | { type: "changed" }
   | { type: "log"; line: LogLine }
-  | { type: "toast"; text: string; tone: LogLine["tone"] };
+  | { type: "toast"; text: string; tone: LogLine["tone"] }
+  | { type: "say"; agentId: string; text: string }
+  | { type: "radio"; note: RadioNote };

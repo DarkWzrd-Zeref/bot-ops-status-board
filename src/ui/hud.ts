@@ -17,6 +17,7 @@ import {
   runtime,
 } from "../core/runtime.ts";
 import { recoTone } from "../core/skillspector.ts";
+import { postRadio, radioLive, radioNotes } from "../core/live.ts";
 
 const qFile = questionsFile as { questions: { id: string; category: string; priority: string; question: string; current_guess?: string; status: string }[] };
 
@@ -26,7 +27,7 @@ export function mountHud(root: HTMLElement): void {
     bind(root);
   };
   bus.on((e) => {
-    if (e.type === "changed") render();
+    if (e.type === "changed" || e.type === "radio") render();
     if (e.type === "toast") {
       render();
       requestAnimationFrame(() => flash(e.text, e.tone));
@@ -64,9 +65,34 @@ function html(): string {
         <span class="pill ${pals <= PALBOX_SLOTS ? "ok" : "bad"}">${pals}/${PALBOX_SLOTS} PALS</span>
         <span class="pill ${runtime.pulseOn ? "ok" : "warn"}">${runtime.pulseOn ? "LIVE TRACK" : "PAUSED"}</span>
         <span class="pill ${hasSpector ? "ok" : "bad"}">${hasSpector ? "SPECTOR ONLINE" : "NO SPECTOR GATE"}</span>
+        <span class="pill ${radioLive ? "ok" : "warn"}">${radioLive ? "ARCHITECT RADIO" : "RADIO LOCAL"}</span>
         <span class="pill info">${runtime.buildings.length} stations</span>
       </div>
     </header>
+
+    <div class="radio-bar">
+      <div class="radio-head">
+        <strong>Architect radio</strong>
+        <span class="muted">Claude MCP + Grok · Zeref directs</span>
+      </div>
+      <ol class="radio-log">
+        ${
+          radioNotes.length
+            ? radioNotes
+                .slice(0, 8)
+                .map(
+                  (n) =>
+                    `<li><b class="who ${esc(n.from)}">${esc(n.from)}</b> ${esc(n.text)}</li>`,
+                )
+                .join("")
+            : `<li class="muted">Silent. Claude connects at /mcp. Grok posts here. You type below.</li>`
+        }
+      </ol>
+      <form id="radio-form">
+        <input id="radio-text" maxlength="2000" autocomplete="off" placeholder="Zeref → Claude and Grok" />
+        <button type="submit">Send</button>
+      </form>
+    </div>
 
     <aside class="panel left">
       <h2>Pals</h2>
@@ -239,6 +265,16 @@ function bind(root: HTMLElement): void {
   }
   const reset = root.querySelector<HTMLButtonElement>("#reset");
   if (reset) reset.onclick = () => resetBase();
+  const form = root.querySelector<HTMLFormElement>("#radio-form");
+  const input = root.querySelector<HTMLInputElement>("#radio-text");
+  if (form && input) {
+    form.onsubmit = (ev) => {
+      ev.preventDefault();
+      const text = input.value;
+      input.value = "";
+      void postRadio("zeref", text).catch(() => flash("Radio bus down", "bad"));
+    };
+  }
 }
 
 function esc(s: string): string {

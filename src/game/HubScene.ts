@@ -21,6 +21,7 @@ import {
   walkPlayerTo,
 } from "../core/runtime.ts";
 import { bus } from "../core/events.ts";
+import type { GameEvent } from "../core/types.ts";
 
 const TILE_KEY: Record<TileKind, string> = {
   sand: "tile-sand",
@@ -42,6 +43,7 @@ export class HubScene extends Phaser.Scene {
   private stepCool = 0;
   private bSprites = new Map<string, Phaser.GameObjects.Image>();
   private ring!: Phaser.GameObjects.Graphics;
+  private bubbles = new Map<string, Phaser.GameObjects.Text>();
 
   constructor() {
     super("hub");
@@ -100,7 +102,33 @@ export class HubScene extends Phaser.Scene {
       bus.emit({ type: "changed" });
     });
 
-    bus.on(() => this.syncBuildings());
+    bus.on((e: GameEvent) => {
+      if (e.type === "changed") this.syncBuildings();
+      if (e.type === "say") this.showBubble(e.agentId, e.text);
+    });
+  }
+
+  private showBubble(agentId: string, text: string): void {
+    this.bubbles.get(agentId)?.destroy();
+    const spr = this.agentSprites.get(agentId);
+    if (!spr) return;
+    const clipped = text.length > 140 ? text.slice(0, 137) + "…" : text;
+    const bubble = this.add
+      .text(spr.x, spr.y - 36, clipped, {
+        fontFamily: "monospace",
+        fontSize: "10px",
+        color: "#071208",
+        backgroundColor: "#d7f5b8",
+        padding: { x: 6, y: 4 },
+        wordWrap: { width: 180 },
+      })
+      .setOrigin(0.5, 1)
+      .setDepth(12);
+    this.bubbles.set(agentId, bubble);
+    this.time.delayedCall(9000, () => {
+      bubble.destroy();
+      if (this.bubbles.get(agentId) === bubble) this.bubbles.delete(agentId);
+    });
   }
 
   private drawWorld(): void {
@@ -262,6 +290,7 @@ export class HubScene extends Phaser.Scene {
       spr.x += (ax - spr.x) * 0.25;
       spr.y += (ay - spr.y) * 0.25;
       this.labels.get(a.id)?.setPosition(spr.x, spr.y - 18);
+      this.bubbles.get(a.id)?.setPosition(spr.x, spr.y - 36);
     }
 
     this.drawGhost();

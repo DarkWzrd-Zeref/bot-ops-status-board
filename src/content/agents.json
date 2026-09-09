@@ -111,6 +111,19 @@
       "work": ["quests", "command"]
     },
     {
+      "id": "claude",
+      "name": "Claude",
+      "role": "Architect",
+      "model": "Claude Pro",
+      "account": "claude-pro",
+      "discordChannel": "director",
+      "color": "#d4a574",
+      "mimicOf": null,
+      "homeHub": "grand-exchange",
+      "bio": "Anthropic pal on the AREA 67 MCP. Talks through the plaza radio with Grok. Zeref directs.",
+      "work": ["quests", "command"]
+    },
+    {
       "id": "cursor-ultra",
       "name": "Cursor Ultra",
       "role": "Cloud smith",

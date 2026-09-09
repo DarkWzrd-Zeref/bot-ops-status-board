@@ -1,6 +1,6 @@
 // Minimal app-shell service worker: same-origin assets are served stale-while-revalidate,
 // cross-origin requests (Google Sheets) always go to the network.
-const CACHE = "area67-v1";
+const CACHE = "area67-v2";
 
 self.addEventListener("install", (event) => {
   event.waitUntil(
@@ -21,6 +21,7 @@ self.addEventListener("fetch", (event) => {
   if (req.method !== "GET") return;
   const url = new URL(req.url);
   if (url.origin !== self.location.origin) return;
+  if (url.pathname.startsWith("/api") || url.pathname === "/mcp" || url.pathname === "/health") return;
 
   event.respondWith(
     caches.open(CACHE).then(async (cache) => {
