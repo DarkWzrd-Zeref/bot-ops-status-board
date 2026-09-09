@@ -44,7 +44,7 @@ export class HubScene extends Phaser.Scene {
     this.spawnActors();
     this.cameras.main.setBounds(0, 0, MAP_W * TILE, MAP_H * TILE);
     this.cameras.main.startFollow(this.player, true, 0.12, 0.12);
-    this.cameras.main.setZoom(1.15);
+    this.cameras.main.setZoom(0.85);
 
     this.cursors = this.input.keyboard!.createCursorKeys();
     this.wasd = {
