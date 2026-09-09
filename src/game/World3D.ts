@@ -1,7 +1,7 @@
 import * as THREE from "three";
 import { OrbitControls } from "three/addons/controls/OrbitControls.js";
 import { CSS2DObject, CSS2DRenderer } from "three/addons/renderers/CSS2DRenderer.js";
-import { AGENTS, HUBS, BASE_RADIUS, MAP_W, MAP_H, assignAgent, beginMove, buildingAt, buildingName, cancelMove, demolish, finishMove, hubById, placementOk, runtime, stepAgents, tryPlace, walkPlayerTo } from "../core/runtime.ts";
+import { AGENTS, HUBS, BASE_RADIUS, MAP_W, MAP_H, assignAgent, beginMove, buildingAt, buildingName, cancelMove, demolish, finishMove, hubById, placementOk, runtime, stationMapLabel, stepAgents, tryPlace, walkPlayerTo } from "../core/runtime.ts";
 import { bus } from "../core/events.ts";
 import { attention, liveWork, presenceBySeat, workReports, radioLive } from "../core/live.ts";
 import { agentSignal, standbySpots, STANDBY_CENTER } from "../core/agentPresentation.ts";
@@ -247,7 +247,7 @@ export class World3D {
     }
     const banner = this.label("", "map-station-label station-banner", b.project ? 3.5 : 3.3, group);
     const chip = document.createElement("span"); chip.className = "station-chip";
-    const name = document.createElement("strong"); name.textContent = buildingName(b);
+    const name = document.createElement("strong"); name.textContent = stationMapLabel(b, runtime.selectedBuilding === uid);
     chip.append(name);
     const details = document.createElement("span"); details.className = "station-details";
     details.id = "station-preview-" + uid; details.setAttribute("role", "tooltip");
@@ -276,7 +276,7 @@ export class World3D {
     group.userData.disposeLabel = () => window.removeEventListener("keydown", dismissPreview);
     const beacon = this.glowRing(Math.max(h.w, h.h) * .62, 0x82c9ff, .3, group, .9);
     beacon.name = "work-beacon"; beacon.visible = false;
-    group.userData.banner = banner; group.userData.signal = signal;
+    group.userData.banner = banner; group.userData.signal = signal; group.userData.chipName = name;
     this.scene.add(group); this.stations.set(uid, group);
   }
   private disposeGroup(group: THREE.Group) {
@@ -301,8 +301,11 @@ export class World3D {
       const assigned = runtime.agents.filter(a => a.buildingUid === uid);
       const banner = group.userData.banner as HTMLElement;
       const signal = group.userData.signal as HTMLElement;
+      const chipName = group.userData.chipName as HTMLElement | undefined;
+      const building = runtime.buildings.find(b => b.uid === uid);
       banner.classList.toggle("working", active.length > 0);
       banner.classList.toggle("selected", runtime.selectedBuilding === uid);
+      if (chipName && building) chipName.textContent = stationMapLabel(building, runtime.selectedBuilding === uid);
       signal.textContent = active.length ? active.map(w => speakerLabel(w.seat) + " · " + w.taskId).join(" + ") : assigned.length ? assigned.length + " assigned · no live work report" : "Open workspace";
       signal.title = active.map(w => speakerLabel(w.seat) + ": " + w.activity).join("\n");
       group.getObjectByName("work-beacon")!.visible = active.length > 0;
