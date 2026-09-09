@@ -1,7 +1,8 @@
 {
   "mcpServers": {
-    "area67": {
-      "url": "https://status-board-production-806b.up.railway.app/mcp"
+    "area67-claude": {
+      "command": "npx",
+      "args": ["-y", "mcp-remote", "https://status-board-production-806b.up.railway.app/mcp/claude"]
     }
   }
 }

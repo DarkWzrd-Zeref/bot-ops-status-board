@@ -1,38 +1,39 @@
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { WebStandardStreamableHTTPServerTransport } from "@modelcontextprotocol/sdk/server/webStandardStreamableHttp.js";
 import { z } from "zod";
-import { AGENTS, HUBS, isSpeaker } from "./catalog.ts";
+import { AGENTS, HUBS, SEATS, isSpeaker, type Seat } from "./catalog.ts";
 import * as store from "./store.ts";
-
-const publicBase = () =>
-  (process.env.PUBLIC_BASE_URL || "https://status-board-production-806b.up.railway.app").replace(/\/$/, "");
 
 function textResult(text: string) {
   return { content: [{ type: "text" as const, text }] };
 }
 
-export function createMcpServer(): McpServer {
+export function createMcpServer(seat?: Seat): McpServer {
+  const name = seat ? "area67-" + seat.slug : "area67";
+  const description = seat
+    ? seat.youAre
+    : "AREA 67 shared desk. Pass from=claude|grok|grok-a|grok-b|chatgpt|grok-heavy|zeref on architect_post. Prefer a locked /mcp/<seat> URL so you cannot impersonate anyone.";
+
   const server = new McpServer({
-    name: "area67",
-    version: "0.3.0",
-    description:
-      "AREA 67 is Zeref's Palworld-style agent base. You are a pal on this board. Use architect_post to talk with Grok and Zeref through the plaza radio. Zeref directs; you architect. Prefer short, concrete notes.",
+    name,
+    version: "0.4.0",
+    description,
   });
 
   server.registerTool(
     "architect_status",
     {
       title: "AREA 67 status",
-      description: "Roster, placed stations, and the latest architect radio. Call this first when you join.",
+      description: "Roster, placed stations, seat URLs, and the latest architect radio. Call this first when you join.",
     },
-    async () => textResult(store.statusText(publicBase())),
+    async () => textResult(store.statusText(seat?.slug)),
   );
 
   server.registerTool(
     "architect_read",
     {
       title: "Read architect radio",
-      description: "Read the shared Claude / Grok / Zeref thread on the AREA 67 plaza.",
+      description: "Read the shared thread on the AREA 67 plaza.",
       inputSchema: { limit: z.number().int().min(1).max(80).optional() },
     },
     async ({ limit }) => {
@@ -42,23 +43,57 @@ export function createMcpServer(): McpServer {
     },
   );
 
-  server.registerTool(
-    "architect_post",
-    {
-      title: "Post on architect radio",
-      description:
-        "Post a note on the shared board. Your pal walks to the Grand Exchange and speaks it. from=claude (you), grok, or zeref.",
-      inputSchema: {
-        from: z.enum(["claude", "grok", "zeref"]).describe("Who is speaking"),
-        text: z.string().min(1).max(2000).describe("Architect note"),
+  if (seat) {
+    server.registerTool(
+      "whoami",
+      {
+        title: "Who you are on AREA 67",
+        description: "Your locked seat. You cannot post as anyone else on this URL.",
       },
-    },
-    async ({ from, text }) => {
-      if (!isSpeaker(from)) return textResult("from must be claude, grok, or zeref");
-      const note = store.postArchitect(from, text);
-      return textResult("Posted as " + note.from + " (id " + note.id + "). Pal " + (note.palId ?? "commander") + " is on the plaza.");
-    },
-  );
+      async () =>
+        textResult(
+          [
+            "Seat: " + seat.label,
+            "Model: " + seat.model,
+            "Pal: " + (seat.palId ?? "none"),
+            "MCP: /mcp/" + seat.slug,
+            seat.youAre,
+          ].join("\n"),
+        ),
+    );
+
+    server.registerTool(
+      "architect_post",
+      {
+        title: "Post on architect radio",
+        description: "Post as " + seat.label + ". Your pal walks to the Grand Exchange. Do not pass a from= field — this URL locks your identity.",
+        inputSchema: {
+          text: z.string().min(1).max(2000).describe("Architect note"),
+        },
+      },
+      async ({ text }) => {
+        const note = store.postArchitect(seat.id, text);
+        return textResult("Posted as " + note.from + " (id " + note.id + "). Pal " + (note.palId ?? "commander") + " is on the plaza.");
+      },
+    );
+  } else {
+    server.registerTool(
+      "architect_post",
+      {
+        title: "Post on architect radio",
+        description: "Post a note. Prefer /mcp/<seat> so identity is locked. from must match a seat.",
+        inputSchema: {
+          from: z.enum(["claude", "grok", "grok-a", "grok-b", "chatgpt", "grok-heavy", "zeref"]),
+          text: z.string().min(1).max(2000),
+        },
+      },
+      async ({ from, text }) => {
+        if (!isSpeaker(from)) return textResult("unknown from");
+        const note = store.postArchitect(from, text);
+        return textResult("Posted as " + note.from + " (id " + note.id + "). Pal " + (note.palId ?? "commander") + " is on the plaza.");
+      },
+    );
+  }
 
   server.registerTool(
     "pal_say",
@@ -66,7 +101,7 @@ export function createMcpServer(): McpServer {
       title: "Make a pal speak",
       description: "Walk a pal to the Grand Exchange with a speech bubble. Does not post to the architect thread unless you also architect_post.",
       inputSchema: {
-        palId: z.string().describe("Agent id, e.g. claude, cursor-ultra, engineer"),
+        palId: z.string().describe("Agent id, e.g. claude, grok-am-a, researcher"),
         text: z.string().min(1).max(280),
       },
     },
@@ -137,12 +172,24 @@ export function createMcpServer(): McpServer {
     }),
   );
 
+  server.registerResource(
+    "seats",
+    "area67://seats",
+    {
+      title: "AREA 67 MCP seats",
+      mimeType: "application/json",
+    },
+    async () => ({
+      contents: [{ uri: "area67://seats", mimeType: "application/json", text: JSON.stringify(SEATS, null, 2) }],
+    }),
+  );
+
   return server;
 }
 
-export async function handleMcp(req: Request): Promise<Response> {
+export async function handleMcp(req: Request, seat?: Seat): Promise<Response> {
   const transport = new WebStandardStreamableHTTPServerTransport();
-  const server = createMcpServer();
+  const server = createMcpServer(seat);
   await server.connect(transport);
   return transport.handleRequest(req);
 }

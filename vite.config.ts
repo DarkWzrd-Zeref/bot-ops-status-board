@@ -10,6 +10,7 @@ export default defineConfig({
       "/api": { target: "http://127.0.0.1:8787", changeOrigin: true },
       "/mcp": { target: "http://127.0.0.1:8787", changeOrigin: true },
       "/health": { target: "http://127.0.0.1:8787", changeOrigin: true },
+      "/connect": { target: "http://127.0.0.1:8787", changeOrigin: true },
     },
   },
   preview: { host: "127.0.0.1", port: 4611 },

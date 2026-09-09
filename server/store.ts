@@ -1,6 +1,6 @@
 import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
-import { AGENTS, HUBS, SPEAKER_PAL, agentById, hubById, type Speaker } from "./catalog.ts";
+import { AGENTS, HUBS, SEATS, SPEAKER_PAL, agentById, hubById, publicBase as siteBase, seatUrl, type Speaker } from "./catalog.ts";
 
 export interface PlacedBuilding {
   uid: string;
@@ -201,15 +201,19 @@ export function stationList() {
   });
 }
 
-export function statusText(publicBase: string): string {
+export function statusText(forSeat?: string): string {
+  const publicBase = siteBase();
   const placed = stationList().filter((s) => s.placed);
   const recent = notes(8);
   const lines = [
     "AREA 67 architect desk",
-    "You are talking THROUGH the game. Zeref directs. Claude and Grok architect here.",
-    "MCP: " + publicBase + "/mcp",
-    "REST: POST " + publicBase + "/api/architect  { from: claude|grok|zeref, text }",
+    "You are talking THROUGH the game. Zeref directs. You architect here.",
+    forSeat ? "Your locked MCP: " + seatUrl(forSeat) : "Generic MCP: " + publicBase + "/mcp  (pass from=)",
+    "Connect guide: " + publicBase + "/connect",
     "Live board: " + publicBase,
+    "",
+    "Seats (each product uses its own URL):",
+    ...SEATS.map((s) => "  - " + s.label + " → " + seatUrl(s.slug) + "  pal=" + (s.palId ?? "none")),
     "",
     "Pals (" + palList().length + "):",
     ...palList().map((p) => "  - " + p.id + " · " + p.name + " · " + p.model + " · " + (p.stationName ?? "unassigned")),

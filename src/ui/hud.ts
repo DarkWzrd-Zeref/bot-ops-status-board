@@ -53,7 +53,7 @@ function flash(text: string, tone: string): void {
 
 function radioItems(): string {
   if (!radioNotes.length) {
-    return `<li class="muted">Silent. Claude connects at /mcp. Grok posts here. You type below.</li>`;
+    return `<li class="muted">Silent. Open <a href="/connect" target="_blank" rel="noreferrer">/connect</a> and plug each model into its own MCP URL.</li>`;
   }
   return radioNotes
     .slice(0, 8)
@@ -89,7 +89,7 @@ function html(): string {
     <div class="radio-bar">
       <div class="radio-head">
         <strong>Architect radio</strong>
-        <span class="muted">Claude MCP + Grok · Zeref directs</span>
+        <span class="muted">Claude · Grok A/B · ChatGPT · Heavy · <a href="/connect" target="_blank" rel="noreferrer">connect MCP</a></span>
       </div>
       <ol class="radio-log">
         ${radioItems()}

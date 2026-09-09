@@ -38,18 +38,86 @@ const hubsFile = loadJson<{ hubs: HubDef[] }>("src/content/hubs.json");
 export const AGENTS = agentsFile.agents;
 export const HUBS = hubsFile.hubs;
 
-export const SPEAKERS = ["claude", "grok", "zeref"] as const;
+export const SPEAKERS = ["claude", "grok", "grok-a", "grok-b", "chatgpt", "grok-heavy", "zeref"] as const;
 export type Speaker = (typeof SPEAKERS)[number];
 
-/** Which pal walks to the plaza when that speaker posts on the architect radio. */
+export interface Seat {
+  id: Speaker;
+  slug: string;
+  palId: string | null;
+  label: string;
+  model: string;
+  youAre: string;
+}
+
+/** Locked MCP seats — each product gets its own URL so it cannot post as someone else. */
+export const SEATS: Seat[] = [
+  {
+    id: "claude",
+    slug: "claude",
+    palId: "claude",
+    label: "Claude",
+    model: "Claude Pro",
+    youAre: "You are Claude on AREA 67. Zeref directs. Architect with Grok through architect_post. Do not speak as anyone else.",
+  },
+  {
+    id: "grok-a",
+    slug: "grok-a",
+    palId: "grok-am-a",
+    label: "Grok bot A",
+    model: "Grok (account 1)",
+    youAre: "You are Grok AM Twin A (grok-1, Discord #the-account-managers). Twin B mimics you. Zeref directs. Post only as yourself.",
+  },
+  {
+    id: "grok-b",
+    slug: "grok-b",
+    palId: "grok-am-b",
+    label: "Grok bot B",
+    model: "Grok (account 2)",
+    youAre: "You are Grok AM Twin B (grok-2, Discord #account-manager). You leash after Twin A. Zeref directs. Post only as yourself.",
+  },
+  {
+    id: "chatgpt",
+    slug: "chatgpt",
+    palId: "researcher",
+    label: "ChatGPT",
+    model: "ChatGPT Pro",
+    youAre: "You are ChatGPT Pro, the Researcher pal on AREA 67. Scout, cite, propose. Zeref directs. Post only as yourself.",
+  },
+  {
+    id: "grok-heavy",
+    slug: "grok-heavy",
+    palId: "director",
+    label: "Grok Heavy",
+    model: "Grok Heavy",
+    youAre: "You are Grok Heavy, the Director pal. Set the quest board. Zeref directs. Post only as yourself.",
+  },
+  {
+    id: "grok",
+    slug: "grok",
+    palId: "cursor-ultra",
+    label: "Grok (Cursor Ultra)",
+    model: "Cursor Ultra / Grok",
+    youAre: "You are Grok on Cursor Ultra in AREA 67. Build with Claude. Zeref directs. Post only as yourself.",
+  },
+];
+
 export const SPEAKER_PAL: Record<Speaker, string | null> = {
   claude: "claude",
   grok: "cursor-ultra",
+  "grok-a": "grok-am-a",
+  "grok-b": "grok-am-b",
+  chatgpt: "researcher",
+  "grok-heavy": "director",
   zeref: null,
 };
 
 export function isSpeaker(v: string): v is Speaker {
   return (SPEAKERS as readonly string[]).includes(v);
+}
+
+export function seatBySlug(slug: string): Seat | undefined {
+  return SEATS.find((s) => s.slug === slug);
 }
 
 export function agentById(id: string): AgentDef | undefined {
@@ -58,4 +126,12 @@ export function agentById(id: string): AgentDef | undefined {
 
 export function hubById(id: string): HubDef | undefined {
   return HUBS.find((h) => h.id === id);
+}
+
+export function publicBase(): string {
+  return (process.env.PUBLIC_BASE_URL || "https://status-board-production-806b.up.railway.app").replace(/\/$/, "");
+}
+
+export function seatUrl(slug: string): string {
+  return publicBase() + "/mcp/" + slug;
 }

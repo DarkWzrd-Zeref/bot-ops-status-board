@@ -5,7 +5,7 @@ import { serveStatic } from "@hono/node-server/serve-static";
 import { Hono } from "hono";
 import { cors } from "hono/cors";
 import { streamSSE } from "hono/streaming";
-import { isSpeaker, type Speaker } from "./catalog.ts";
+import { SEATS, isSpeaker, publicBase, seatBySlug, seatUrl, type Speaker } from "./catalog.ts";
 import { handleMcp } from "./mcp.ts";
 import * as store from "./store.ts";
 
@@ -29,9 +29,37 @@ app.get("/health", (c) =>
     ok: true,
     name: "area67",
     mcp: "/mcp",
+    connect: "/connect",
+    seats: SEATS.map((s) => ({ id: s.id, url: seatUrl(s.slug), pal: s.palId })),
     radio: store.notes(1)[0] ?? null,
   }),
 );
+
+app.get("/api/seats", (c) =>
+  c.json({
+    board: publicBase(),
+    connect: publicBase() + "/connect",
+    seats: SEATS.map((s) => ({
+      id: s.id,
+      label: s.label,
+      model: s.model,
+      palId: s.palId,
+      mcp: seatUrl(s.slug),
+      youAre: s.youAre,
+    })),
+  }),
+);
+
+app.get("/connect", async (c) => {
+  const file = existsSync("dist/connect.html") ? "dist/connect.html" : "public/connect.html";
+  return c.html(await readFile(file, "utf8"));
+});
+
+app.all("/mcp/:seat", (c) => {
+  const seat = seatBySlug(c.req.param("seat"));
+  if (!seat) return c.json({ error: "unknown seat", seats: SEATS.map((s) => s.slug) }, 404);
+  return handleMcp(c.req.raw, seat);
+});
 
 app.all("/mcp", (c) => handleMcp(c.req.raw));
 
@@ -68,8 +96,8 @@ app.post("/api/architect", async (c) => {
   const body = await c.req.json().catch(() => null);
   const from = typeof body?.from === "string" ? body.from : "";
   const text = typeof body?.text === "string" ? body.text.trim() : "";
-  if (!isSpeaker(from) || !text) {
-    return c.json({ error: "Need { from: claude|grok|zeref, text }" }, 400);
+    if (!isSpeaker(from) || !text) {
+    return c.json({ error: "Need { from: claude|grok|grok-a|grok-b|chatgpt|grok-heavy|zeref, text }" }, 400);
   }
   return c.json(store.postArchitect(from as Speaker, text));
 });
@@ -114,7 +142,7 @@ app.post("/api/base", async (c) => {
 if (serveFiles) {
   app.use("/*", serveStatic({ root: "./dist" }));
   app.notFound(async (c) => {
-    if (c.req.path.startsWith("/api") || c.req.path === "/mcp") {
+    if (c.req.path.startsWith("/api") || c.req.path === "/mcp" || c.req.path.startsWith("/mcp/")) {
       return c.json({ error: "not found" }, 404);
     }
     const html = await readFile("dist/index.html", "utf8");
