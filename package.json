@@ -2,18 +2,20 @@
   "name": "area-67",
   "private": true,
   "version": "0.3.0",
-  "description": "AREA 67 — Palworld-style agent base with a live MCP architect radio for Claude and Grok.",
+  "description": "AREA 67 — 3D AI command center with live attention, directive receipts and seat-scoped MCP.",
   "type": "module",
   "scripts": {
     "dev": "node scripts/gen-icons.mjs && node scripts/dev.mjs",
     "dev:game": "vite --host 127.0.0.1 --port 4611",
-    "dev:bus": "PORT=8787 SERVE_STATIC=0 tsx server/index.ts",
+    "dev:bus": "node scripts/bus.mjs",
     "start": "tsx server/index.ts",
     "build": "tsc && node scripts/gen-icons.mjs && vite build",
     "preview": "vite preview --host 127.0.0.1 --port 4611",
-    "test": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "test": "tsc --noEmit && tsx --test tests/*.test.ts"
   },
   "dependencies": {
+    "three": "^0.180.0",
     "@hono/node-server": "^2.1.1",
     "@modelcontextprotocol/sdk": "^1.30.0",
     "hono": "^4.13.7",
@@ -22,6 +24,8 @@
     "zod": "^4.5.4"
   },
   "devDependencies": {
+    "@types/three": "^0.180.0",
+    "@types/node": "^24.0.0",
     "typescript": "5.9.2",
     "vite": "7.1.5"
   }

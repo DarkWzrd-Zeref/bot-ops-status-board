@@ -1,98 +1,111 @@
 import { bus } from "./events.ts";
-import { assignAgent, exportSave, onPersist, palSay } from "./runtime.ts";
-import type { RadioNote, Speaker } from "./types.ts";
+import { applyBaseSnapshot, exportSave, onPersist, palSay } from "./runtime.ts";
+import { effectiveAttention, type RadioNote, type Speaker, type Presence, type Channel } from "../../shared/protocol.ts";
 
 export const radioNotes: RadioNote[] = [];
+export const presenceBySeat = new Map<Speaker, Presence>();
 export let radioLive = false;
-
+let revision = 0;
+let ready = false;
+let remoteChange = false;
 let persistTimer = 0;
 let started = false;
+let lastInteraction = Date.now();
 
-type LiveEvent =
-  | { type: "hello"; notes?: RadioNote[] }
-  | { type: "architect"; note: RadioNote }
-  | { type: "pal-say"; palId: string; text: string }
-  | { type: "pal-assign"; palId: string; buildingUid: string | null }
-  | { type: "ping" };
-
-function remember(note: RadioNote): void {
-  if (radioNotes.some((n) => n.id === note.id)) return;
-  radioNotes.unshift(note);
-  if (radioNotes.length > 80) radioNotes.length = 80;
-  bus.emit({ type: "radio", note });
+export function attention(seat: Speaker) {
+  return radioLive ? effectiveAttention(presenceBySeat.get(seat)) : "offline";
 }
-
-function apply(ev: LiveEvent): void {
-  if (ev.type === "ping") return;
-  if (ev.type === "hello") {
-    if (ev.notes?.length) {
-      radioNotes.splice(0, radioNotes.length, ...ev.notes);
-      bus.emit({ type: "changed" });
+async function request<T>(url: string, init?: RequestInit): Promise<T> {
+  const res = await fetch(url, { ...init, headers: { "Content-Type": "application/json", ...init?.headers } });
+  const data = await res.json();
+  if (!res.ok) throw new Error(data.error || "Hub request failed");
+  return data as T;
+}
+function remember(note: RadioNote, announce: boolean) {
+  const i = radioNotes.findIndex(n => n.id === note.id);
+  if (i >= 0) radioNotes[i] = note;
+  else radioNotes.unshift(note);
+  if (announce) bus.emit({ type: "radio", note });
+  else bus.emit({ type: "changed" });
+}
+function hydrate(data: { base?: Parameters<typeof applyBaseSnapshot>[0] | null; revision?: number }) {
+  remoteChange = true;
+  window.clearTimeout(persistTimer);
+  revision = data.revision ?? revision;
+  try {
+    if (data.base) {
+      const current = exportSave();
+      const same = JSON.stringify([current.buildings, current.assignments, current.equipped]) === JSON.stringify([data.base.buildings, data.base.assignments, data.base.equipped ?? {}]);
+      if (!same) applyBaseSnapshot(data.base);
     }
-    return;
-  }
-  if (ev.type === "architect") {
-    remember(ev.note);
-    if (ev.note.palId) palSay(ev.note.palId, ev.note.text);
-    return;
-  }
-  if (ev.type === "pal-say") {
-    palSay(ev.palId, ev.text);
-    return;
-  }
-  if (ev.type === "pal-assign") {
-    assignAgent(ev.palId, ev.buildingUid);
-  }
+  } finally { remoteChange = false; }
 }
-
-function pushBase(): void {
+function updatePresence(rows: Presence[]) {
+  for (const p of rows) presenceBySeat.set(p.seat, p);
+  bus.emit({ type: "presence" });
+}
+async function pushBase() {
+  if (!ready || !radioLive || remoteChange) return;
   const data = exportSave();
-  void fetch("/api/base", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ buildings: data.buildings, assignments: data.assignments, equipped: data.equipped }),
-  }).catch(() => {
-    /* bus down */
-  });
+  try {
+    const res = await fetch("/api/base", { method: "POST", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ revision, buildings: data.buildings, assignments: data.assignments, equipped: data.equipped }) });
+    const result = await res.json();
+    if (res.status === 409) {
+      hydrate(result);
+      bus.emit({ type: "toast", tone: "warn", text: result.error });
+    } else if (!res.ok) throw new Error(result.error);
+    else revision = result.revision;
+  } catch {
+    bus.emit({ type: "toast", tone: "bad", text: "Base change was not saved. Reconnect and try again." });
+  }
 }
-
-export async function postRadio(from: Speaker, text: string): Promise<void> {
-  const body = text.trim();
-  if (!body) return;
-  const res = await fetch("/api/architect", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ from, text: body }),
-  });
-  if (!res.ok) throw new Error("radio failed");
+export async function postRadio(from: Speaker, text: string, options: { channel?: Channel; to?: Speaker | "all"; directive?: boolean; replyTo?: string } = {}) {
+  const note = await request<RadioNote>("/api/architect", { method: "POST", body: JSON.stringify({ from, text, ...options }) });
+  remember(note, false);
+  return note;
 }
-
-export function connectLive(): void {
+function userHeartbeat() {
+  if (!radioLive) return;
+  const active = document.visibilityState === "visible" && Date.now() - lastInteraction < 120_000;
+  void request("/api/presence/zeref", { method: "POST", body: JSON.stringify({ state: active ? "attentive" : "away", activity: active ? "At the command deck" : "Away from the command deck" }) }).catch(() => {});
+}
+export function connectLive() {
   if (started) return;
   started = true;
-
-  onPersist(() => {
+  onPersist(data => {
+    if (data.lifting) return;
+    if (remoteChange || !ready) return;
     window.clearTimeout(persistTimer);
-    persistTimer = window.setTimeout(pushBase, 400);
+    persistTimer = window.setTimeout(() => void pushBase(), 400);
   });
-
   const es = new EventSource("/api/events");
-  es.onopen = () => {
-    radioLive = true;
-    pushBase();
-    bus.emit({ type: "changed" });
-  };
-  es.onmessage = (e) => {
+  es.onopen = () => { radioLive = true; bus.emit({ type: "presence" }); userHeartbeat(); };
+  es.onmessage = event => {
     try {
-      apply(JSON.parse(e.data) as LiveEvent);
-    } catch {
-      /* ignore malformed */
-    }
+      const ev = JSON.parse(event.data);
+      if (ev.type === "hello") {
+        radioNotes.splice(0, radioNotes.length, ...(ev.notes ?? []));
+        hydrate(ev); updatePresence(ev.presence ?? []); ready = true;
+        if (!ev.base) void pushBase();
+        bus.emit({ type: "changed" });
+      } else if (ev.type === "presence") updatePresence(ev.presence);
+      else if (ev.type === "architect") {
+        remember(ev.note, true);
+        if (ev.note.palId) palSay(ev.note.palId, ev.note.text);
+      } else if (ev.type === "receipt") remember(ev.note, false);
+      else if (ev.type === "base") hydrate(ev);
+      else if (ev.type === "pal-say") palSay(ev.palId, ev.text);
+      // Assignments arrive as revisioned base snapshots. The server retains
+      // pal-assign events only for older clients; do not republish them here.
+    } catch (error) { console.error("Hub event failed", error); }
   };
-  es.onerror = () => {
-    if (radioLive) {
-      radioLive = false;
-      bus.emit({ type: "changed" });
-    }
-  };
+  es.onerror = () => { radioLive = false; bus.emit({ type: "presence" }); };
+  document.addEventListener("pointerdown", () => { lastInteraction = Date.now(); }, { passive: true });
+  document.addEventListener("keydown", () => { lastInteraction = Date.now(); });
+  document.addEventListener("visibilitychange", userHeartbeat);
+  window.setInterval(userHeartbeat, 30_000);
+  window.setInterval(() => bus.emit({ type: "presence" }), 10_000);
+  window.addEventListener("pagehide", () => navigator.sendBeacon("/api/presence/zeref",
+    new Blob([JSON.stringify({ state: "away", activity: "Closed the command deck" })], { type: "application/json" })));
 }

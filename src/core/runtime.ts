@@ -52,6 +52,7 @@ export const runtime = {
   selectedBuilding: null as string | null,
   cautionBlocks: false,
   pulseOn: true,
+  movementAcc: 0,
   pulseAcc: 0,
   logs: [] as LogLine[],
   player: { x: 0, y: 0, tx: 0, ty: 0, path: [] as Point[] },
@@ -69,7 +70,7 @@ export function bootRuntime(): void {
     runtime.equipped = saved.equipped ?? {};
     runtime.scans = saved.scans ?? {};
     runtime.cautionBlocks = saved.cautionBlocks ?? false;
-    if (saved.lifting) {
+    if (saved.lifting && !runtime.buildings.some(b => b.uid === saved.lifting!.uid)) {
       placeAt(saved.lifting.hubId, saved.lifting.fromTx, saved.lifting.fromTy, saved.lifting.uid, true);
     }
   } else {
@@ -207,6 +208,7 @@ export function finishMove(tx: number, ty: number): boolean {
   runtime.ghostHub = null;
   runtime.mode = "play";
   log("Replanted " + hub.name + ".", "ok");
+  persist();
   return true;
 }
 
@@ -218,6 +220,7 @@ export function cancelMove(): void {
   runtime.ghostHub = null;
   runtime.mode = "play";
   log("Move cancelled.", "info");
+  persist();
 }
 
 export function demolish(uidStr: string): void {
@@ -260,8 +263,9 @@ export function grantsFor(agentId: string): string[] {
 export function assignAgent(agentId: string, buildingUid: string | null): void {
   const a = runtime.agents.find((x) => x.id === agentId);
   if (!a) return;
-  a.buildingUid = buildingUid;
   if (!buildingUid) {
+    a.buildingUid = null;
+    a.path = [];
     a.status = "idle";
     a.detail = "unassigned";
     persist();
@@ -272,12 +276,12 @@ export function assignAgent(agentId: string, buildingUid: string | null): void {
   if (!b) return;
   const hub = hubById(b.hubId);
   const slots = MODS[b.hubId]?.slots ?? 1;
-  const used = runtime.agents.filter((x) => x.buildingUid === buildingUid).length;
-  if (slots > 0 && used > slots) {
-    a.buildingUid = null;
+  const used = runtime.agents.filter((x) => x.id !== agentId && x.buildingUid === buildingUid).length;
+  if (slots > 0 && used >= slots) {
     log(hub.name + " is full (" + slots + " pal slots).", "warn");
     return;
   }
+  a.buildingUid = buildingUid;
   const def = AGENTS.find((x) => x.id === agentId);
   const work = MODS[b.hubId]?.work;
   if (def && work && def.work.length && !def.work.includes(work)) {
@@ -285,13 +289,10 @@ export function assignAgent(agentId: string, buildingUid: string | null): void {
   }
   walkToBuilding(agentId, buildingUid);
   log(agentName(agentId) + " assigned to " + hub.name + ". AI now: " + (MODS[b.hubId]?.aiChange ?? hub.blurb), "ok");
-  const source = AGENTS.find((x) => x.id === agentId);
   const twin = AGENTS.find((x) => x.mimicOf === agentId);
   if (twin) {
-    window.setTimeout(() => {
-      assignAgent(twin.id, buildingUid);
-      log(twin.name + " mimics " + (source?.name ?? agentId) + " (Grok twin leash).", "info");
-    }, 700);
+    assignAgent(twin.id, buildingUid);
+    log(twin.name + " follows the station assignment when capacity allows. This does not run its AI.", "info");
   }
   persist();
 }
@@ -339,6 +340,9 @@ export function walkPlayerTo(tx: number, ty: number): void {
 }
 
 export function stepAgents(dt: number): void {
+  runtime.movementAcc += dt;
+  if (runtime.movementAcc < 160) return;
+  runtime.movementAcc = 0;
   for (const a of runtime.agents) {
     if (!a.path.length) {
       if (a.buildingUid && a.status === "walk") {
@@ -367,7 +371,7 @@ export function stepAgents(dt: number): void {
   }
 
   if (runtime.pulseOn) {
-    runtime.pulseAcc += dt;
+    runtime.pulseAcc += 160;
     if (runtime.pulseAcc > 4500) {
       runtime.pulseAcc = 0;
       pulseOnce();
@@ -401,7 +405,7 @@ function pulseOnce(): void {
     bus.emit({ type: "changed" });
     return;
   }
-  const workers = runtime.agents.filter((a) => a.buildingUid);
+  const workers = runtime.agents.filter((a) => runtime.buildings.some(b => b.uid === a.buildingUid));
   if (!workers.length) return;
   const a = workers[Math.floor(Math.random() * workers.length)];
   a.detail = workDetail(a, runtime.buildings.find((x) => x.uid === a.buildingUid)!);
@@ -469,9 +473,45 @@ export function onPersist(fn: (data: SaveShape) => void): void {
   persistHook = fn;
 }
 
+/** Apply the shared base without re-publishing it back to the server. */
+export function applyBaseSnapshot(next: Pick<SaveShape, "buildings" | "assignments"> & { equipped?: Record<string, string[]> }): void {
+  runtime.grid = new WorldGrid();
+  generateWorld(runtime.grid);
+  runtime.buildings = [];
+  for (const b of next.buildings) {
+    const h = HUBS.find(h => h.id === b.hubId);
+    if (!h || !runtime.grid.inBounds(b.tx, b.ty)) continue;
+    runtime.buildings.push(b);
+    runtime.grid.occupy(b.tx, b.ty, h.w, h.h, true);
+  }
+  runtime.equipped = next.equipped ?? {};
+  if (runtime.lifting) { runtime.mode = "play"; runtime.ghostHub = null; }
+  runtime.lifting = null;
+  for (const a of runtime.agents) {
+    const candidate = next.assignments[a.id];
+    const assigned = runtime.buildings.some(b => b.uid === candidate) ? candidate : null;
+    const changed = a.buildingUid !== assigned;
+    a.buildingUid = assigned;
+    a.skills = runtime.equipped[a.id] ?? [];
+    if (changed || assigned) {
+      a.path = [];
+      if (assigned) walkToBuilding(a.id, assigned);
+      else { a.status = "idle"; a.detail = "unassigned"; }
+    }
+  }
+  try { localStorage.setItem(SAVE_KEY, JSON.stringify(exportSave())); } catch { /* local cache optional */ }
+  bus.emit({ type: "changed" });
+}
+
 export function exportSave(): SaveShape {
+  // A move preview is local; retain the original station until it is replanted.
+  const buildings = runtime.buildings.slice();
+  if (runtime.lifting && !buildings.some(b => b.uid === runtime.lifting!.uid)) {
+    const l = runtime.lifting;
+    buildings.push({ uid: l.uid, hubId: l.hubId, tx: l.fromTx, ty: l.fromTy });
+  }
   return {
-    buildings: runtime.buildings,
+    buildings,
     equipped: runtime.equipped,
     scans: runtime.scans,
     assignments: Object.fromEntries(runtime.agents.map((a) => [a.id, a.buildingUid])),

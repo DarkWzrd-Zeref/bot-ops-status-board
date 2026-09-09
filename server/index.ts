@@ -5,13 +5,16 @@ import { serveStatic } from "@hono/node-server/serve-static";
 import { Hono } from "hono";
 import { cors } from "hono/cors";
 import { streamSSE } from "hono/streaming";
-import { SEATS, isSpeaker, publicBase, seatBySlug, seatUrl, type Speaker } from "./catalog.ts";
+import { SEATS, isSpeaker, publicBase, seatBySlug, seatUrl } from "./catalog.ts";
 import { handleMcp } from "./mcp.ts";
 import * as store from "./store.ts";
+import { z } from "zod";
+import { SPEAKERS } from "../shared/protocol.ts";
 
 store.loadStore();
 
-const app = new Hono();
+export const app = new Hono();
+app.onError((err, c) => c.json({ error: err.message }, 400));
 const serveFiles = process.env.SERVE_STATIC !== "0" && existsSync("dist");
 
 app.use(
@@ -66,13 +69,17 @@ app.all("/mcp", (c) => handleMcp(c.req.raw));
 app.get("/api/events", (c) =>
   streamSSE(c, async (stream) => {
     const send = (ev: store.BusEvent) => {
-      void stream.writeSSE({ data: JSON.stringify(ev) });
+      if (!stream.aborted) void stream.writeSSE({ data: JSON.stringify(ev) }).catch(() => {});
     };
-    send({ type: "hello", notes: store.notes(40), base: store.base() });
+    c.header("Cache-Control", "no-cache, no-transform");
+    send({ type: "hello", notes: store.notes(200), base: store.base(), presence: store.presence(), revision: store.revision() });
     const off = store.subscribe(send);
+    stream.onAbort(off);
     try {
-      while (true) {
-        await stream.sleep(20000);
+      while (!stream.aborted) {
+        await stream.sleep(15000);
+        if (stream.aborted) break;
+        send({ type: "presence", presence: store.presence() });
         await stream.writeSSE({ data: JSON.stringify({ type: "ping" }) });
       }
     } finally {
@@ -83,7 +90,9 @@ app.get("/api/events", (c) =>
 
 app.get("/api/status", (c) =>
   c.json({
-    notes: store.notes(40),
+    notes: store.notes(200),
+    presence: store.presence(),
+    revision: store.revision(),
     pals: store.palList(),
     stations: store.stationList(),
     base: store.base(),
@@ -93,13 +102,29 @@ app.get("/api/status", (c) =>
 app.get("/api/architect", (c) => c.json({ notes: store.notes(80) }));
 
 app.post("/api/architect", async (c) => {
-  const body = await c.req.json().catch(() => null);
-  const from = typeof body?.from === "string" ? body.from : "";
-  const text = typeof body?.text === "string" ? body.text.trim() : "";
-    if (!isSpeaker(from) || !text) {
-    return c.json({ error: "Need { from: claude|grok|cursor|grok-a|grok-b|chatgpt|grok-heavy|zeref, text }" }, 400);
-  }
-  return c.json(store.postArchitect(from as Speaker, text));
+  const body = z.object({ from: z.enum(SPEAKERS), text: z.string().trim().min(1).max(2000),
+    channel: z.enum(["command", "team"]).optional(), to: z.enum(["all", ...SPEAKERS]).optional(),
+    directive: z.boolean().optional(), replyTo: z.string().optional() }).parse(await c.req.json());
+  const { from, text, ...options } = body;
+  return c.json(store.postArchitect(from, text, options));
+});
+
+app.get("/api/presence", c => c.json(store.presence()));
+app.post("/api/presence/:seat", async c => {
+  const seat = c.req.param("seat");
+  if (!isSpeaker(seat)) return c.json({ error: "Unknown seat" }, 404);
+  const data = z.object({ state: z.enum(["attentive", "busy", "away", "offline"]), activity: z.string().max(200).optional() }).parse(await c.req.json());
+  return c.json(store.heartbeat(seat, data.state, data.activity, seat === "zeref" ? "browser" : "rest"));
+});
+app.get("/api/inbox/:seat", c => {
+  const seat = c.req.param("seat");
+  if (!isSpeaker(seat)) return c.json({ error: "Unknown seat" }, 404);
+  store.heartbeat(seat, "attentive", "Reading directives", "rest");
+  return c.json({ seat, inbox: store.inbox(seat, 200), presence: store.presence() });
+});
+app.post("/api/directives/:id/ack", async c => {
+  const body = z.object({ seat: z.enum(SPEAKERS), state: z.enum(["seen", "accepted", "completed", "blocked"]), detail: z.string().max(500).optional() }).parse(await c.req.json());
+  return c.json(store.acknowledge(body.seat, c.req.param("id"), body.state, body.detail));
 });
 
 app.post("/api/say", async (c) => {
@@ -127,16 +152,17 @@ app.get("/api/stations", (c) => c.json(store.stationList()));
 app.get("/api/base", (c) => c.json(store.base()));
 
 app.post("/api/base", async (c) => {
-  const body = (await c.req.json().catch(() => null)) as store.BaseSnapshot | null;
-  if (!body || !Array.isArray(body.buildings) || !body.assignments || typeof body.assignments !== "object") {
-    return c.json({ error: "Need { buildings, assignments }" }, 400);
-  }
+  const body = z.object({ revision: z.number().int().nonnegative().optional(),
+    buildings: z.array(z.object({ uid: z.string().min(1).max(80), hubId: z.string().min(1), tx: z.number().int().min(0).max(55), ty: z.number().int().min(0).max(39) })).max(400),
+    assignments: z.record(z.string(), z.string().nullable()), equipped: z.record(z.string(), z.array(z.string())).optional(),
+  }).parse(await c.req.json());
+  if (store.base() && body.revision !== store.revision()) return c.json({ error: "The base changed. Latest version restored; try your action again.", base: store.base(), revision: store.revision() }, 409);
   store.setBase({
     buildings: body.buildings,
     assignments: body.assignments,
     equipped: body.equipped,
   });
-  return c.json({ ok: true, stations: body.buildings.length });
+  return c.json({ ok: true, stations: body.buildings.length, revision: store.revision() });
 });
 
 if (serveFiles) {
@@ -152,4 +178,4 @@ if (serveFiles) {
 
 const port = Number(process.env.PORT || 8787);
 console.log("AREA 67 bus on :" + port + "  mcp=/mcp  static=" + String(serveFiles));
-serve({ fetch: app.fetch, port, hostname: "0.0.0.0" });
+if (process.env.AREA67_TEST !== "1") serve({ fetch: app.fetch, port, hostname: "0.0.0.0" });

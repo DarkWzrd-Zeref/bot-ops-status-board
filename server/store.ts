@@ -1,6 +1,8 @@
-import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
+import { mkdirSync, readFileSync, writeFileSync, renameSync } from "node:fs";
 import { dirname, join } from "node:path";
-import { AGENTS, HUBS, SEATS, SPEAKER_PAL, agentById, hubById, publicBase as siteBase, seatUrl, type Speaker } from "./catalog.ts";
+import { AGENTS, HUBS, MODS, SKILL_IDS, SEATS, SPEAKER_PAL, agentById, hubById, publicBase as siteBase, seatUrl, type Speaker } from "./catalog.ts";
+import { randomUUID } from "node:crypto";
+import { effectiveAttention, type RadioNote, type Presence, type Attention, type Channel, type ReceiptState } from "../shared/protocol.ts";
 
 export interface PlacedBuilding {
   uid: string;
@@ -15,13 +17,7 @@ export interface BaseSnapshot {
   equipped?: Record<string, string[]>;
 }
 
-export interface ArchitectNote {
-  id: string;
-  from: Speaker;
-  palId: string | null;
-  text: string;
-  at: number;
-}
+export type ArchitectNote = RadioNote;
 
 export interface PalUtterance {
   palId: string;
@@ -30,17 +26,20 @@ export interface PalUtterance {
 }
 
 export type BusEvent =
-  | { type: "hello"; notes: ArchitectNote[]; base: BaseSnapshot | null }
+  | { type: "hello"; notes: ArchitectNote[]; base: BaseSnapshot | null; presence: Presence[]; revision: number }
+  | { type: "presence"; presence: Presence[] }
+  | { type: "receipt"; note: ArchitectNote }
   | { type: "architect"; note: ArchitectNote }
   | { type: "pal-say"; palId: string; text: string; at: number }
   | { type: "pal-assign"; palId: string; buildingUid: string | null; hubId: string | null }
-  | { type: "base"; base: BaseSnapshot }
+  | { type: "base"; base: BaseSnapshot; revision: number }
   | { type: "ping" };
 
 interface DiskState {
   notes: ArchitectNote[];
   lastSay: Record<string, PalUtterance>;
   base: BaseSnapshot | null;
+  revision: number;
 }
 
 const DATA_DIR = process.env.DATA_DIR || join(process.cwd(), "data");
@@ -49,23 +48,30 @@ const MAX_NOTES = 200;
 
 const listeners = new Set<(ev: BusEvent) => void>();
 
-let state: DiskState = { notes: [], lastSay: {}, base: null };
+let state: DiskState = { notes: [], lastSay: {}, base: null, revision: 0 };
+// Presence is never restored from disk or inferred from an animated pal.
+const heartbeats = new Map<Speaker, Presence>();
+let committedState = JSON.stringify(state);
 
 function nid(): string {
-  return "n" + Math.random().toString(36).slice(2, 10);
+  return randomUUID();
 }
 
 export function loadStore(): void {
+  heartbeats.clear();
   try {
     mkdirSync(DATA_DIR, { recursive: true });
     const raw = readFileSync(DATA_FILE, "utf8");
     const parsed = JSON.parse(raw) as Partial<DiskState>;
     state = {
-      notes: Array.isArray(parsed.notes) ? parsed.notes : [],
+      notes: Array.isArray(parsed.notes) ? parsed.notes.map(n => ({ ...n, channel: n.channel ?? "command", to: n.to ?? "all", directive: n.directive ?? false, recipients: n.recipients ?? [], receipts: n.receipts ?? {} })) : [],
       lastSay: parsed.lastSay && typeof parsed.lastSay === "object" ? parsed.lastSay : {},
       base: parsed.base ?? null,
+      revision: parsed.revision ?? 0,
     };
-  } catch {
+    committedState = JSON.stringify(state);
+  } catch (error) {
+    if ((error as NodeJS.ErrnoException).code !== "ENOENT") throw error;
     mkdirSync(DATA_DIR, { recursive: true });
     persist();
   }
@@ -74,9 +80,14 @@ export function loadStore(): void {
 function persist(): void {
   try {
     mkdirSync(dirname(DATA_FILE), { recursive: true });
-    writeFileSync(DATA_FILE, JSON.stringify(state, null, 2));
+    const serialized = JSON.stringify(state, null, 2);
+    writeFileSync(DATA_FILE + ".tmp", serialized);
+    renameSync(DATA_FILE + ".tmp", DATA_FILE);
+    committedState = serialized;
   } catch (err) {
+    state = JSON.parse(committedState) as DiskState;
     console.error("area67 persist failed", err);
+    throw new Error("Hub storage unavailable. Your change was not saved; please retry.");
   }
 }
 
@@ -92,11 +103,52 @@ export function publish(ev: BusEvent): void {
 }
 
 export function notes(limit = 40): ArchitectNote[] {
-  return state.notes.slice(0, Math.max(1, limit));
+  // Open directives never disappear behind the recent-message window.
+  return state.notes.filter((n, i) => i < Math.max(1, limit) || isOpen(n));
 }
+function isOpen(n: ArchitectNote): boolean { return n.directive && n.recipients.some(s => n.receipts[s]?.state !== "completed"); }
 
 export function base(): BaseSnapshot | null {
   return state.base;
+}
+export function revision(): number { return state.revision; }
+export function presence(): Presence[] {
+  return [...SEATS.map(s => s.id), "zeref" as Speaker].map(seat => {
+    const p = heartbeats.get(seat);
+    return { seat, state: effectiveAttention(p), lastSeen: p?.lastSeen ?? 0, activity: p?.activity ?? "No check-in yet", source: p?.source ?? "mcp", lastReadAt: p?.lastReadAt ?? 0 };
+  });
+}
+export function heartbeat(seat: Speaker, attention: Attention = "attentive", activity = "Reading the hub", source: Presence["source"] = "mcp"): Presence {
+  const p: Presence = { seat, state: attention, activity: activity.slice(0, 200), source, lastSeen: Date.now(), lastReadAt: heartbeats.get(seat)?.lastReadAt ?? 0 };
+  heartbeats.set(seat, p);
+  publish({ type: "presence", presence: presence() });
+  return p;
+}
+export function inbox(seat: Speaker, limit = 80): ArchitectNote[] {
+  const addressed = state.notes.filter(n => n.from !== seat && (n.to === "all" || n.to === seat));
+  // The limit bounds context, never unfinished directives.
+  const rows = addressed.filter((n, i) => i < limit || (n.recipients.includes(seat) && n.receipts[seat]?.state !== "completed"));
+  let changed = false;
+  for (const n of rows) {
+    if (n.recipients.includes(seat) && !n.receipts[seat]) {
+      n.receipts[seat] = { state: "seen", at: Date.now() };
+      changed = true;
+    }
+  }
+  if (changed) { persist(); for (const n of rows) publish({ type: "receipt", note: n }); }
+  const p = heartbeats.get(seat);
+  if (p) p.lastReadAt = Date.now();
+  return rows;
+}
+export function acknowledge(seat: Speaker, noteId: string, next: ReceiptState, detail = ""): ArchitectNote {
+  const n = state.notes.find(n => n.id === noteId);
+  if (!n || !n.recipients.includes(seat)) throw new Error("Directive not addressed to this seat");
+  const previous = n.receipts[seat]?.state;
+  if (previous === "completed" && next !== "completed") throw new Error("Completed directives cannot regress");
+  if (previous && previous !== "seen" && next === "seen") return n;
+  n.receipts[seat] = { state: next, at: Date.now(), detail: detail.slice(0, 500) };
+  heartbeat(seat, next === "accepted" ? "busy" : "attentive", detail || next);
+  persist(); publish({ type: "receipt", note: n }); return n;
 }
 
 export function lastSay(): Record<string, PalUtterance> {
@@ -104,29 +156,64 @@ export function lastSay(): Record<string, PalUtterance> {
 }
 
 export function setBase(next: BaseSnapshot): void {
+  const ids = new Set<string>();
+  const occupied = new Set<string>();
+  for (const b of next.buildings) {
+    const hub = hubById(b.hubId);
+    if (!hub || ids.has(b.uid)) throw new Error("Unknown station or duplicate building ID");
+    ids.add(b.uid);
+    if (!Number.isInteger(b.tx) || !Number.isInteger(b.ty) || b.tx < 0 || b.ty < 0 || b.tx + hub.w > 56 || b.ty + hub.h > 40) throw new Error("Station footprint is outside the map");
+    if (b.hubId === "well" && (b.tx !== 27 || b.ty !== 19)) throw new Error("The command core cannot be moved");
+    for (let x = b.tx; x < b.tx + hub.w; x++) for (let y = b.ty; y < b.ty + hub.h; y++) {
+      const key = x + ":" + y;
+      if (occupied.has(key)) throw new Error("Station footprints overlap");
+      if (Math.hypot(x - 28, y - 20) > 16) throw new Error("Station is outside the Palbox radius");
+      occupied.add(key);
+    }
+  }
+  if (next.buildings.filter(b => b.hubId === "well").length !== 1) throw new Error("The base needs exactly one command core");
+  for (const [pal, uid] of Object.entries(next.assignments)) {
+    if (!agentById(pal) || (uid !== null && !ids.has(uid))) throw new Error("Unknown pal or assignment target");
+  }
+  for (const b of next.buildings) {
+    const slots = MODS[b.hubId]?.slots ?? 1;
+    if (slots && Object.values(next.assignments).filter(uid => uid === b.uid).length > slots) throw new Error("Station capacity exceeded: " + b.hubId);
+  }
+  for (const [pal, skills] of Object.entries(next.equipped ?? {})) {
+    if (!agentById(pal) || skills.some(id => !SKILL_IDS.has(id))) throw new Error("Unknown pal or skill loadout");
+  }
   state.base = {
     buildings: next.buildings ?? [],
     assignments: next.assignments ?? {},
     equipped: next.equipped,
   };
+  state.revision++;
   persist();
+  publish({ type: "base", base: state.base, revision: state.revision });
 }
 
-export function postArchitect(from: Speaker, text: string): ArchitectNote {
+export function postArchitect(from: Speaker, text: string, options: { channel?: Channel; to?: Speaker | "all"; directive?: boolean; replyTo?: string } = {}): ArchitectNote {
   const palId = SPEAKER_PAL[from];
-  const note: ArchitectNote = { id: nid(), from, palId, text: text.trim(), at: Date.now() };
+  if (!text.trim() || text.trim().length > 2000) throw new Error("Message must contain 1–2000 characters");
+  if (options.replyTo && !state.notes.some(n => n.id === options.replyTo)) throw new Error("Reply target no longer exists");
+  const to = options.to ?? "all";
+  const directive = from === "zeref" && (options.directive ?? false);
+  const note: ArchitectNote = { id: nid(), from, palId, text: text.trim(), at: Date.now(), channel: options.channel ?? "command", to, directive, replyTo: options.replyTo,
+    recipients: directive ? (to === "all" ? SEATS.map(s => s.id) : [to]).filter(s => s !== from) : [], receipts: {} };
   state.notes.unshift(note);
-  state.notes = state.notes.slice(0, MAX_NOTES);
+  state.notes = state.notes.filter((n, i) => i < MAX_NOTES || (n.directive && n.recipients.some(s => n.receipts[s]?.state !== "completed")));
   if (palId) {
     state.lastSay[palId] = { palId, text: note.text, at: note.at };
   }
   persist();
   publish({ type: "architect", note });
+  heartbeat(from, "attentive", "Posted to " + note.channel, "rest");
   return note;
 }
 
 export function say(palId: string, text: string): PalUtterance | { error: string } {
   if (!agentById(palId)) return { error: "unknown pal " + palId };
+  if (!text.trim() || text.trim().length > 280) return { error: "Speech must contain 1–280 characters" };
   const u: PalUtterance = { palId, text: text.trim(), at: Date.now() };
   state.lastSay[palId] = u;
   persist();
@@ -144,15 +231,22 @@ export function assignPal(
   }
   if (!hubId || hubId === "unassign" || hubId === "idle") {
     state.base.assignments[palId] = null;
+    state.revision++;
     persist();
+    publish({ type: "base", base: state.base, revision: state.revision });
     publish({ type: "pal-assign", palId, buildingUid: null, hubId: null });
     return { ok: true, buildingUid: null, hubId: null };
   }
   if (!hubById(hubId)) return { ok: false, error: "unknown station " + hubId };
   const b = state.base.buildings.find((x) => x.hubId === hubId);
   if (!b) return { ok: false, error: "Station " + hubId + " is not placed on this Palbox yet." };
+  const slots = MODS[hubId]?.slots ?? 1;
+  const used = Object.entries(state.base.assignments).filter(([id, uid]) => id !== palId && uid === b.uid).length;
+  if (slots && used >= slots) return { ok: false, error: "Station is full: " + hubId };
   state.base.assignments[palId] = b.uid;
+  state.revision++;
   persist();
+  publish({ type: "base", base: state.base, revision: state.revision });
   publish({ type: "pal-assign", palId, buildingUid: b.uid, hubId });
   return { ok: true, buildingUid: b.uid, hubId };
 }
@@ -174,6 +268,7 @@ export function palList() {
       station: hub?.id ?? null,
       stationName: hub?.name ?? null,
       lastSay: uttered?.text ?? null,
+      presence: presence().find(p => SPEAKER_PAL[p.seat] === a.id) ?? null,
     };
   });
 }
@@ -226,5 +321,7 @@ export function statusText(forSeat?: string): string {
       ? recent.map((n) => "  [" + n.from + "] " + n.text)
       : ["  (silent — post with architect_post)"]),
   ];
+  lines.push("", "Attention (away after 2 minutes without a check-in, offline after 10):", ...presence().map(p => p.seat + ": " + p.state + " — " + p.activity));
+  lines.push("Use hub_sync for your directive inbox, directive_ack to accept/complete/report blockers, and presence_update to check in. The hub cannot start an external AI client.");
   return lines.join("\n");
 }
