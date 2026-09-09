@@ -12,7 +12,9 @@
     "build": "tsc && node scripts/gen-icons.mjs && vite build",
     "preview": "vite preview --host 127.0.0.1 --port 4611",
     "typecheck": "tsc --noEmit",
-    "test": "tsc --noEmit && tsx --test tests/*.test.ts"
+    "test": "tsc --noEmit && tsx --test tests/*.test.ts",
+    "hive:online": "node scripts/area67-mcp.mjs cursor online --hub cursor",
+    "hive:loop": "node scripts/area67-mcp.mjs cursor loop --hub cursor"
   },
   "dependencies": {
     "three": "^0.180.0",
