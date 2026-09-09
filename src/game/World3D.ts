@@ -3,13 +3,14 @@ import { OrbitControls } from "three/addons/controls/OrbitControls.js";
 import { CSS2DObject, CSS2DRenderer } from "three/addons/renderers/CSS2DRenderer.js";
 import { AGENTS, HUBS, BASE_RADIUS, MAP_W, MAP_H, assignAgent, beginMove, buildingAt, buildingName, cancelMove, demolish, finishMove, hubById, placementOk, runtime, stepAgents, tryPlace, walkPlayerTo } from "../core/runtime.ts";
 import { bus } from "../core/events.ts";
-import { attention, liveWork } from "../core/live.ts";
+import { attention, liveWork, presenceBySeat, workReports, radioLive } from "../core/live.ts";
+import { agentSignal, standbySpots, STANDBY_CENTER } from "../core/agentPresentation.ts";
 import { seatForPal, speakerLabel } from "../../shared/protocol.ts";
 import { CORE_X, CORE_Y, DISTRICTS } from "../../shared/map.ts";
 
 const colors = { attentive: 0x80f5b8, busy: 0x80c8ff, away: 0xe4b76a, offline: 0x536570 };
 const cx = CORE_X, cz = CORE_Y;
-type Actor = { group: THREE.Group; sprite: THREE.Sprite; light: THREE.Mesh<THREE.SphereGeometry, THREE.MeshBasicMaterial>; ring: THREE.Mesh; label: HTMLElement };
+type Actor = { group: THREE.Group; sprite: THREE.Sprite; light: THREE.Mesh<THREE.SphereGeometry, THREE.MeshBasicMaterial>; ring: THREE.Mesh; label: HTMLElement; signal: HTMLElement; action: HTMLElement };
 const typing = () => !!document.activeElement?.closest("input, textarea, select, dialog");
 
 /** The existing grid, building rules and pathfinder drive a real 3D presentation. */
@@ -33,6 +34,8 @@ export class World3D {
   private previous = performance.now();
   private reduced = matchMedia("(prefers-reduced-motion: reduce)").matches;
   private lastSignals = 0;
+  private parking: Array<{ x: number; y: number }> = [];
+  private standbyLabel!: HTMLElement;
 
   constructor(parent: HTMLElement) {
     this.renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true, powerPreference: "low-power" });
@@ -88,8 +91,8 @@ export class World3D {
       if (e.type === "changed") this.syncStations();
       if (e.type === "changed" || e.type === "presence") this.updateSignals();
       if (e.type === "focus-agent") {
-        const a = runtime.agents.find(a => a.id === e.agentId);
-        if (a) this.focus(a.tx + .5, a.ty + .5);
+        const actor = this.actors.get(e.agentId);
+        if (actor) this.focus(actor.group.position.x, actor.group.position.z);
       }
       if (e.type === "say") {
         const actor = this.actors.get(e.agentId);
@@ -292,6 +295,7 @@ export class World3D {
     for (const b of runtime.buildings) if (!this.stations.has(b.uid)) this.station(b.uid);
   }
   private updateSignals() {
+    this.parking = standbySpots(runtime.grid, runtime.agents.length);
     for (const [uid, group] of this.stations) {
       const active = liveWork(uid);
       const assigned = runtime.agents.filter(a => a.buildingUid === uid);
@@ -313,7 +317,7 @@ export class World3D {
       const def = AGENTS.find(d => d.id === a.id)!;
       const group = new THREE.Group(); group.position.set(a.tx + .5, .25, a.ty + .5); group.userData = { agentId: a.id };
       const sprite = new THREE.Sprite(new THREE.SpriteMaterial({ map: textures[/grok/i.test(def.model) ? "robot" : "alien"], transparent: true, alphaTest: .08 }));
-      const size = a.id === "director" ? 2.25 : 1.85;
+      const size = a.id === "director" ? 1.65 : 1.45;
       sprite.scale.set(size, size, 1); sprite.position.y = size * .48;
       if (a.id === "director") sprite.material.color.setHex(0xffc088);
       if (a.id === "claude") sprite.material.color.setHex(0xffd5aa);
@@ -322,9 +326,21 @@ export class World3D {
       const ring = this.glowRing(.46, parseInt(def.color.slice(1), 16), .005, group, .3);
       const dot = new THREE.Mesh(new THREE.SphereGeometry(.08, 8, 8), new THREE.MeshBasicMaterial({ color: colors.offline }));
       dot.position.set(.55, size * .95, 0); group.add(dot);
-      const label = this.label(def.name, "map-agent-label", -.12, group);
-      this.actors.set(a.id, { group, sprite, light: dot, ring, label }); this.scene.add(group);
+      const label = this.label("", "map-agent-label", size + .45, group);
+      const gem = document.createElement("span"); gem.className = "agent-gem"; gem.setAttribute("aria-hidden", "true");
+      const name = document.createElement("span"); name.className = "agent-name"; name.textContent = def.name;
+      const signal = document.createElement("span"); signal.className = "agent-icon"; signal.setAttribute("aria-hidden", "true");
+      const action = document.createElement("span"); action.className = "agent-action";
+      label.append(gem, name, signal, action);
+      label.setAttribute("role", "button"); label.tabIndex = 0;
+      const select = () => { runtime.selectedAgent = a.id; runtime.selectedBuilding = null; bus.emit({ type: "changed" }); };
+      label.addEventListener("click", select);
+      label.addEventListener("keydown", e => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); select(); } });
+      this.actors.set(a.id, { group, sprite, light: dot, ring, label, signal, action }); this.scene.add(group);
     }
+    const standby = new THREE.Group(); standby.position.set(STANDBY_CENTER.x, .2, STANDBY_CENTER.y - 5);
+    this.standbyLabel = this.label("Standby", "standby-label", .5, standby); this.scene.add(standby);
+    this.parking = standbySpots(runtime.grid, runtime.agents.length);
     // Zeref is the human commander at the table.
     this.mesh(new THREE.CapsuleGeometry(.22, .4, 5, 12), 0xc69c51, 0, .65, 0, this.player);
     this.mesh(new THREE.SphereGeometry(.28, 18, 12), 0xe6c48c, 0, 1.2, 0, this.player);
@@ -351,7 +367,7 @@ export class World3D {
       const t = this.tile(e); if (!t) return;
       if (runtime.mode === "build" && runtime.ghostHub) { tryPlace(runtime.ghostHub, t.x, t.y); return; }
       if (runtime.mode === "move" && runtime.lifting) { finishMove(t.x, t.y); return; }
-      const hits = this.ray.intersectObjects([...this.stations.values(), ...[...this.actors.values()].map(a => a.group)], true);
+      const hits = this.ray.intersectObjects([...this.stations.values(), ...[...this.actors.values()].filter(a => a.group.visible).map(a => a.group)], true);
       let hit: THREE.Object3D | null = hits[0]?.object ?? null;
       while (hit && !hit.userData.uid && !hit.userData.agentId) hit = hit.parent;
       const b = hit?.userData.uid ? runtime.buildings.find(b => b.uid === hit!.userData.uid) : buildingAt(t.x, t.y);
@@ -384,7 +400,9 @@ export class World3D {
     });
     window.addEventListener("area67-district", e => {
       const id = (e as CustomEvent<string>).detail;
-      if (id === "overview") {
+      if (id === "standby") {
+        this.resetCamera(); this.focus(STANDBY_CENTER.x, STANDBY_CENTER.y); this.camera.zoom = .8;
+      } else if (id === "overview") {
         this.resetCamera(); this.focus(MAP_W / 2, MAP_H / 2);
         this.camera.position.copy(this.controls.target).add(new THREE.Vector3(100, 120, 100));
         const aspect = (this.camera.right - this.camera.left) / (this.camera.top - this.camera.bottom);
@@ -429,21 +447,35 @@ export class World3D {
     }
     stepAgents(dt);
     this.player.position.lerp(new THREE.Vector3(runtime.player.tx + .5, .18, runtime.player.ty + .5), .18);
-    for (const a of runtime.agents) {
+    let parkedCount = 0;
+    for (const [index, a] of runtime.agents.entries()) {
       const actor = this.actors.get(a.id)!;
-      actor.group.position.lerp(new THREE.Vector3(a.tx + .5, .25, a.ty + .5), .16);
       const seat = seatForPal(a.id);
       const state = seat ? attention(seat.id) : "offline";
+      const signal = agentSignal(radioLive, seat ? presenceBySeat.get(seat.id) : undefined, workReports.find(w => w.seat === seat?.id), a.path.length > 0);
+      const parked = signal.parked;
+      const spot = parked ? this.parking[index] : { x: a.tx, y: a.ty };
+      actor.group.visible = !!spot;
+      if (!spot) continue;
+      if (parked || actor.group.userData.parked) { actor.group.position.set(spot.x + .5, .25, spot.y + .5); if (parked) parkedCount++; }
+      else actor.group.position.lerp(new THREE.Vector3(spot.x + .5, .25, spot.y + .5), .16);
+      actor.group.userData.parked = parked;
+      actor.group.scale.setScalar(parked ? .72 : 1);
       actor.light.material.color.setHex(colors[state]);
       actor.sprite.material.opacity = state === "offline" ? .53 : state === "away" ? .72 : 1;
       const active = state === "busy" || state === "attentive";
-      const working = a.path.length === 0 && runtime.workTargets.has(a.id) && liveWork().some(w => w.seat === seat?.id);
-      actor.sprite.position.y = actor.sprite.scale.y * .48 + (active && !this.reduced ? Math.sin(now * (working ? .009 : .002) + a.tx) * (working ? .09 : .04) : 0);
+      const working = signal.animate;
+      actor.sprite.position.y = actor.sprite.scale.y * .48 + (working && !this.reduced ? Math.sin(now * .009 + a.tx) * .07 : 0);
+      if (actor.label.dataset.status !== signal.status) { actor.signal.textContent = signal.icon; actor.action.textContent = signal.label; actor.label.dataset.status = signal.status; }
+      actor.label.title = signal.detail;
+      actor.label.setAttribute("aria-label", (seat?.label ?? a.id) + ": " + signal.label + ". " + signal.detail);
+      actor.label.hidden = parked && runtime.selectedAgent !== a.id;
       actor.label.classList.toggle("working", working);
       (actor.ring.material as THREE.MeshBasicMaterial).opacity = runtime.selectedAgent === a.id ? 1 : active ? .55 : .15;
       actor.label.classList.toggle("selected", runtime.selectedAgent === a.id);
       actor.label.dataset.attention = state;
     }
+    this.standbyLabel.textContent = "Standby · " + parkedCount + " parked";
     for (const group of this.stations.values()) {
       const crystal = group.getObjectByName("core");
       if (crystal && !this.reduced) crystal.rotation.y = now * .0003;

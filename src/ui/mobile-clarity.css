@@ -1,0 +1,80 @@
+/* World first. Drawers overlay the map only after an explicit action. */
+:root, :root.friends-collapsed { --left: 0px; --right: 0px; --lower: 0px; }
+#hud [hidden] { display: none !important; }
+#game-root, .world-overlay { left: 0; right: 0; bottom: 0; }
+.world-heading, #mission-summary { display: none; }
+.map-launchers { position: absolute; top: calc(var(--header) + 12px); left: 12px; display: flex; gap: 8px; pointer-events: auto; z-index: 6; }
+.map-launchers button { min-height: 44px; padding: 9px 12px; background: #10212bf5; box-shadow: 0 4px 15px #0003; }
+#agents-launcher span { display: inline; margin-left: 6px; font-size: 12px; color: var(--mint); }
+.district-nav { top: 12px; right: 12px; padding: 12px; max-width: 210px; }
+.district-nav summary { min-height: 20px; }
+#hud .crew-panel { position: absolute; left: 12px; top: calc(var(--header) + 68px); bottom: 88px; width: min(300px, calc(100vw - 24px)); height: auto; padding: 12px; border: 1px solid #3a555f; border-radius: 12px; overflow: auto; background: #101c25fa; z-index: 8; box-shadow: 0 12px 40px #0008; }
+#roster { display: block; width: auto; }
+#hud .seat-row { flex-direction: row; justify-content: flex-start; width: 100%; min-height: 54px; padding: 5px; margin: 0; gap: 10px; }
+#hud .seat-copy strong { text-align: left; font-size: 14px; }
+#hud .seat-copy .seat-state { justify-content: flex-start; font-size: 12px; }
+#hud .portrait { height: 42px; width: 34px; flex-basis: 34px; }
+#hud .portrait img { height: 48px; width: 48px; left: -7px; }
+#hud .portrait.large { height: 64px; width: 58px; flex-basis: 58px; }
+#hud .portrait.large img { height: 72px; width: 72px; }
+.friends-heading { position: sticky; top: -12px; background: #101c25; z-index: 1; padding: 8px 0 12px; }
+#friends-toggle { min-width: 44px; min-height: 44px; }
+#hud .operations-panel { display: flex; flex-direction: column; left: 12px; right: auto; top: auto; bottom: 90px; width: min(380px, calc(100vw - 24px)); height: auto; max-height: min(62dvh, calc(100dvh - var(--header) - 164px)); overflow: hidden; z-index: 8; background: #101c25fa; }
+.operations-heading { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex: 0 0 auto; border-bottom: 1px solid #344c57; padding: 10px 12px; background: #142632; }
+.operations-heading h2 { font-size: 16px; }
+.operations-heading button { min-height: 44px; white-space: nowrap; }
+.operations-body { overflow: auto; overscroll-behavior: contain; min-height: 0; }
+.build-catalog { max-height: none; overflow: visible; }
+.build-toolbar { flex-shrink: 0; }
+.mode-buttons button, .build-tabs button, .station-options button { min-height: 44px; }
+.mode-help { padding: 12px 16px; font-size: 14px; color: #b7ccd4; }
+#inspector-content:empty { display: none; }
+.close-inspector { display: none; }
+#placement-strip { position: absolute; top: calc(var(--header) + 68px); left: 12px; right: 12px; width: fit-content; max-width: calc(100vw - 24px); display: flex; align-items: center; gap: 8px; padding: 6px 8px 6px 12px; background: #152c32f5; border: 1px solid #77c6ae; border-radius: 10px; pointer-events: auto; z-index: 7; }
+#placement-label { font-size: 14px; overflow-wrap: anywhere; }
+#placement-strip button { min-height: 44px; }
+#quick-chat { left: 12px; right: 96px; bottom: max(12px, env(safe-area-inset-bottom)); }
+#chat-launcher { right: 12px; bottom: max(12px, env(safe-area-inset-bottom)); min-width: 72px; min-height: 48px; padding: 10px; }
+.comms-panel { right: 12px; bottom: 82px; width: min(410px, calc(100vw - 24px)); height: min(70dvh, calc(100dvh - var(--header) - 96px)); z-index: 8; }
+.world-controls { bottom: 88px; right: 12px; }
+.world-controls button { width: 44px; min-height: 44px; }
+.world-caption { display: none; }
+.station-banner { width: 92px; }
+.station-chip { background: #0b1824b8; border-color: #42607380; }
+/* Character thought chips encode real reports, not a simulated work timer. */
+.map-agent-label { display: flex; align-items: center; gap: 5px; max-width: 170px; padding: 3px 6px; font-size: 12px; margin-top: 0; border-radius: 12px; background: #0c1b25e8; pointer-events: auto; cursor: pointer; }
+.agent-name { overflow: hidden; text-overflow: ellipsis; }
+.agent-action { color: #bed0d8; }
+.agent-icon { color: #d5ecee; font-weight: 700; }
+.map-agent-label[hidden] { display: none !important; }
+.agent-gem { width: 9px; height: 13px; flex-shrink: 0; background: #80f5b8; clip-path: polygon(50% 0, 100% 50%, 50% 100%, 0 50%); }
+.map-agent-label[data-status=working] .agent-gem { background: #80c8ff; animation: signal-breathe 1.5s ease-in-out infinite; }
+.map-agent-label[data-status=blocked] .agent-gem { background: #f2b365; }
+.map-agent-label[data-status=moving] .agent-gem { background: #b8afff; }
+.map-agent-label[data-status=done] .agent-gem { background: #80f5cd; }
+.map-agent-label[data-status=away] .agent-gem { background: #e4b76a; }
+.map-agent-label[data-status=offline] .agent-gem, .map-agent-label[data-status=disconnected] .agent-gem { background: #73858e; }
+.standby-label { color: #a3b5be; background: #0c1924db; border: 1px solid #41545f; border-radius: 6px; padding: 5px 8px; font-size: 12px; white-space: nowrap; }
+@media (max-width: 700px) {
+  :root { --header: 60px; }
+  .app-header { height: var(--header); padding: 8px 12px; gap: 8px; }
+  .header-actions { gap: 6px; }
+  .brand { min-width: 112px; font-size: 20px; }
+  .brand small { display: none; }
+  #connect-button { font-size: 12px; padding: 8px; }
+  #hud .operations-panel { max-height: min(55dvh, calc(100dvh - var(--header) - 164px)); bottom: max(84px, calc(env(safe-area-inset-bottom) + 70px)); }
+  .comms-panel { bottom: max(80px, calc(env(safe-area-inset-bottom) + 68px)); }
+  .map-launchers { gap: 6px; }
+  .map-launchers button { padding: 8px 10px; }
+  #agents-launcher span { font-size: 12px; margin-left: 4px; }
+  .district-nav { max-width: 145px; padding: 12px 10px; }
+  .station-banner { width: 76px; }
+  .station-chip { min-height: 22px; padding: 2px 4px; }
+  .map-agent-label { max-width: 132px; }
+  .agent-action { display: none; }
+  .map-agent-label.selected .agent-action { display: inline; }
+  dialog, #ecosystem-dialog { max-height: calc(100dvh - 24px); padding: 12px; }
+  dialog .dialog-heading { position: sticky; top: -12px; z-index: 2; padding: 10px 0; background: #101d27; align-items: center; }
+  .dialog-heading button { flex-shrink: 0; min-width: 44px; min-height: 44px; }
+}
+@media (max-width: 370px) { #agents-launcher span { display: none; } .brand-mark { display: none; } .brand { min-width: 78px; } }
