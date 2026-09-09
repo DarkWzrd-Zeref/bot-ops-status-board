@@ -1,12 +1,11 @@
-import { DISTRICTS, MAP_W, MAP_H } from "../../shared/map.ts";
+import { DISTRICTS, DISTRICT_PURPOSES, MAP_W, MAP_H } from "../../shared/map.ts";
 import { bus } from "../core/events.ts";
 import { runtime, buildingName, hubById } from "../core/runtime.ts";
 
-const purposes = ["Coordinate team decisions and shared priorities.", "Find communication tools and inspect connection details.", "Review repositories, project work and development tools.", "Inspect hosting, data and infrastructure work.", "Gather sources and review research tasks.", "Discuss plans, park future work and register signed skills."];
 /** Read-only campus atlas. Navigation never changes station placement or assignment. */
 export function mountDistricts(root: HTMLElement) {
   const details = document.createElement("details"); details.className = "district-nav";
-  details.innerHTML = `<summary>Campus atlas</summary><svg class="campus-minimap" viewBox="0 0 ${MAP_W} ${MAP_H}" role="img" aria-label="Station locations across the campus"></svg><nav aria-label="Map districts"><button data-district="overview">Whole campus</button>${DISTRICTS.map((d, i) => `<button data-district="${d.id}" title="${purposes[i]}">${d.name}</button>`).join("")}<button data-district="standby">Standby · offline agents</button></nav><label class="field-label">Find a station<select aria-label="Find a station"><option value="">Choose a station</option></select></label><small>Landmarks do not prove outside services are connected.</small>`;
+  details.innerHTML = `<summary>Campus atlas</summary><svg class="campus-minimap" viewBox="0 0 ${MAP_W} ${MAP_H}" role="img" aria-label="Station locations across the campus"></svg><nav aria-label="Map districts"><button data-district="overview">Whole campus</button>${DISTRICTS.map(d => `<button data-district="${d.id}" title="${DISTRICT_PURPOSES[d.id]}"><strong>${d.name}</strong><span>${DISTRICT_PURPOSES[d.id]}</span></button>`).join("")}<button data-district="standby">Standby · offline agents</button></nav><label class="field-label">Find a station<select aria-label="Find a station"><option value="">Choose a station</option></select></label><small>Landmarks do not prove outside services are connected.</small>`;
   root.querySelector(".world-overlay")!.append(details);
   const select = details.querySelector("select")!, svg = details.querySelector("svg")!;
   let signature = "";
