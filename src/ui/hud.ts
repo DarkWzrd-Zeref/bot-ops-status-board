@@ -5,7 +5,9 @@ import { attention, postRadio, presenceBySeat, radioLive, radioNotes, workReport
 import { SEATS, seatForPal, speakerLabel, type Speaker, type Channel } from "../../shared/protocol.ts";
 import { projectSchema, safeLink } from "../../shared/workspace.ts";
 import { mountEcosystem, showEcosystem, ecosystemNav } from "./ecosystem.ts";
+import { applyHubUpdate, currentReleaseChip, reconnectHub, startReleaseWatch } from "./release.ts";
 import { buildPanelKind, dismissInteraction } from "./panels.ts";
+import { CHAT_DRAFT_KEY, QUICK_DRAFT_KEY, readDraft, saveDraft } from "./drafts.ts";
 
 let channel: Channel = "team";
 let onlyDirectives = false;
@@ -13,7 +15,7 @@ let replyTo: string | undefined;
 let sending = false;
 let sound = false;
 const unread: Record<Channel, number> = { command: 0, team: 0 };
-let draft = sessionStorage.getItem("area67-draft") ?? "";
+let draft = readDraft(CHAT_DRAFT_KEY);
 let recipient: Speaker | "all" = "all";
 let directive = false;
 let audio: AudioContext | undefined;
@@ -190,7 +192,7 @@ function render() {
   host.querySelector("#chat-launcher")?.setAttribute("aria-expanded", String(chatOpen));
   update("#chat-launcher", `Chat <span>${unread.command + unread.team || "⌁"}</span>`);
   host.querySelectorAll<HTMLButtonElement>("[data-channel]").forEach(b => { const ch = b.dataset.channel as Channel; b.classList.toggle("active", ch === channel); b.textContent = "# " + ch + (unread[ch] ? " · " + unread[ch] + " new" : ""); });
-  update("#connection", `<span class="status-light ${radioLive ? "attentive" : "offline"}"></span>${radioLive ? "Hub connected" : "Reconnecting…"}`);
+  update("#connection", currentReleaseChip());
   update("#roster", roster());
   update("#human-presence", `<span class="status-light ${attention("zeref")}" aria-hidden="true"></span>Zeref <small>${stateLabels[attention("zeref")]}</small>`);
   update("#project-list", projects());
@@ -213,7 +215,7 @@ export function mountHud(root: HTMLElement) {
   root.innerHTML = `
     <header class="app-header"><a class="brand" href="/" aria-label="AREA 67 home"><span class="brand-mark">67</span><span>AREA <b>67</b><small>COMMAND CENTER</small></span></a>
       <div class="header-center"><span class="breadcrumb">Operations</span><span>/</span><strong>Command deck</strong></div>
-      <div class="header-actions"><span id="connection" class="connection"></span><button class="subtle" id="connect-button">Connect AI ↗</button><span class="commander-avatar">Z</span><span class="commander-name">Zeref<small>Commander</small></span></div></header>
+      <div class="header-actions"><span id="connection" class="connection" role="status" aria-live="polite"></span><button class="subtle" id="connect-button">Connect AI ↗</button><span class="commander-avatar">Z</span><span class="commander-name">Zeref<small>Commander</small></span></div></header>
     <aside class="crew-panel" aria-label="Agent online list"><div class="friends-heading"><button id="friends-toggle" aria-label="Toggle agent online list" title="Agents — online list" aria-controls="roster">☷</button><div><h2>Agents</h2><span id="team-count"></span></div></div><label class="friends-filter"><input id="online-only" type="checkbox"> Online only</label><div id="roster"></div><div class="crew-footer"><b>Live agent status</b><p>Dots reflect real check-ins. They fade when an agent stops responding.</p></div><div id="project-list"></div></aside>
     <div class="world-overlay"><div class="world-heading"><span class="eyebrow">SECTOR 01 / THE PALBOX</span><h1>AREA 67</h1><span>Alien minds. Machine muscle.</span></div><div id="mission-summary"></div><div class="world-controls"><button data-camera="out" aria-label="Zoom out">−</button><button data-camera="home" aria-label="Center map">⌖</button><button data-camera="in" aria-label="Zoom in">+</button></div><div class="world-caption"><span>Click to explore · select a pal to assign</span><span>WASD move · scroll to zoom</span></div></div>
     <nav class="map-launchers" aria-label="Hub controls"><button id="agents-launcher" aria-controls="roster" aria-expanded="false">Agents</button><button id="tools-launcher" aria-controls="operations-panel" aria-expanded="false">Tools</button></nav>
@@ -227,7 +229,7 @@ export function mountHud(root: HTMLElement) {
       <textarea id="radio-text" rows="2" maxlength="2000" placeholder="Talk to the team, share a task, ask for help…" aria-label="Your message">${esc(draft)}</textarea>
       <div class="composer-footer"><span id="character-count">${draft.length} / 2000</span><button class="primary" id="send-message" type="submit">Send message ↗</button></div><p id="queue-hint"></p></form></aside>
     <dialog id="project-dialog"><form id="project-form"><div class="dialog-heading"><div><span class="eyebrow">BUILD A SHARED WORKSPACE</span><h2 id="project-dialog-title">Add project building</h2></div><button type="button" data-close-project aria-label="Close project form">×</button></div><p>Link a repo or name a project folder, then place its building on the map. No repository or files are created, accessed, or deleted.</p><label class="field-label">Building name<input name="name" required maxlength="64" placeholder="My project"></label><label class="field-label">Repository URL<input name="repoUrl" type="url" maxlength="300" placeholder="https://github.com/owner/repository"></label><label class="field-label">Workspace or project folder<input name="workspace" maxlength="240" placeholder="e.g. projects / web-app"></label><label class="field-label">What happens here?<input name="summary" maxlength="300" placeholder="Purpose, scope, or current mission"></label><label class="field-label">Contents — one item per line<textarea name="contents" rows="3" placeholder="src / interface&#10;server / API&#10;tests / verification"></textarea></label><p id="project-error" role="alert"></p><div class="detail-actions"><button class="primary" id="project-submit" type="submit">Choose a plot ↗</button><button type="button" data-close-project>Cancel</button></div></form></dialog>
-    <dialog id="connect-dialog"><div class="dialog-heading"><div><span class="eyebrow">BRING YOUR TEAM ONLINE</span><h2>Connect a teammate</h2></div><button data-close-dialog aria-label="Close">×</button></div><p>Give each AI its own endpoint. Once connected, ask it to check its inbox and acknowledge your directive.</p><div class="connect-seats">${SEATS.map(s => `<div><strong>${s.label}</strong><code>${location.origin}/mcp/${s.slug}</code><button data-copy="${s.slug}">Copy</button></div>`).join("")}</div><div class="connection-note"><b>The AI must be running.</b><p>Connecting tools does not wake an idle AI app. Ask it to call <code>hub_sync</code> while active and <code>directive_ack</code> to report progress. Attention expires after two minutes without a check-in.</p></div></dialog>
+    <dialog id="connect-dialog"><div class="dialog-heading"><div><span class="eyebrow">BRING YOUR TEAM ONLINE</span><h2>Connect a teammate</h2></div><button data-close-dialog aria-label="Close">×</button></div><p>Give each AI its own endpoint. Once connected, ask it to check its inbox and acknowledge your directive.</p><div class="connect-seats">${SEATS.map(s => `<div><strong>${s.label}</strong><code>${location.origin}/mcp/${s.slug}</code><button data-copy="${s.slug}">Copy</button></div>`).join("")}</div><div class="connection-note"><b>The AI must be running.</b><p>Connecting tools does not wake an idle AI app. Ask it to call <code>hub_sync</code> while active and <code>directive_ack</code> to report progress. Attention expires after two minutes without a check-in.</p><p><a href="/connect#sources">Public hub sources (snapshot)</a></p></div></dialog>
     <div id="toast" role="status" aria-live="polite"></div>`;
   root.querySelector(".header-center")!.innerHTML = ecosystemNav();
   root.querySelector(".friends-filter")!.insertAdjacentHTML("beforebegin", '<div id="human-presence" class="human-presence"></div>');
@@ -235,6 +237,7 @@ export function mountHud(root: HTMLElement) {
   root.insertAdjacentHTML("beforeend", '<form id="quick-chat" aria-label="Quick team message"><label for="quick-text" class="sr-only">Message everyone as Zeref</label><input id="quick-text" maxlength="2000" placeholder="Message everyone as Zeref…" autocomplete="off"><button type="submit">Send</button></form>');
   mountEcosystem(root, openChat);
   bind();
+  startReleaseWatch();
   render();
   host.querySelector<HTMLElement>("#message-log")!.scrollTop = 1e9;
   bus.on(e => {
@@ -331,6 +334,8 @@ function bind() {
     }
     if (b.dataset.reply) { const note = radioNotes.find(n => n.id === b.dataset.reply); openChat(note?.projectUid); replyTo = b.dataset.reply; channel = note?.channel ?? "team"; directive = false; host.querySelector<HTMLSelectElement>("#message-type")!.value = "message"; host.querySelector("#send-message")!.textContent = "Send message ↗"; recipient = note?.from ?? "all"; host.querySelector<HTMLSelectElement>("#recipient")!.value = recipient === "zeref" ? "all" : recipient; if (recipient === "zeref") recipient = "all"; host.querySelector<HTMLTextAreaElement>("#radio-text")!.focus(); }
     if (b.hasAttribute("data-cancel-reply")) replyTo = undefined;
+    if (b.id === "hub-reconnect") { void reconnectHub().catch(() => flash("Reconnect failed. Your drafts are still here.", "bad")); return; }
+    if (b.id === "hub-update") { applyHubUpdate(); return; }
     if (b.id === "connect-button") host.querySelector<HTMLDialogElement>("#connect-dialog")!.showModal();
     if (b.hasAttribute("data-close-dialog")) host.querySelector<HTMLDialogElement>("#connect-dialog")!.close();
     if (b.dataset.copy) void navigator.clipboard.writeText(location.origin + "/mcp/" + b.dataset.copy).then(() => flash("Endpoint copied")).catch(() => flash("Copy unavailable. Select the endpoint text to copy it.", "warn"));
@@ -350,17 +355,17 @@ function bind() {
   });
   const input = host.querySelector<HTMLTextAreaElement>("#radio-text")!;
   const quick = host.querySelector<HTMLInputElement>("#quick-text")!;
-  quick.value = sessionStorage.getItem("area67-quick-draft") ?? "";
-  quick.oninput = () => sessionStorage.setItem("area67-quick-draft", quick.value);
+  quick.value = readDraft(QUICK_DRAFT_KEY);
+  quick.oninput = () => saveDraft(QUICK_DRAFT_KEY, quick.value);
   host.querySelector<HTMLFormElement>("#quick-chat")!.onsubmit = async event => {
     event.preventDefault(); const text = quick.value.trim(); if (!text) return;
     const send = host.querySelector<HTMLButtonElement>("#quick-chat button")!; if (send.disabled) return;
     send.disabled = true;
-    try { await postRadio("zeref", text, { channel: "team", to: "all" }); if (quick.value.trim() === text) { quick.value = ""; sessionStorage.removeItem("area67-quick-draft"); } flash("Sent to team chat as Zeref"); }
+    try { await postRadio("zeref", text, { channel: "team", to: "all" }); if (quick.value.trim() === text) { quick.value = ""; saveDraft(QUICK_DRAFT_KEY, ""); } flash("Sent to team chat as Zeref"); }
     catch (e) { flash(e instanceof Error ? e.message : "Could not send. Your draft is retained.", "bad"); }
     finally { send.disabled = false; }
   };
-  input.oninput = () => { draft = input.value; sessionStorage.setItem("area67-draft", draft); host.querySelector("#character-count")!.textContent = draft.length + " / 2000"; };
+  input.oninput = () => { draft = input.value; saveDraft(CHAT_DRAFT_KEY, draft); host.querySelector("#character-count")!.textContent = draft.length + " / 2000"; };
   input.onkeydown = event => { if (event.key === "Enter" && (event.ctrlKey || event.metaKey)) { event.preventDefault(); host.querySelector<HTMLFormElement>("#radio-form")!.requestSubmit(); } };
   host.querySelector<HTMLFormElement>("#radio-form")!.onsubmit = async event => {
     event.preventDefault();
@@ -370,7 +375,7 @@ function bind() {
     const submitted = draft;
     try {
       await postRadio("zeref", submitted, { channel, to: recipient, directive, replyTo, projectUid: chatProject });
-      if (draft === submitted) { draft = ""; input.value = ""; sessionStorage.removeItem("area67-draft"); }
+      if (draft === submitted) { draft = ""; input.value = ""; saveDraft(CHAT_DRAFT_KEY, ""); }
       replyTo = undefined;
       flash(directive ? "Directive queued. Receipts appear when teammates check in." : "Message sent");
       render(); host.querySelector<HTMLElement>("#message-log")!.scrollTop = 1e9;

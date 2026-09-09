@@ -1,0 +1,54 @@
+{
+  "asOf": "2026-09-09T15:25:00Z",
+  "kind": "snapshot",
+  "generatedBy": "cursor-ultra",
+  "note": "Public hub sources only, labeled snapshot/as-of — not a live inventory. Private repositories, personal lanes, and unapproved Drive file IDs are not published here.",
+  "hub": {
+    "url": "https://status-board-production-806b.up.railway.app",
+    "connect": "/connect",
+    "github": "https://github.com/DarkWzrd-Zeref/bot-ops-status-board"
+  },
+  "onMap": [
+    "well",
+    "bank",
+    "grand-exchange",
+    "discord",
+    "cursor",
+    "skillspector",
+    "project-area67"
+  ],
+  "publicGithub": {
+    "name": "bot-ops-status-board",
+    "url": "https://github.com/DarkWzrd-Zeref/bot-ops-status-board",
+    "hubStation": "project-area67"
+  },
+  "unplacedCatalogTypes": [
+    "war-table",
+    "vision-board",
+    "pending-work",
+    "skill-altar",
+    "skill-rack",
+    "github",
+    "gmail",
+    "calendar",
+    "slack",
+    "railway",
+    "neon",
+    "cloudflare",
+    "firecrawl",
+    "apify",
+    "elevenlabs",
+    "agentmail",
+    "drive",
+    "x"
+  ],
+  "blockedWithoutSeatKey": [
+    "board_post",
+    "skill_register",
+    "station_build"
+  ],
+  "art": {
+    "manifest": "/sprites/stations/manifest.json",
+    "pngs": "missing"
+  }
+}

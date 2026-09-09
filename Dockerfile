@@ -3,6 +3,8 @@ WORKDIR /app
 COPY package.json package-lock.json ./
 RUN npm ci --no-audit --no-fund
 COPY . .
+ARG RAILWAY_GIT_COMMIT_SHA
+ARG SOURCE_COMMIT
 RUN npm run build
 
 FROM node:22-alpine
