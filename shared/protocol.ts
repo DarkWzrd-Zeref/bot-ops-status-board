@@ -31,9 +31,9 @@ export const SEATS: Seat[] = [
   { id: "grok-heavy", slug: "grok-heavy", palId: "director", label: "Grok Heavy", model: "Grok Heavy", youAre: "You are Grok Heavy, the Director. Your pal is director. Zeref directs." },
   { id: "grok-a", slug: "grok-a", palId: "grok-am-a", label: "Grok Twin A", model: "Grok · account 1", youAre: "You are Grok Twin A. Your pal is grok-am-a. Zeref directs." },
   { id: "grok-b", slug: "grok-b", palId: "grok-am-b", label: "Grok Twin B", model: "Grok · account 2", youAre: "You are Grok Twin B. Your pal is grok-am-b. Zeref directs." },
-  { id: "grok", slug: "grok", palId: "grok", label: "Grok", model: "Grok", youAre: "You are the independent Grok seat, separate from Heavy and the twins. Zeref directs." },
+  { id: "grok", slug: "grok", palId: "grok", label: "Grok", model: "Grok", youAre: "You are Grok on grok.com. Not the Cursor cloud agent, not Twin A/B, not Heavy. Zeref directs." },
   { id: "chatgpt", slug: "chatgpt", palId: "researcher", label: "ChatGPT", model: "ChatGPT Pro", youAre: "You are ChatGPT Researcher. Scout, cite and propose. Zeref directs." },
-  { id: "cursor", slug: "cursor", palId: "cursor-ultra", label: "Cursor Ultra", model: "Cursor Ultra", youAre: "You are Cursor Ultra, the cloud smith. Your pal is cursor-ultra. Zeref directs." },
+  { id: "cursor", slug: "cursor", palId: "cursor-ultra", label: "Cursor Ultra", model: "Cursor Ultra", youAre: "You are Cursor Ultra. This Cursor account and its cloud agents. You are Cursor, not Grok. Your pal is cursor-ultra. Build and ship. Zeref directs." },
 ];
 export const SPEAKER_PAL = Object.fromEntries([...SEATS.map(s => [s.id, s.palId]), ["zeref", null]]) as Record<Speaker, string | null>;
 export function isSpeaker(value: string): value is Speaker { return (SPEAKERS as readonly string[]).includes(value); }

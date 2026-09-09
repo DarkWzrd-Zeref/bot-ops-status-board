@@ -59,7 +59,7 @@ Use the deployed board's origin followed by:
 | ChatGPT | `/mcp/chatgpt` | researcher |
 | Cursor Ultra | `/mcp/cursor` | cursor-ultra |
 
-The board's **Connect AI** dialog and `/connect` page expose these same eight identities. Codex is not ChatGPT Researcher or Cursor Ultra.
+The board's **Connect AI** dialog and `/connect` page expose these same eight identities. Codex is not ChatGPT Researcher or Cursor Ultra. The repository's `.cursor/mcp.json` stays scoped to `/mcp/cursor`; Cursor cloud agents must not use `/mcp/grok`, which belongs to Grok on grok.com.
 
 While actively working, the client should:
 
