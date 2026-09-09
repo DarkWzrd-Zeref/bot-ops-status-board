@@ -6,6 +6,8 @@ import { projectSchema, workSchema, type ProjectInfo, type WorkInput, type WorkR
 import { effectiveAttention, isSpeaker, speakerLabel, seatForPal, type RadioNote, type Presence, type Attention, type Channel, type ReceiptState } from "../shared/protocol.ts";
 import { MAP_W, MAP_H, CORE_X, CORE_Y, BASE_RADIUS } from "../shared/map.ts";
 import { cardSchema, cardActionSchema, registrationSchema, type Ecosystem, type CardInput, type CardAction, type BoardCard, type RegistrationInput, type SkillRegistration } from "../shared/ecosystem.ts";
+import { stationPlanSchema, stationBuildSchema, type StationPlan, type StationBuild } from "../shared/construction.ts";
+import { constructionInventory, planConstruction } from "./construction.ts";
 
 export interface PlacedBuilding {
   uid: string;
@@ -147,6 +149,22 @@ export function base(): BaseSnapshot | null {
   return state.base;
 }
 export function revision(): number { return state.revision; }
+export function stationInventory() { return constructionInventory(state.base, state.revision); }
+export function previewStations(seat: Speaker, input: StationPlan) {
+  return { ...planConstruction(state.base, seat, stationPlanSchema.parse(input)), revision: state.revision, seat };
+}
+export function buildStations(seat: Speaker, input: StationBuild) {
+  const { expectedRevision, ...plan } = stationBuildSchema.parse(input);
+  const preview = previewStations(seat, plan);
+  if (!preview.ok || preview.alreadyApplied) return preview;
+  if (expectedRevision !== state.revision) return { ...preview, ok: false, errors: [{ code: "revision_conflict", message: "The base changed. Read station_inventory and preview again before retrying." }] };
+  // Synchronous check-and-save: there is no await between reading the revision
+  // and the single durable write. Caller cannot supply assignments or removals.
+  const next = structuredClone(state.base!);
+  next.buildings.push(...preview.planned);
+  setBase(next);
+  return { ...preview, revision: state.revision };
+}
 export function presence(): Presence[] {
   return [...SEATS.map(s => s.id), "zeref" as Speaker].map(seat => {
     const p = heartbeats.get(seat);

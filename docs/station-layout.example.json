@@ -1,0 +1,23 @@
+{
+  "requestId": "claude-base-complete-v1",
+  "buildings": [
+    { "hubId": "war-table", "tx": 18, "ty": 10 },
+    { "hubId": "vision-board", "tx": 15, "ty": 27 },
+    { "hubId": "pending-work", "tx": 34, "ty": 28 },
+    { "hubId": "skill-altar", "tx": 42, "ty": 18 },
+    { "hubId": "railway", "tx": 31, "ty": 34 },
+    { "hubId": "cloudflare", "tx": 40, "ty": 26 },
+    { "hubId": "firecrawl", "tx": 21, "ty": 6 },
+    { "hubId": "drive", "tx": 19, "ty": 33 },
+    { "hubId": "skill-rack", "tx": 41, "ty": 13 },
+    { "hubId": "github", "tx": 32, "ty": 9 },
+    { "hubId": "gmail", "tx": 12, "ty": 18 },
+    { "hubId": "calendar", "tx": 24, "ty": 33 },
+    { "hubId": "slack", "tx": 12, "ty": 23 },
+    { "hubId": "neon", "tx": 36, "ty": 33 },
+    { "hubId": "apify", "tx": 26, "ty": 6 },
+    { "hubId": "elevenlabs", "tx": 14, "ty": 14 },
+    { "hubId": "agentmail", "tx": 11, "ty": 27 },
+    { "hubId": "x", "tx": 9, "ty": 21 }
+  ]
+}

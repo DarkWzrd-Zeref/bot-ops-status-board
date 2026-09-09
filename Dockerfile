@@ -15,5 +15,6 @@ COPY --from=build /app/dist ./dist
 COPY --from=build /app/server ./server
 COPY --from=build /app/shared ./shared
 COPY --from=build /app/src/content ./src/content
+COPY --from=build /app/src/core/grid.ts ./src/core/grid.ts
 EXPOSE 8080
 CMD ["npx", "tsx", "server/index.ts"]
