@@ -1,16 +1,19 @@
 import * as THREE from "three";
 import { OrbitControls } from "three/addons/controls/OrbitControls.js";
 import { CSS2DObject, CSS2DRenderer } from "three/addons/renderers/CSS2DRenderer.js";
-import { AGENTS, HUBS, BASE_RADIUS, MAP_W, MAP_H, assignAgent, beginMove, buildingAt, buildingName, cancelMove, demolish, finishMove, hubById, placementOk, runtime, stepAgents, tryPlace, walkPlayerTo } from "../core/runtime.ts";
+import { AGENTS, HUBS, BASE_RADIUS, MAP_W, MAP_H, assignAgent, beginMove, buildingAt, buildingName, cancelMove, demolish, finishMove, hubById, placementOk, runtime, stationMapLabel, stepAgents, tryPlace, walkPlayerTo } from "../core/runtime.ts";
 import { bus } from "../core/events.ts";
 import { attention, liveWork, presenceBySeat, workReports, radioLive } from "../core/live.ts";
 import { agentSignal, standbySpots, STANDBY_CENTER } from "../core/agentPresentation.ts";
 import { seatForPal, speakerLabel } from "../../shared/protocol.ts";
 import { CORE_X, CORE_Y, DISTRICTS } from "../../shared/map.ts";
+import { WalkView } from "./WalkView.ts";
+import { createArchitecture, createCharacter } from "./architecture.ts";
+import { packLabels, type LabelCandidate } from "./labelLayout.ts";
 
 const colors = { attentive: 0x80f5b8, busy: 0x80c8ff, away: 0xe4b76a, offline: 0x536570 };
 const cx = CORE_X, cz = CORE_Y;
-type Actor = { group: THREE.Group; sprite: THREE.Sprite; light: THREE.Mesh<THREE.SphereGeometry, THREE.MeshBasicMaterial>; ring: THREE.Mesh; label: HTMLElement; signal: HTMLElement; action: HTMLElement };
+type Actor = { group: THREE.Group; body: THREE.Group; light: THREE.Mesh<THREE.SphereGeometry, THREE.MeshBasicMaterial>; ring: THREE.Mesh; label: HTMLElement; signal: HTMLElement; action: HTMLElement };
 const typing = () => !!document.activeElement?.closest("input, textarea, select, dialog");
 
 /** The existing grid, building rules and pathfinder drive a real 3D presentation. */
@@ -36,15 +39,17 @@ export class World3D {
   private lastSignals = 0;
   private parking: Array<{ x: number; y: number }> = [];
   private standbyLabel!: HTMLElement;
+  private walk: WalkView;
+  private walkTarget: string | null = null;
 
   constructor(parent: HTMLElement) {
-    this.renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true, powerPreference: "low-power" });
-    this.renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
+    this.renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true, powerPreference: "high-performance" });
+    this.renderer.setPixelRatio(Math.min(devicePixelRatio, matchMedia("(pointer: coarse)").matches ? 1.5 : 2));
     this.renderer.shadowMap.enabled = true;
     this.renderer.shadowMap.type = THREE.PCFSoftShadowMap;
     this.renderer.outputColorSpace = THREE.SRGBColorSpace;
     this.renderer.toneMapping = THREE.ACESFilmicToneMapping;
-    this.renderer.toneMappingExposure = 1.3;
+    this.renderer.toneMappingExposure = 1.05;
     parent.append(this.renderer.domElement);
     this.renderer.domElement.setAttribute("aria-label", "Interactive 3D AREA 67 base. Use crew and station controls for keyboard access.");
     this.labels.domElement.style.cssText = "position:absolute;inset:0;pointer-events:none;overflow:hidden";
@@ -59,9 +64,10 @@ export class World3D {
     this.controls.mouseButtons = { LEFT: undefined as unknown as THREE.MOUSE, MIDDLE: THREE.MOUSE.PAN, RIGHT: THREE.MOUSE.ROTATE };
     this.controls.touches = { ONE: THREE.TOUCH.PAN, TWO: THREE.TOUCH.DOLLY_ROTATE };
     this.resetCamera();
-    this.scene.fog = new THREE.FogExp2(0x0c171e, .004);
-    this.scene.add(new THREE.HemisphereLight(0xbde8e5, 0x182832, 2));
-    const key = new THREE.DirectionalLight(0xe5fff2, 3.5);
+    this.scene.background = new THREE.Color(0x182b40);
+    this.scene.fog = new THREE.FogExp2(0x182b40, .006);
+    this.scene.add(new THREE.HemisphereLight(0xc6dfff, 0x233839, 2));
+    const key = new THREE.DirectionalLight(0xffd5a6, 3);
     key.position.set(cx - 14, 28, cz - 8); key.target.position.set(cx, 0, cz);
     key.castShadow = true;
     key.shadow.mapSize.set(2048, 2048);
@@ -71,8 +77,10 @@ export class World3D {
     const rim = new THREE.DirectionalLight(0x43b7d5, 2);
     rim.position.set(cx + 20, 15, cz + 18); this.scene.add(rim);
     this.createTerrain();
+    this.createDistrictGrounds();
     this.syncStations();
     this.createActors();
+    this.walk = new WalkView(this.renderer.domElement, () => runtime.grid, () => this.inspectWalkTarget(), () => this.setView(false));
     this.scene.add(this.ghost);
     const resize = () => {
       const w = parent.clientWidth, h = parent.clientHeight;
@@ -81,16 +89,20 @@ export class World3D {
       this.camera.left = -span * w / h; this.camera.right = span * w / h;
       this.camera.top = span; this.camera.bottom = -span;
       this.camera.updateProjectionMatrix();
+      this.walk.resize(w, h);
       this.renderer.setSize(w, h);
       this.labels.setSize(w, h);
     };
     new ResizeObserver(resize).observe(parent); resize();
     this.bind();
+    window.dispatchEvent(new Event("area67-3d-ready"));
     matchMedia("(prefers-reduced-motion: reduce)").addEventListener("change", e => { this.reduced = e.matches; });
     bus.on(e => {
+      if (this.walk.active && runtime.mode !== "play") this.setView(false);
       if (e.type === "changed") this.syncStations();
       if (e.type === "changed" || e.type === "presence") this.updateSignals();
       if (e.type === "focus-agent") {
+        if (this.walk.active) this.setView(false);
         const actor = this.actors.get(e.agentId);
         if (actor) this.focus(actor.group.position.x, actor.group.position.z);
       }
@@ -124,12 +136,12 @@ export class World3D {
     this.box(MAP_W + .6, .85, MAP_H + .6, 0x14252a, 0, 0, 0, platform);
     this.box(MAP_W, .18, MAP_H, 0x314b4a, 0, .49, 0, platform);
     this.scene.add(platform);
-    const tileGeo = new THREE.BoxGeometry(.97, .09, .97);
+    const tileGeo = new THREE.BoxGeometry(1, .04, 1);
     const tileMats: Record<string, THREE.MeshStandardMaterial> = {
-      sand: this.material(0x304c46, .1), sand2: this.material(0x34514b, .1),
-      plaza: this.material(0x415d59), pad: this.material(0x55716a),
-      path: this.material(0x718b7d), water: this.material(0x123b49), fence: this.material(0x293f47),
-      blocked: this.material(0x14252a),
+      sand: this.material(0x283d43, .1), sand2: this.material(0x293f45, .1),
+      plaza: this.material(0x3f535e), pad: this.material(0x596b74),
+      path: this.material(0x63747b), water: this.material(0x143847), fence: this.material(0x364953),
+      blocked: this.material(0x243641),
     };
     // Instancing keeps the raised tile deck light enough for laptop GPUs.
     for (const [kind, material] of Object.entries(tileMats)) {
@@ -166,88 +178,56 @@ export class World3D {
     const el = document.createElement("div"); el.className = cls; el.textContent = text;
     const obj = new CSS2DObject(el); obj.position.y = y; parent.add(obj); return el;
   }
+  private createDistrictGrounds() {
+    const palette = [0x82dfcc, 0x94baff, 0xe7ba79, 0x8cccb7, 0xb4a3e8, 0xceadc9];
+    // Flush, non-colliding navigation inlays; no saved plot or road is moved.
+    DISTRICTS.forEach((d, i) => {
+      const group = new THREE.Group(); group.position.set(d.x, .18, d.y);
+      this.glowRing(6.6, palette[i], .01, group, .2);
+      this.scene.add(group);
+    });
+    // Water banks gain readable elevation; pathways remain flush and walkable.
+    const strips = new THREE.Group();
+    for (let x = 1; x < 63; x += 2) {
+      if ([27, 29, 59, 61].includes(x)) continue;
+      this.box(1.4, .09, .12, 0x8ca2ae, x, .22, 45.94, strips);
+      this.box(1.4, .09, .12, 0x8ca2ae, x, .22, 48.04, strips);
+    }
+    this.scene.add(strips);
+  }
+  private layoutLabels() {
+    const w = this.renderer.domElement.clientWidth, h = this.renderer.domElement.clientHeight;
+    const candidates: LabelCandidate[] = [];
+    const elements = new Map<string, HTMLElement>();
+    const project = (id: string, group: THREE.Group, y: number, el: HTMLElement, width: number, priority: number, pinned: boolean) => {
+      const p = group.position.clone().add(new THREE.Vector3(0, y, 0)).project(this.camera);
+      elements.set(id, el);
+      if (p.z < -1 || p.z > 1) return;
+      candidates.push({ id, x: (p.x + 1) * w / 2, y: (1 - p.y) * h / 2, width, height: 30, priority, pinned });
+    };
+    for (const [uid, group] of this.stations) {
+      const el = group.userData.banner as HTMLElement;
+      const pinned = uid === runtime.selectedBuilding || el.contains(document.activeElement) || el.matches(":hover");
+      const distance = group.position.distanceTo(this.controls.target);
+      project(uid, group, 3.3, el, 114, (group.userData.working ? 100 : 0) - distance, pinned);
+    }
+    for (const [uid, actor] of this.actors) {
+      if (actor.group.userData.parked && runtime.selectedAgent !== uid) continue;
+      project(uid, actor.group, 2, actor.label, 146, 20 - actor.group.position.distanceTo(this.controls.target), uid === runtime.selectedAgent || actor.label.contains(document.activeElement));
+    }
+    const visible = packLabels(candidates, w, h, w < 760 ? 6 : 12);
+    for (const [id, el] of elements) el.dataset.culled = String(!visible.has(id));
+  }
   private station(uid: string) {
     const b = runtime.buildings.find(b => b.uid === uid)!;
     const h = hubById(b.hubId);
     const group = new THREE.Group(); group.position.set(b.tx + h.w / 2, .19, b.ty + h.h / 2);
     group.userData = { uid, signature: JSON.stringify([b.tx, b.ty, b.hubId, b.project]) };
-    const color = parseInt(h.color.slice(1), 16);
-    this.box(h.w + .2, .2, h.h + .2, 0x233a40, 0, .1, 0, group);
-    if (b.project) {
-      this.box(2.65, .2, 2.65, 0x3d6288, 0, .26, 0, group);
-      this.box(2.25, 1.55, 1.9, 0x213b53, 0, 1.1, 0, group);
-      this.box(2.55, .2, 2.2, color, 0, 1.96, 0, group);
-      for (let i = -1; i <= 1; i++) {
-        const screen = this.box(.45, .65, .06, 0x82c9ef, i * .65, 1.24, 1, group);
-        (screen.material as THREE.MeshStandardMaterial).emissive.setHex(0x1a557e);
-      }
-      this.box(.18, 1.1, .18, 0x557aa1, 1, 2.5, 0, group);
-      this.box(.95, .5, .1, color, .6, 2.85, 0, group);
-    } else if (b.hubId === "war-table") {
-      this.mesh(new THREE.CylinderGeometry(1.65, 1.8, .18, 12), 0x29435e, 0, .3, 0, group);
-      this.mesh(new THREE.CylinderGeometry(.75, .95, .7, 8), 0x34516a, 0, .75, 0, group);
-      this.mesh(new THREE.CylinderGeometry(1.35, 1.4, .17, 12), color, 0, 1.17, 0, group);
-      this.mesh(new THREE.CylinderGeometry(1.15, 1.15, .04, 12), 0x183c56, 0, 1.28, 0, group);
-      this.glowRing(1.08, color, 1.32, group);
-      for (let i = 0; i < 6; i++) { const a = i * Math.PI / 3; this.box(.42, .45, .42, 0x426882, Math.cos(a) * 1.7, .6, Math.sin(a) * 1.7, group); }
-    } else if (b.hubId === "vision-board") {
-      this.box(3.5, .15, 2.5, 0x433954, 0, .3, 0, group);
-      this.box(.15, 2.3, .2, 0x7c6a9b, -1.3, 1.4, -.5, group);
-      this.box(.15, 2.3, .2, 0x7c6a9b, 1.3, 1.4, -.5, group);
-      this.box(3, 1.65, .2, 0x614785, 0, 1.9, -.5, group);
-      for (let i = 0; i < 6; i++) this.box(.65, .5, .05, i % 2 ? 0xc8b5e2 : color, (i % 3 - 1) * .9, 1.56 + Math.floor(i / 3) * .72, -.37, group);
-    } else if (b.hubId === "pending-work") {
-      for (const x of [-1.5, 1.5]) this.box(.15, 2, 1.8, 0x765a35, x, 1.2, 0, group);
-      for (let row = 0; row < 3; row++) {
-        this.box(3.2, .1, 2, color, 0, .4 + row * .7, 0, group);
-        for (let col = -1; col <= 1; col++) { this.box(.7, .45, 1.2, 0x526373, col, .66 + row * .7, 0, group); this.box(.42, .13, .02, color, col, .7 + row * .7, .61, group); }
-      }
-    } else if (b.hubId === "skill-altar") {
-      this.mesh(new THREE.CylinderGeometry(1.25, 1.45, .3, 8), 0x2b594f, 0, .4, 0, group);
-      this.mesh(new THREE.CylinderGeometry(.75, 1, .6, 8), 0x42746b, 0, .85, 0, group);
-      this.mesh(new THREE.OctahedronGeometry(.6), color, 0, 1.8, 0, group);
-      this.glowRing(.9, color, 1.25, group); this.glowRing(.65, color, 2.55, group, .4);
-    } else if (b.hubId === "well") {
-      this.mesh(new THREE.CylinderGeometry(.85, 1.1, .6, 12), 0x426b68, 0, .5, 0, group);
-      this.mesh(new THREE.CylinderGeometry(.55, .55, .15, 32), 0x102c2c, 0, .87, 0, group);
-      const crystal = this.mesh(new THREE.OctahedronGeometry(.65), 0x85ffcf, 0, 1.8, 0, group);
-      (crystal.material as THREE.MeshStandardMaterial).emissive.setHex(0x258461); crystal.name = "core";
-      this.glowRing(1.1, 0x80f5cd, 1.1, group); this.glowRing(.8, 0x80f5cd, 2.65, group, .25);
-    } else if (h.kind === "comms" || h.kind === "media") {
-      this.box(h.w * .85, 1.1, h.h * .75, 0x2c4654, 0, .75, 0, group);
-      this.box(h.w * .92, .18, h.h * .82, color, 0, 1.39, 0, group);
-      const mast = this.mesh(new THREE.CylinderGeometry(.06, .1, 1.7, 8), 0x9ab6bc, -.5, 2.2, 0, group);
-      mast.rotation.z = -.2;
-      const dish = this.mesh(new THREE.SphereGeometry(.65, 20, 12, 0, Math.PI * 2, 0, Math.PI / 2), color, -.6, 2.9, 0, group);
-      dish.rotation.z = .65;
-      this.glowRing(.4, 0x8acfff, 3.1, group, .25);
-    } else if (h.kind === "infra" || b.hubId === "bank") {
-      for (let i = -1; i <= 1; i++) {
-        this.mesh(new THREE.CylinderGeometry(.36, .45, 1.8, 12), 0x3a5464, i * .8, 1.1, 0, group);
-        this.mesh(new THREE.CylinderGeometry(.37, .37, .18, 12), color, i * .8, 2.05, 0, group);
-      }
-      this.box(h.w * .8, .2, .45, 0x617d83, 0, .5, h.h * .35, group);
-    } else if (b.hubId === "skillspector") {
-      this.box(.35, 2.4, .55, color, -.9, 1.4, 0, group);
-      this.box(.35, 2.4, .55, color, .9, 1.4, 0, group);
-      this.box(2.2, .4, .65, 0x547273, 0, 2.5, 0, group);
-      const field = new THREE.Mesh(new THREE.PlaneGeometry(1.5, 1.8), new THREE.MeshBasicMaterial({ color: 0x72ffd5, transparent: true, opacity: .2, side: THREE.DoubleSide }));
-      field.position.y = 1.3; group.add(field);
-    } else {
-      this.box(h.w * .8, 1.15, h.h * .75, 0x37525a, 0, .8, 0, group);
-      this.box(h.w * .9, .22, h.h * .85, color, 0, 1.52, 0, group);
-      this.mesh(new THREE.CylinderGeometry(.42, .6, .65, 6), 0x8ca9aa, -.5, 1.9, 0, group);
-      this.box(.6, .68, .7, 0x233d44, .65, 1.95, 0, group);
-      const monitor = this.box(.44, .33, .03, 0x81f5cd, .65, 2.04, .37, group);
-      (monitor.material as THREE.MeshStandardMaterial).emissive.setHex(0x285e49);
-    }
-    for (let x = -.6; x <= .6; x += .6) {
-      const window = this.box(.23, .24, .025, 0x92e4d8, x, .85, h.h * .38 + .02, group);
-      (window.material as THREE.MeshStandardMaterial).emissive.setHex(0x3d8e82);
-    }
+    const architecture = createArchitecture(h, !!b.project);
+    group.add(architecture);
     const banner = this.label("", "map-station-label station-banner", b.project ? 3.5 : 3.3, group);
     const chip = document.createElement("span"); chip.className = "station-chip";
-    const name = document.createElement("strong"); name.textContent = buildingName(b);
+    const name = document.createElement("strong"); name.textContent = stationMapLabel(b, runtime.selectedBuilding === uid);
     chip.append(name);
     const details = document.createElement("span"); details.className = "station-details";
     details.id = "station-preview-" + uid; details.setAttribute("role", "tooltip");
@@ -276,7 +256,7 @@ export class World3D {
     group.userData.disposeLabel = () => window.removeEventListener("keydown", dismissPreview);
     const beacon = this.glowRing(Math.max(h.w, h.h) * .62, 0x82c9ff, .3, group, .9);
     beacon.name = "work-beacon"; beacon.visible = false;
-    group.userData.banner = banner; group.userData.signal = signal;
+    group.userData.banner = banner; group.userData.signal = signal; group.userData.chipName = name;
     this.scene.add(group); this.stations.set(uid, group);
   }
   private disposeGroup(group: THREE.Group) {
@@ -301,6 +281,8 @@ export class World3D {
       const assigned = runtime.agents.filter(a => a.buildingUid === uid);
       const banner = group.userData.banner as HTMLElement;
       const signal = group.userData.signal as HTMLElement;
+      const building = runtime.buildings.find(b => b.uid === uid);
+      if (building) group.userData.chipName.textContent = stationMapLabel(building, runtime.selectedBuilding === uid);
       banner.classList.toggle("working", active.length > 0);
       banner.classList.toggle("selected", runtime.selectedBuilding === uid);
       signal.textContent = active.length ? active.map(w => speakerLabel(w.seat) + " · " + w.taskId).join(" + ") : assigned.length ? assigned.length + " assigned · no live work report" : "Open workspace";
@@ -310,19 +292,12 @@ export class World3D {
     }
   }
   private createActors() {
-    const loader = new THREE.TextureLoader();
-    const textures = { robot: loader.load("/characters/robot.png"), alien: loader.load("/characters/alien.png") };
-    Object.values(textures).forEach(t => { t.colorSpace = THREE.SRGBColorSpace; });
     for (const a of runtime.agents) {
       const def = AGENTS.find(d => d.id === a.id)!;
       const group = new THREE.Group(); group.position.set(a.tx + .5, .25, a.ty + .5); group.userData = { agentId: a.id };
-      const sprite = new THREE.Sprite(new THREE.SpriteMaterial({ map: textures[/grok/i.test(def.model) ? "robot" : "alien"], transparent: true, alphaTest: .08 }));
       const size = a.id === "director" ? 1.65 : 1.45;
-      sprite.scale.set(size, size, 1); sprite.position.y = size * .48;
-      if (a.id === "director") sprite.material.color.setHex(0xffc088);
-      if (a.id === "claude") sprite.material.color.setHex(0xffd5aa);
-      if (a.id === "researcher") sprite.material.color.setHex(0xd5baff);
-      group.add(sprite);
+      const body = createCharacter(/grok/i.test(def.model), a.id === "director", parseInt(def.color.slice(1), 16));
+      group.add(body);
       const ring = this.glowRing(.46, parseInt(def.color.slice(1), 16), .005, group, .3);
       const dot = new THREE.Mesh(new THREE.SphereGeometry(.08, 8, 8), new THREE.MeshBasicMaterial({ color: colors.offline }));
       dot.position.set(.55, size * .95, 0); group.add(dot);
@@ -336,7 +311,7 @@ export class World3D {
       const select = () => { runtime.selectedAgent = a.id; runtime.selectedBuilding = null; bus.emit({ type: "changed" }); };
       label.addEventListener("click", select);
       label.addEventListener("keydown", e => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); select(); } });
-      this.actors.set(a.id, { group, sprite, light: dot, ring, label, signal, action }); this.scene.add(group);
+      this.actors.set(a.id, { group, body, light: dot, ring, label, signal, action }); this.scene.add(group);
     }
     const standby = new THREE.Group(); standby.position.set(STANDBY_CENTER.x, .2, STANDBY_CENTER.y - 5);
     this.standbyLabel = this.label("Standby", "standby-label", .5, standby); this.scene.add(standby);
@@ -363,6 +338,7 @@ export class World3D {
     canvas.addEventListener("pointermove", e => { this.ghostTile = this.tile(e); });
     canvas.addEventListener("pointerleave", () => { this.ghostTile = null; });
     canvas.addEventListener("pointerup", e => {
+      if (this.walk.active) return;
       if (e.button !== 0 || Math.hypot(e.clientX - this.down.x, e.clientY - this.down.y) > 6) return;
       const t = this.tile(e); if (!t) return;
       if (runtime.mode === "build" && runtime.ghostHub) { tryPlace(runtime.ghostHub, t.x, t.y); return; }
@@ -381,7 +357,7 @@ export class World3D {
       bus.emit({ type: "changed" });
     });
     window.addEventListener("keydown", e => {
-      if (typing()) return;
+      if (this.walk.active || typing()) return;
       const key = e.key.toLowerCase();
       if (["w", "a", "s", "d", "arrowup", "arrowdown", "arrowleft", "arrowright"].includes(key)) { this.keys.add(key); e.preventDefault(); }
       if (key === "escape") { if (runtime.lifting) cancelMove(); runtime.mode = "play"; runtime.ghostHub = null; }
@@ -393,12 +369,14 @@ export class World3D {
     window.addEventListener("keyup", e => this.keys.delete(e.key.toLowerCase()));
     window.addEventListener("blur", () => this.keys.clear());
     window.addEventListener("area67-camera", e => {
+      if (this.walk.active) this.setView(false);
       const action = (e as CustomEvent<string>).detail;
       if (action === "home") this.resetCamera();
       else this.camera.zoom = THREE.MathUtils.clamp(this.camera.zoom * (action === "in" ? 1.2 : 1 / 1.2), .12, 3);
       this.camera.updateProjectionMatrix();
     });
     window.addEventListener("area67-district", e => {
+      if (this.walk.active) this.setView(false);
       const id = (e as CustomEvent<string>).detail;
       if (id === "standby") {
         this.resetCamera(); this.focus(STANDBY_CENTER.x, STANDBY_CENTER.y); this.camera.zoom = .8;
@@ -413,6 +391,37 @@ export class World3D {
       }
       this.camera.updateProjectionMatrix();
     });
+    window.addEventListener("area67-view", e => this.setView((e as CustomEvent<string>).detail === "walk"));
+    window.addEventListener("area67-focus-building", e => {
+      const b = runtime.buildings.find(b => b.uid === (e as CustomEvent<string>).detail); if (!b) return;
+      if (this.walk.active) this.setView(false);
+      this.focus(b.tx, b.ty); this.camera.zoom = .95; this.camera.updateProjectionMatrix();
+      runtime.selectedAgent = null; runtime.selectedBuilding = b.uid; bus.emit({ type: "changed" });
+    });
+  }
+  private setView(walk: boolean) {
+    if (walk === this.walk.active) return;
+    if (walk) {
+      if (runtime.lifting) { bus.emit({ type: "toast", text: "Cancel the building move before entering first person.", tone: "warn" }); return; }
+      if (!this.walk.enter(runtime.player.tx + .5, runtime.player.ty + .5)) { bus.emit({ type: "toast", text: "No safe walking spot nearby.", tone: "warn" }); return; }
+      runtime.player.path = []; runtime.mode = "play"; runtime.ghostHub = null;
+    } else this.walk.exit();
+    this.keys.clear(); this.controls.enabled = !walk; this.player.visible = !walk;
+    window.dispatchEvent(new CustomEvent("area67-view-change", { detail: walk ? "walk" : "overview" }));
+  }
+  private inspectWalkTarget() {
+    if (!this.walk.active || !this.walkTarget || !runtime.buildings.some(b => b.uid === this.walkTarget)) return;
+    runtime.selectedAgent = null; runtime.selectedBuilding = this.walkTarget;
+    bus.emit({ type: "changed" });
+  }
+  private updateWalkTarget() {
+    this.ray.setFromCamera(new THREE.Vector2(0, 0), this.walk.camera);
+    const hits = this.ray.intersectObjects([...this.stations.values()], true);
+    let hit: THREE.Object3D | null = hits.find(h => h.distance < 7)?.object ?? null;
+    while (hit && !hit.userData.uid) hit = hit.parent;
+    this.walkTarget = hit?.userData.uid ?? null;
+    const b = runtime.buildings.find(b => b.uid === this.walkTarget);
+    this.walk.setTarget(b ? buildingName(b) : undefined);
   }
   private resetCamera() {
     this.camera.position.set(cx + 25, 30, cz + 25);
@@ -440,7 +449,7 @@ export class World3D {
     const now = performance.now(), dt = Math.min(now - this.previous, 100);
     this.previous = now;
     if (now - this.lastSignals > 1000) { this.updateSignals(); this.lastSignals = now; }
-    if (!typing() && now - this.lastStep > 160) {
+    if (!this.walk.active && !typing() && now - this.lastStep > 160) {
       const dx = (this.keys.has("d") || this.keys.has("arrowright") ? 1 : 0) - (this.keys.has("a") || this.keys.has("arrowleft") ? 1 : 0);
       const dz = (this.keys.has("s") || this.keys.has("arrowdown") ? 1 : 0) - (this.keys.has("w") || this.keys.has("arrowup") ? 1 : 0);
       if (dx || dz) { walkPlayerTo(runtime.player.tx + dx, runtime.player.ty + dz); this.lastStep = now; this.focus(runtime.player.tx, runtime.player.ty); }
@@ -462,10 +471,11 @@ export class World3D {
       actor.group.userData.parked = parked;
       actor.group.scale.setScalar(parked ? .72 : 1);
       actor.light.material.color.setHex(colors[state]);
-      actor.sprite.material.opacity = state === "offline" ? .53 : state === "away" ? .72 : 1;
       const active = state === "busy" || state === "attentive";
       const working = signal.animate;
-      actor.sprite.position.y = actor.sprite.scale.y * .48 + (working && !this.reduced ? Math.sin(now * .009 + a.tx) * .07 : 0);
+      const arm = actor.body.getObjectByName("working-arm");
+      if (arm) arm.rotation.x = working && !this.reduced ? -.55 + Math.sin(now * .005 + a.tx) * .25 : 0;
+      actor.body.position.y = !parked && a.path.length && !this.reduced ? Math.sin(now * .012) * .025 : 0;
       if (actor.label.dataset.status !== signal.status) { actor.signal.textContent = signal.icon; actor.action.textContent = signal.label; actor.label.dataset.status = signal.status; }
       actor.label.title = signal.detail;
       actor.label.setAttribute("aria-label", (seat?.label ?? a.id) + ": " + signal.label + ". " + signal.detail);
@@ -483,9 +493,13 @@ export class World3D {
       const scale = !this.reduced && group.userData.working ? 1 + Math.sin(now * .003) * .09 : 1;
       beacon.scale.set(scale, scale, 1);
     }
-    this.drawGhost(); this.controls.update();
+    this.drawGhost();
+    if (this.walk.active) { this.walk.update(dt); this.updateWalkTarget(); this.ghost.visible = false; }
+    else this.controls.update();
     const target = this.controls.target;
     if (target.x < 0 || target.x > MAP_W || target.z < 0 || target.z > MAP_H) this.focus(THREE.MathUtils.clamp(target.x, 0, MAP_W), THREE.MathUtils.clamp(target.z, 0, MAP_H));
-    this.renderer.render(this.scene, this.camera); this.labels.render(this.scene, this.camera);
+    const view = this.walk.active ? this.walk.camera : this.camera;
+    if (!this.walk.active) this.layoutLabels();
+    this.renderer.render(this.scene, view); this.labels.render(this.scene, view);
   }
 }

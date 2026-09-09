@@ -1,0 +1,91 @@
+/* The canvas is the workspace; UI occupies predictable edges, never the center. */
+:root { --header: 64px; --mint: #9deccf; --line: #30434f; }
+.app-header { background: #0d1923; gap: 16px; padding: 0 18px; }
+.brand { min-width: 165px; font-size: 24px; }
+.brand-mark { border-radius: 9px; transform: none; font-size: 20px; padding: 5px 7px; }
+.brand small { display: none; }
+.header-center { gap: 6px; }
+.header-center button { min-height: 40px; padding: 7px 10px; }
+.commander-avatar, .commander-name { display: none; }
+.map-launchers { padding: 4px; gap: 3px; background: #101e28ed; border: 1px solid #3c5865; border-radius: 14px; }
+.map-launchers button { border: 0; box-shadow: none; background: transparent; border-radius: 9px; }
+.map-launchers button[aria-expanded=true] { background: #294653; }
+#agents-launcher span { color: #a8c4ce; }
+.district-nav { min-width: 138px; padding: 14px; border-radius: 14px; background: #101e28ed; border-color: #3c5865; }
+.district-nav[open] { width: min(280px, calc(100vw - 24px)); max-width: none; max-height: calc(100dvh - var(--header) - 160px); overflow: auto; }
+.district-nav summary { font-size: 14px; }
+.district-nav nav { display: grid; grid-template-columns: 1fr 1fr; gap: 5px; }
+.district-nav nav button { min-height: 44px; padding: 6px; font-size: 13px; text-align: left; }
+.district-nav nav button:first-child, .district-nav nav button:last-child { grid-column: 1 / -1; }
+.campus-minimap { width: 100%; height: auto; margin: 14px 0 4px; background: #1b303d; border: 1px solid #425665; border-radius: 8px; }
+.agent-search { display: block; margin: 8px 0; }
+.agent-search input { width: 100%; min-height: 44px; background: #0c1a25; border: 1px solid #39515d; padding: 8px 10px; color: #e0edf1; border-radius: 8px; }
+#hud .crew-panel { border-radius: 16px; top: calc(var(--header) + 82px); }
+#hud .operations-panel { left: auto; right: 18px; bottom: 90px; top: calc(var(--header) + 82px); max-height: none; width: 350px; border-radius: 16px; }
+.operations-heading { padding: 8px 14px; }
+.operations-body { padding-bottom: 12px; }
+#inspector-content { min-height: 0; padding: 18px; }
+.project-banner h2 { font-size: 24px; line-height: 1.15; }
+.project-banner p, #inspector-content > p { font-size: 14px; }
+.building-id { overflow-wrap: anywhere; }
+#quick-chat { width: min(560px, calc(100vw - 116px)); right: auto; left: 50%; transform: translateX(-50%); border-radius: 14px; padding: 6px; background: #10222feb; border: 1px solid #415767; }
+#quick-chat input { min-height: 44px; font-size: 16px; background: transparent; }
+#quick-chat button { min-height: 44px; border-radius: 9px; }
+#chat-launcher { border-radius: 14px; background: #9deccf; color: #13352f; min-width: 76px; }
+.station-banner { width: auto; max-width: 150px; padding: 0; margin: 0; text-transform: none; letter-spacing: 0; background: none; border: 0; box-shadow: none; }
+.station-chip { justify-content: center; min-height: 27px; border: 1px solid #526c7a80; border-radius: 8px; background: #122736d9; padding: 3px 8px; box-shadow: 0 4px 12px #0003; }
+.station-chip strong { font-size: 12px; font-weight: 500; }
+.station-banner.selected .station-chip { background: #d8eee7; }
+.station-banner.selected .station-chip strong { color: #153c3d; }
+[data-culled=true] { display: none !important; }
+.station-details { width: 230px; text-align: left; }
+.map-agent-label { border: 0; background: #102432db; padding: 4px 7px; font-size: 12px; }
+.map-agent-label:not(.selected) .agent-action { display: none; }
+.map-player-label { font-size: 12px; padding: 4px 8px; }
+.world-controls { display: flex; flex-direction: row; gap: 4px; bottom: 88px; border-radius: 12px; padding: 4px; background: #101e28ed; }
+.world-controls button { border: 0; background: transparent; }
+.view-switch { position: absolute; top: calc(var(--header) + 12px); left: 50%; transform: translateX(-50%); display: flex; padding: 4px; gap: 2px; border: 1px solid #3c5865; background: #101e28ed; border-radius: 14px; pointer-events: auto; z-index: 6; box-shadow: 0 8px 24px #0004; }
+.view-switch button { min-height: 44px; padding: 8px 14px; border: 0; background: transparent; font-size: 14px; border-radius: 9px; }
+.view-switch button[aria-pressed=true] { background: #9deccf; color: #102b29; }
+.view-switch button:disabled { opacity: .45; cursor: not-allowed; }
+.walk-controls { position: absolute; inset: var(--header) 0 0; pointer-events: none; z-index: 5; }
+.walk-reticle { position: absolute; left: 50%; top: 50%; width: 7px; height: 7px; transform: translate(-50%, -50%); border: 1px solid white; border-radius: 50%; box-shadow: 0 0 0 3px #0d222880; }
+.walk-guide { position: absolute; left: 50%; bottom: 152px; transform: translateX(-50%); color: #d2e2e8; background: #0e202bdf; padding: 8px 12px; border-radius: 8px; font-size: 12px; white-space: nowrap; }
+.walk-pad { position: absolute; bottom: 90px; left: 18px; width: 156px; display: grid; grid-template-columns: repeat(3, 48px); gap: 6px; pointer-events: auto; }
+.walk-pad button { min-height: 48px; background: #142a36ed; touch-action: none; font-size: 20px; }
+.walk-pad button:first-child { grid-column: 2; }
+.walk-pad button:nth-child(2) { grid-column: 1; }
+.walk-interact { position: absolute; bottom: 94px; left: 50%; transform: translateX(-50%); min-height: 48px; max-width: 260px; background: #142a36ed; pointer-events: auto; }
+.walk-mode .world-controls { display: none; }
+.walk-mode .map-station-label, .walk-mode .map-agent-label, .walk-mode .map-player-label, .walk-mode .standby-label { display: none !important; }
+.walk-mode #tools-launcher { display: none; }
+.walk-mode #hud.operations-open .walk-pad, .walk-mode #hud.operations-open .walk-guide, .walk-mode #hud.operations-open .walk-interact { display: none; }
+@media (max-width: 760px) {
+  :root { --header: 60px; }
+  .header-center { display: none; }
+  .header-actions { gap: 6px; }
+  .brand { min-width: 100px; }
+  .map-launchers { left: 10px; }
+  .district-nav { right: 10px; min-width: 0; max-width: 134px; }
+  #hud .operations-panel { left: 10px; right: 10px; top: auto; width: auto; bottom: 146px; max-height: calc(100dvh - var(--header) - 230px); }
+  #hud .crew-panel { bottom: 146px; left: 10px; width: calc(100vw - 20px); }
+  #quick-chat { left: 10px; width: calc(100vw - 108px); transform: none; }
+  #chat-launcher { right: 10px; }
+  .comms-panel { bottom: 82px; }
+  .world-controls { flex-direction: column; bottom: 88px; right: 10px; }
+  .station-banner { max-width: 120px; }
+  .station-details { display: none !important; }
+  .view-switch { top: auto; bottom: 84px; left: 12px; transform: none; }
+  .view-switch button { padding: 7px 10px; }
+  .walk-mode .view-switch { bottom: auto; top: calc(var(--header) + 68px); }
+  .walk-guide { bottom: 204px; max-width: calc(100vw - 28px); white-space: normal; width: max-content; text-align: center; }
+  .walk-interact { left: auto; right: 12px; bottom: 100px; transform: none; max-width: calc(100vw - 194px); font-size: 14px; }
+}
+@media (max-width: 430px) {
+  #agents-launcher span { display: none; }
+  .app-header { padding: 0 10px; gap: 8px; }
+  .brand { min-width: 80px; font-size: 20px; gap: 5px; }
+  .brand-mark { display: none; }
+  .header-actions { gap: 5px; }
+  #connect-button { padding: 7px; min-height: 44px; }
+}
