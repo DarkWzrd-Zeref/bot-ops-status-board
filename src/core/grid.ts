@@ -1,5 +1,5 @@
 export const TILE = 32;
-import { MAP_W, MAP_H, CORE_X, CORE_Y, BASE_RADIUS } from "../../shared/map.ts";
+import { MAP_W, MAP_H, CORE_X, CORE_Y } from "../../shared/map.ts";
 export { MAP_W, MAP_H };
 
 export type TileKind = "sand" | "sand2" | "path" | "pad" | "plaza" | "water" | "fence";
@@ -81,7 +81,8 @@ export function generateWorld(grid: WorldGrid): { plazaMin: Point; plazaMax: Poi
   const plazaMin = { x: cx - 6, y: cy - 6 };
   const plazaMax = { x: cx + 6, y: cy + 6 };
   const well = { x: cx - 1, y: cy - 1 };
-  const radius = BASE_RADIUS;
+  // Freeze the original town's terrain so expansion never re-rolls a saved plot.
+  const legacyW = 64, legacyH = 48, radius = 20;
 
   for (let y = 0; y < MAP_H; y++) {
     for (let x = 0; x < MAP_W; x++) {
@@ -100,7 +101,7 @@ export function generateWorld(grid: WorldGrid): { plazaMin: Point; plazaMax: Poi
     let x = x0;
     let y = y0;
     while (x !== x1 || y !== y1) {
-      if (grid.inBounds(x, y) && (grid.kinds[y][x] === "sand" || grid.kinds[y][x] === "sand2")) {
+      if (grid.inBounds(x, y) && !grid.blocked[y][x] && (grid.kinds[y][x] === "sand" || grid.kinds[y][x] === "sand2")) {
         grid.kinds[y][x] = "path";
       }
       if (x < x1) x++;
@@ -111,15 +112,15 @@ export function generateWorld(grid: WorldGrid): { plazaMin: Point; plazaMax: Poi
   };
 
   paintPath(plazaMin.x, cy, 2, cy);
-  paintPath(plazaMax.x, cy, MAP_W - 3, cy);
+  paintPath(plazaMax.x, cy, legacyW - 3, cy);
   paintPath(cx, plazaMin.y, cx, 2);
-  paintPath(cx, plazaMax.y, cx, MAP_H - 5);
+  paintPath(cx, plazaMax.y, cx, legacyH - 5);
 
-  for (let x = 0; x < MAP_W; x++) {
-    grid.kinds[MAP_H - 2][x] = "water";
-    grid.kinds[MAP_H - 1][x] = "water";
-    grid.blocked[MAP_H - 2][x] = true;
-    grid.blocked[MAP_H - 1][x] = true;
+  for (let x = 0; x < legacyW; x++) {
+    grid.kinds[legacyH - 2][x] = "water";
+    grid.kinds[legacyH - 1][x] = "water";
+    grid.blocked[legacyH - 2][x] = true;
+    grid.blocked[legacyH - 1][x] = true;
   }
 
   for (let a = 0; a < 360; a += 6) {
@@ -135,13 +136,22 @@ export function generateWorld(grid: WorldGrid): { plazaMin: Point; plazaMax: Poi
   }
 
   for (let i = 0; i < 28; i++) {
-    const x = 1 + ((i * 13) % (MAP_W - 2));
-    const y = 1 + ((i * 9) % (MAP_H - 6));
+    const x = 1 + ((i * 13) % (legacyW - 2));
+    const y = 1 + ((i * 9) % (legacyH - 6));
     const dx = x - cx;
     const dy = y - cy;
     if (Math.hypot(dx, dy) <= radius + 1) continue;
     if (grid.kinds[y][x] === "sand" || grid.kinds[y][x] === "sand2") grid.blocked[y][x] = true;
   }
 
+  // Roads only change appearance; never introduce blockers on old plots.
+  paintPath(34, 20, 84, 20);
+  paintPath(60, 20, 60, 60);
+  paintPath(28, 26, 28, 60);
+  paintPath(12, 34, 80, 34);
+  paintPath(16, 56, 76, 56);
+  for (const bridgeX of [28, 60]) for (let x = bridgeX - 1; x <= bridgeX + 1; x++) {
+    for (let y = 46; y <= 47; y++) { grid.kinds[y][x] = "path"; grid.blocked[y][x] = false; }
+  }
   return { plazaMin, plazaMax, well };
 }

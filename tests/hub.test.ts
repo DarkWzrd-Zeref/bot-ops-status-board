@@ -103,7 +103,7 @@ await test("invalid station footprints, references, core changes and capacity fa
     { ...snapshot(), buildings: [{ uid: "bad", hubId: "fake", tx: 20, ty: 20 }] },
     { ...snapshot(), buildings: [...snapshot().buildings, { uid: "lab", hubId: "bank", tx: 20, ty: 20 }] },
     { ...snapshot(), buildings: [...snapshot().buildings, { uid: "overlap", hubId: "bank", tx: 27, ty: 19 }] },
-    { ...snapshot(), buildings: [...snapshot().buildings, { uid: "oob", hubId: "bank", tx: 55, ty: 39 }] },
+    { ...snapshot(), buildings: [...snapshot().buildings, { uid: "oob", hubId: "bank", tx: 96, ty: 39 }] },
     { ...snapshot(), buildings: snapshot().buildings.filter(b => b.hubId !== "well") },
     { ...snapshot(), assignments: { codex: "missing" } },
     { ...snapshot(), assignments: { codex: "lab", claude: "lab", researcher: "lab" } },

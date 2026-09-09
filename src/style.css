@@ -364,6 +364,11 @@ html, body, #app { height: 100%; overflow: hidden; }
 .ecosystem-nav button[data-ecosystem=vision-board] { color: #d3a3ff; }
 .ecosystem-nav button[data-ecosystem=pending-work] { color: #f5c16c; }
 .ecosystem-nav button[data-ecosystem=bug-board] { color: #ff9c94; }
+.district-nav { position: absolute; top: 18px; right: 64px; z-index: 5; pointer-events: auto; max-width: min(230px, calc(100vw - 100px)); background: #0d202bea; border: 1px solid #40616b; border-radius: 10px; padding: 9px 12px; color: #dcefeb; }
+.district-nav summary { cursor: pointer; font-size: 14px; }
+.district-nav nav { display: grid; gap: 5px; padding-top: 10px; }
+.district-nav button { text-align: left; font-size: 14px; min-height: 36px; }
+.district-nav small { display: block; font-size: 12px; max-width: 200px; margin-top: 8px; }
 .bug-tags { display: flex; flex-wrap: wrap; gap: 8px; margin: 8px 0; }
 .bug-tags span { font-size: 14px; padding: 4px 8px; border: 1px solid #73504e; border-radius: 6px; color: #ffc1bb; }
 #bug-fields { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 12px; }

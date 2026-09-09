@@ -25,6 +25,7 @@ import { bus } from "../core/events.ts";
 import type { GameEvent } from "../core/types.ts";
 import { attention, liveWork } from "../core/live.ts";
 import { seatForPal } from "../../shared/protocol.ts";
+import { DISTRICTS } from "../../shared/map.ts";
 
 function typingInHud(): boolean {
   const el = document.activeElement;
@@ -66,6 +67,23 @@ export class HubScene extends Phaser.Scene {
     this.cameras.main.startFollow(this.player, true, 0.12, 0.12);
     this.cameras.main.setZoom(0.78);
     this.cameras.main.setBackgroundColor("#0b100c");
+    const district = (event: Event) => {
+      const id = (event as CustomEvent<string>).detail;
+      const camera = this.cameras.main;
+      const d = DISTRICTS.find(d => d.id === id);
+      if (id !== "overview" && !d) return;
+      camera.stopFollow();
+      camera.setZoom(id === "overview" ? Math.min(camera.width / (MAP_W * TILE), camera.height / (MAP_H * TILE)) * .95 : .65);
+      camera.centerOn((d?.x ?? MAP_W / 2) * TILE, (d?.y ?? MAP_H / 2) * TILE);
+    };
+    const cameraAction = (event: Event) => {
+      const action = (event as CustomEvent<string>).detail;
+      if (action === "home") { this.cameras.main.startFollow(this.player, true, .12, .12); this.cameras.main.setZoom(.65); }
+      else this.cameras.main.setZoom(Phaser.Math.Clamp(this.cameras.main.zoom * (action === "in" ? 1.2 : 1 / 1.2), .1, 2.2));
+    };
+    window.addEventListener("area67-district", district);
+    window.addEventListener("area67-camera", cameraAction);
+    this.events.once("shutdown", () => { window.removeEventListener("area67-district", district); window.removeEventListener("area67-camera", cameraAction); });
 
     const kb = this.input.keyboard!;
     this.cursors = kb.addKeys(
@@ -94,7 +112,7 @@ export class HubScene extends Phaser.Scene {
     });
 
     this.input.on("wheel", (_p: Phaser.Input.Pointer, _g: unknown, _dx: number, dy: number) => {
-      const z = Phaser.Math.Clamp(this.cameras.main.zoom - dy * 0.001, 0.55, 2.2);
+      const z = Phaser.Math.Clamp(this.cameras.main.zoom - dy * 0.001, 0.1, 2.2);
       this.cameras.main.setZoom(z);
     });
 
