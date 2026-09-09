@@ -33,9 +33,19 @@ export class World3D {
   private previous = performance.now();
   private reduced = matchMedia("(prefers-reduced-motion: reduce)").matches;
   private lastSignals = 0;
+  onContextLost?: () => void;
+  private lost = false;
 
   constructor(parent: HTMLElement) {
     this.renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true, powerPreference: "low-power" });
+    const gl = this.renderer.getContext();
+    if (!gl) throw new Error("WebGL context missing");
+    this.renderer.domElement.addEventListener("webglcontextlost", (event) => {
+      event.preventDefault();
+      if (this.lost) return;
+      this.lost = true;
+      this.onContextLost?.();
+    });
     this.renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
     this.renderer.shadowMap.enabled = true;
     this.renderer.shadowMap.type = THREE.PCFSoftShadowMap;
@@ -430,5 +440,12 @@ export class World3D {
       beacon.scale.set(scale, scale, 1);
     }
     this.drawGhost(); this.controls.update(); this.renderer.render(this.scene, this.camera); this.labels.render(this.scene, this.camera);
+  }
+  dispose(): void {
+    this.renderer.setAnimationLoop(null);
+    this.controls.dispose();
+    this.renderer.dispose();
+    this.renderer.domElement.remove();
+    this.labels.domElement.remove();
   }
 }

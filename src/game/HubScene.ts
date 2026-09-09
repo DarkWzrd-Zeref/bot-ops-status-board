@@ -25,6 +25,7 @@ import { bus } from "../core/events.ts";
 import type { GameEvent } from "../core/types.ts";
 import { attention, liveWork } from "../core/live.ts";
 import { seatForPal } from "../../shared/protocol.ts";
+import { pickStationTexture } from "./stationArt.ts";
 
 function typingInHud(): boolean {
   const el = document.activeElement;
@@ -189,8 +190,10 @@ export class HubScene extends Phaser.Scene {
     const b = runtime.buildings.find((x) => x.uid === uidStr);
     if (!b) return;
     const hub = hubById(b.hubId);
+    const key = pickStationTexture(this, b.hubId, hub.kind);
     const img = this.add
-      .image(b.tx * TILE + (hub.w * TILE) / 2, b.ty * TILE + (hub.h * TILE) / 2, b.hubId === "well" ? "well-mark" : "b-" + b.hubId)
+      .image(b.tx * TILE + (hub.w * TILE) / 2, b.ty * TILE + (hub.h * TILE) / 2, key)
+      .setDisplaySize(hub.w * TILE, hub.h * TILE)
       .setDepth(3);
     this.bSprites.set(uidStr, img);
     const label = this.add
@@ -217,6 +220,8 @@ export class HubScene extends Phaser.Scene {
         this.labels.delete("b-" + id);
       } else {
         const hub = hubById(building.hubId);
+        spr.setTexture(pickStationTexture(this, building.hubId, hub.kind));
+        spr.setDisplaySize(hub.w * TILE, hub.h * TILE);
         spr.setPosition(building.tx * TILE + hub.w * TILE / 2, building.ty * TILE + hub.h * TILE / 2);
         this.labels.get("b-" + id)?.setText(buildingName(building)).setPosition(spr.x, building.ty * TILE - 4);
       }
