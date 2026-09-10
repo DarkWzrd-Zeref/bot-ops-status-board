@@ -12,16 +12,17 @@ import { WalkView } from "./WalkView.ts";
 import { createArchitecture, createCharacter } from "./architecture.ts";
 import { packLabels, type LabelCandidate } from "./labelLayout.ts";
 import { disposeObject3D, enableGlbShadows, hubGlbPath, rejectLoadedGlb, seatGlbInFootprint } from "./stationModels.ts";
+import { fitCampusCamera, MapClickGesture } from "./campusCamera.ts";
 
 const colors = { attentive: 0x80f5b8, busy: 0x80c8ff, away: 0xe4b76a, offline: 0x536570 };
-/** Heavy visual-only night look. Same campus, no new kits. */
+/** Blue-hour campus: readable slate ground, cool sky, and warm station light. */
 export const NIGHT_LOOK = {
-  background: 0x0b100c,
-  fog: 0x0a140e,
-  hemiSky: 0x8aa89a,
-  hemiGround: 0x1a2218,
-  key: 0xffd5a6,
-  rim: 0x43b7d5,
+  background: 0x142938,
+  fog: 0x243f50,
+  hemiSky: 0xbbdeed,
+  hemiGround: 0x263b43,
+  key: 0xffe3bd,
+  rim: 0x71cbe8,
 } as const;
 const cx = CORE_X, cz = CORE_Y;
 type Actor = { group: THREE.Group; body: THREE.Group; light: THREE.Mesh<THREE.SphereGeometry, THREE.MeshBasicMaterial>; ring: THREE.Mesh; label: HTMLElement; signal: HTMLElement; action: HTMLElement };
@@ -44,7 +45,10 @@ export class World3D {
   private ghostTile: { x: number; y: number } | null = null;
   private keys = new Set<string>();
   private lastStep = 0;
-  private down = { x: 0, y: 0 };
+  private clickGesture = new MapClickGesture();
+  private initialHydrationFit = true;
+  private cameraNavigated = false;
+  private fittedView = true;
   private previous = performance.now();
   private reduced = matchMedia("(prefers-reduced-motion: reduce)").matches;
   private lastSignals = 0;
@@ -61,7 +65,7 @@ export class World3D {
     this.renderer.shadowMap.type = THREE.PCFSoftShadowMap;
     this.renderer.outputColorSpace = THREE.SRGBColorSpace;
     this.renderer.toneMapping = THREE.ACESFilmicToneMapping;
-    this.renderer.toneMappingExposure = 0.92;
+    this.renderer.toneMappingExposure = 1.12;
     parent.append(this.renderer.domElement);
     this.renderer.domElement.setAttribute("aria-label", "Interactive 3D AREA 67 base. Use crew and station controls for keyboard access.");
     this.labels.domElement.style.cssText = "position:absolute;inset:0;pointer-events:none;overflow:hidden";
@@ -69,24 +73,32 @@ export class World3D {
     this.controls = new OrbitControls(this.camera, this.renderer.domElement);
     this.controls.enableDamping = true;
     this.controls.enableRotate = true;
-    this.controls.minPolarAngle = .45;
+    this.controls.minPolarAngle = .015;
     this.controls.maxPolarAngle = 1.15;
-    this.controls.minZoom = .12;
-    this.controls.maxZoom = 3;
-    this.controls.mouseButtons = { LEFT: undefined as unknown as THREE.MOUSE, MIDDLE: THREE.MOUSE.PAN, RIGHT: THREE.MOUSE.ROTATE };
+    this.controls.minZoom = .08;
+    this.controls.maxZoom = 4;
+    this.controls.screenSpacePanning = false;
+    this.controls.panSpeed = 1;
+    this.controls.zoomSpeed = .85;
+    this.controls.mouseButtons = { LEFT: THREE.MOUSE.PAN, MIDDLE: THREE.MOUSE.PAN, RIGHT: THREE.MOUSE.ROTATE };
     this.controls.touches = { ONE: THREE.TOUCH.PAN, TWO: THREE.TOUCH.DOLLY_ROTATE };
     this.resetCamera();
-    this.scene.background = new THREE.Color(NIGHT_LOOK.background);
-    this.scene.fog = new THREE.FogExp2(NIGHT_LOOK.fog, .008);
-    this.scene.add(new THREE.HemisphereLight(NIGHT_LOOK.hemiSky, NIGHT_LOOK.hemiGround, 1.35));
-    const key = new THREE.DirectionalLight(NIGHT_LOOK.key, 2.85);
+    // A cover backdrop works with both orthographic and perspective cameras.
+    // It stays out of lighting/materials, and missing art retains the blue fallback.
+    parent.style.background = "#142938 url('/environments/area67-bluehour-panorama.png') center / cover no-repeat";
+    this.scene.background = null;
+    this.renderer.setClearColor(NIGHT_LOOK.background, 0);
+    this.scene.fog = new THREE.FogExp2(NIGHT_LOOK.fog, .0035);
+    this.scene.add(new THREE.HemisphereLight(NIGHT_LOOK.hemiSky, NIGHT_LOOK.hemiGround, 2.1));
+    const key = new THREE.DirectionalLight(NIGHT_LOOK.key, 2.3);
     key.position.set(cx - 14, 28, cz - 8); key.target.position.set(cx, 0, cz);
     key.castShadow = true;
     key.shadow.mapSize.set(2048, 2048);
     Object.assign(key.shadow.camera, { left: -75, right: 75, top: 75, bottom: -75, far: 150 });
-    key.shadow.normalBias = .04;
+    key.shadow.normalBias = .12;
+    key.shadow.bias = -.00015;
     this.scene.add(key, key.target);
-    const rim = new THREE.DirectionalLight(NIGHT_LOOK.rim, 2.15);
+    const rim = new THREE.DirectionalLight(NIGHT_LOOK.rim, 1.65);
     rim.position.set(cx + 20, 15, cz + 18); this.scene.add(rim);
     const wellLamp = new THREE.PointLight(NIGHT_LOOK.key, 3.2, 16, 1.8);
     wellLamp.position.set(cx, 3.1, cz);
@@ -114,6 +126,7 @@ export class World3D {
       this.walk.resize(w, h);
       this.renderer.setSize(w, h);
       this.labels.setSize(w, h);
+      if (this.fittedView) this.fitCampus();
     };
     new ResizeObserver(resize).observe(parent); resize();
     this.bind();
@@ -121,7 +134,15 @@ export class World3D {
     matchMedia("(prefers-reduced-motion: reduce)").addEventListener("change", e => { this.reduced = e.matches; });
     bus.on(e => {
       if (this.walk.active && runtime.mode !== "play") this.setView(false);
-      if (e.type === "changed") this.syncStations();
+      if (e.type === "changed") {
+        this.syncStations();
+        // The first server snapshot can replace the local starter map. Never reframe
+        // subsequent presence, work, selection, or building events behind the user.
+        if (this.initialHydrationFit && radioLive) {
+          this.initialHydrationFit = false;
+          if (!this.cameraNavigated) this.fitCampus();
+        }
+      }
       if (e.type === "changed" || e.type === "presence") this.updateSignals();
       if (e.type === "focus-agent") {
         if (this.walk.active) this.setView(false);
@@ -155,15 +176,19 @@ export class World3D {
   }
   private createTerrain() {
     const platform = new THREE.Group(); platform.position.set(MAP_W / 2, -.44, MAP_H / 2);
-    this.box(MAP_W + .6, .85, MAP_H + .6, 0x0d1410, 0, 0, 0, platform);
-    this.box(MAP_W, .18, MAP_H, 0x1a2420, 0, .49, 0, platform);
+    const foundation = this.box(MAP_W + .6, .85, MAP_H + .6, 0x172b38, 0, 0, 0, platform);
+    foundation.castShadow = false;
+    // The previous deck top and tile top both sat at y=.14: coplanarity made
+    // the whole map stripe/z-fight. Keep the structural deck below tile bottoms.
+    const deck = this.box(MAP_W, .12, MAP_H, 0x253d48, 0, .45, 0, platform);
+    deck.castShadow = false;
     this.scene.add(platform);
     const tileGeo = new THREE.BoxGeometry(1, .04, 1);
     const tileMats: Record<string, THREE.MeshStandardMaterial> = {
-      sand: this.material(0x1c2420, .28, .42), sand2: this.material(0x18201c, .28, .42),
-      plaza: this.material(0x24302a, .32, .38), pad: this.material(0x2a3830, .35, .36),
-      path: this.material(0x3a4238, .38, .34), water: this.material(0x0a1c14, .55, .18),
-      fence: this.material(0x1a2218, .2, .5), blocked: this.material(0x141c18, .15, .55),
+      sand: this.material(0x344d56, .08, .9), sand2: this.material(0x324b53, .08, .9),
+      plaza: this.material(0x43616b, .12, .82), pad: this.material(0x526f79, .16, .76),
+      path: this.material(0x71878c, .12, .78), water: this.material(0x174a64, .32, .25),
+      fence: this.material(0x2b444b, .1, .84), blocked: this.material(0x304650, .05, .92),
     };
     // Instancing keeps the raised tile deck light enough for laptop GPUs.
     for (const [kind, material] of Object.entries(tileMats)) {
@@ -175,8 +200,8 @@ export class World3D {
       }
       const batch = new THREE.InstancedMesh(tileGeo, material, tiles.length);
       const matrix = new THREE.Matrix4();
-      tiles.forEach(([x, y], i) => batch.setMatrixAt(i, matrix.makeTranslation(x + .5, .12, y + .5)));
-      batch.receiveShadow = true; this.scene.add(batch);
+      tiles.forEach(([x, y], i) => batch.setMatrixAt(i, matrix.makeTranslation(x + .5, .14, y + .5)));
+      batch.castShadow = false; batch.receiveShadow = true; this.scene.add(batch);
     }
     // Clip the build-limit arc to the map; outer terrain remains explorable.
     const boundary: THREE.Vector3[] = [];
@@ -380,12 +405,21 @@ export class World3D {
   }
   private bind() {
     const canvas = this.renderer.domElement;
-    canvas.addEventListener("pointerdown", e => { this.down = { x: e.clientX, y: e.clientY }; });
-    canvas.addEventListener("pointermove", e => { this.ghostTile = this.tile(e); });
+    canvas.style.cursor = "grab";
+    canvas.addEventListener("pointerdown", e => {
+      this.cameraNavigated = true; this.fittedView = false;
+      this.clickGesture.down(e.pointerId, e.clientX, e.clientY, e.button);
+      canvas.style.cursor = "grabbing";
+    });
+    canvas.addEventListener("wheel", () => { this.cameraNavigated = true; this.fittedView = false; }, { passive: true });
+    canvas.addEventListener("pointermove", e => { this.clickGesture.move(e.pointerId, e.clientX, e.clientY); this.ghostTile = this.tile(e); });
+    canvas.addEventListener("pointercancel", e => { this.clickGesture.cancel(e.pointerId); canvas.style.cursor = "grab"; });
     canvas.addEventListener("pointerleave", () => { this.ghostTile = null; });
     canvas.addEventListener("pointerup", e => {
+      canvas.style.cursor = "grab";
+      const click = this.clickGesture.up(e.pointerId, e.clientX, e.clientY, e.button);
       if (this.walk.active) return;
-      if (e.button !== 0 || Math.hypot(e.clientX - this.down.x, e.clientY - this.down.y) > 6) return;
+      if (!click) return;
       const t = this.tile(e); if (!t) return;
       if (runtime.mode === "build" && runtime.ghostHub) { tryPlace(runtime.ghostHub, t.x, t.y); return; }
       if (runtime.mode === "move" && runtime.lifting) { finishMove(t.x, t.y); return; }
@@ -406,6 +440,7 @@ export class World3D {
       if (this.walk.active || typing()) return;
       const key = e.key.toLowerCase();
       if (["w", "a", "s", "d", "arrowup", "arrowdown", "arrowleft", "arrowright"].includes(key)) { this.keys.add(key); e.preventDefault(); }
+      if (key === "f" || key === "home") { this.resetCamera(); e.preventDefault(); }
       if (key === "escape") { if (runtime.lifting) cancelMove(); runtime.mode = "play"; runtime.ghostHub = null; }
       if (key === "b") runtime.mode = "build";
       if (key === "m") runtime.mode = "move";
@@ -413,24 +448,30 @@ export class World3D {
       if (["escape", "b", "m", "x"].includes(key)) bus.emit({ type: "changed" });
     });
     window.addEventListener("keyup", e => this.keys.delete(e.key.toLowerCase()));
-    window.addEventListener("blur", () => this.keys.clear());
+    window.addEventListener("blur", () => { this.keys.clear(); this.clickGesture.cancel(); canvas.style.cursor = "grab"; });
     window.addEventListener("area67-camera", e => {
       if (this.walk.active) this.setView(false);
       const action = (e as CustomEvent<string>).detail;
-      if (action === "home") this.resetCamera();
-      else this.camera.zoom = THREE.MathUtils.clamp(this.camera.zoom * (action === "in" ? 1.2 : 1 / 1.2), .12, 3);
+      this.cameraNavigated = true;
+      if (action === "home" || action === "isometric") this.resetCamera();
+      else if (action === "fit") this.fitCampus();
+      else if (action === "top") {
+        this.camera.position.copy(this.controls.target).add(new THREE.Vector3(0, 90, .1));
+        this.camera.lookAt(this.controls.target); this.controls.update(); this.fitCampus();
+      } else if (action === "in" || action === "out") {
+        this.fittedView = false;
+        this.camera.zoom = THREE.MathUtils.clamp(this.camera.zoom * (action === "in" ? 1.25 : 1 / 1.25), this.controls.minZoom, this.controls.maxZoom);
+      }
       this.camera.updateProjectionMatrix();
     });
     window.addEventListener("area67-district", e => {
       if (this.walk.active) this.setView(false);
       const id = (e as CustomEvent<string>).detail;
+      this.cameraNavigated = true;
       if (id === "standby") {
         this.resetCamera(); this.focus(STANDBY_CENTER.x, STANDBY_CENTER.y); this.camera.zoom = .8;
       } else if (id === "overview") {
-        this.resetCamera(); this.focus(MAP_W / 2, MAP_H / 2);
-        this.camera.position.copy(this.controls.target).add(new THREE.Vector3(100, 120, 100));
-        const aspect = (this.camera.right - this.camera.left) / (this.camera.top - this.camera.bottom);
-        this.camera.zoom = Math.max(.12, Math.min(.28, 34 * aspect / ((MAP_W + MAP_H) * .8)));
+        this.resetCamera();
       } else {
         const d = DISTRICTS.find(d => d.id === id); if (!d) return;
         this.resetCamera(); this.focus(d.x, d.y); this.camera.zoom = .7;
@@ -441,7 +482,8 @@ export class World3D {
     window.addEventListener("area67-focus-building", e => {
       const b = runtime.buildings.find(b => b.uid === (e as CustomEvent<string>).detail); if (!b) return;
       if (this.walk.active) this.setView(false);
-      this.focus(b.tx, b.ty); this.camera.zoom = .95; this.camera.updateProjectionMatrix();
+      const h = hubById(b.hubId);
+      this.focus(b.tx + h.w / 2, b.ty + h.h / 2); this.camera.zoom = 1.7; this.camera.updateProjectionMatrix();
       runtime.selectedAgent = null; runtime.selectedBuilding = b.uid; bus.emit({ type: "changed" });
     });
   }
@@ -472,9 +514,35 @@ export class World3D {
   private resetCamera() {
     this.camera.position.set(cx + 25, 30, cz + 25);
     this.controls.target.set(cx, 0, cz);
-    this.camera.zoom = .65; this.camera.lookAt(cx, 0, cz); this.camera.updateProjectionMatrix();
+    this.camera.lookAt(cx, 0, cz); this.controls.update(); this.fitCampus();
+  }
+  private fitCampus() {
+    const rect = this.renderer.domElement.getBoundingClientRect();
+    if (!rect.width || !rect.height) return;
+    const padding = { left: 36, right: 36, top: 90, bottom: rect.width < 760 ? 150 : 110 };
+    // Fit around open edge panels; do not assume the whole browser is usable map.
+    for (const el of Array.from(document.querySelectorAll<HTMLElement>(".crew-panel, #operations-panel, #chat-panel, .district-nav[open]"))) {
+      if (el.hidden || !el.getClientRects().length) continue;
+      const p = el.getBoundingClientRect();
+      if (p.right <= rect.left || p.left >= rect.right || p.bottom <= rect.top || p.top >= rect.bottom) continue;
+      if (p.width < rect.width * .6) {
+        if (p.left < rect.left + rect.width * .25) padding.left = Math.max(padding.left, p.right - rect.left + 20);
+        else if (p.right > rect.right - rect.width * .25) padding.right = Math.max(padding.right, rect.right - p.left + 20);
+      } else padding.bottom = Math.max(padding.bottom, Math.min(rect.height * .6, rect.bottom - p.top + 20));
+    }
+    const fit = fitCampusCamera(runtime.buildings.map(b => {
+      const h = hubById(b.hubId); return { x: b.tx, z: b.ty, width: h.w, depth: h.h };
+    }), { width: rect.width, height: rect.height, ...padding }, this.camera.position.clone().sub(this.controls.target));
+    const direction = this.camera.position.clone().sub(this.controls.target).normalize();
+    this.controls.target.copy(fit.target);
+    this.camera.position.copy(fit.target).addScaledVector(direction, 100);
+    this.camera.zoom = fit.zoom;
+    this.controls.minZoom = fit.minZoom;
+    this.camera.lookAt(fit.target); this.camera.updateProjectionMatrix(); this.controls.update();
+    this.fittedView = true;
   }
   private focus(x: number, z: number) {
+    this.cameraNavigated = true; this.fittedView = false;
     const offset = this.camera.position.clone().sub(this.controls.target);
     this.controls.target.set(x, 0, z); this.camera.position.copy(this.controls.target).add(offset);
   }
@@ -543,7 +611,9 @@ export class World3D {
     if (this.walk.active) { this.walk.update(dt); this.updateWalkTarget(); this.ghost.visible = false; }
     else this.controls.update();
     const target = this.controls.target;
-    if (target.x < 0 || target.x > MAP_W || target.z < 0 || target.z > MAP_H) this.focus(THREE.MathUtils.clamp(target.x, 0, MAP_W), THREE.MathUtils.clamp(target.z, 0, MAP_H));
+    // Camera breathing room is independent of saved-grid/build limits. Edge plots
+    // must be movable into the center of the screen without hitting a camera wall.
+    if (target.x < -24 || target.x > MAP_W + 24 || target.z < -24 || target.z > MAP_H + 24) this.focus(THREE.MathUtils.clamp(target.x, -24, MAP_W + 24), THREE.MathUtils.clamp(target.z, -24, MAP_H + 24));
     const view = this.walk.active ? this.walk.camera : this.camera;
     if (!this.walk.active) this.layoutLabels();
     this.renderer.render(this.scene, view); this.labels.render(this.scene, view);

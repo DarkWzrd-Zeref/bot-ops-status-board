@@ -1,6 +1,7 @@
 import "./style.css";
 import "./ui/mobile-clarity.css";
 import "./ui/campus.css";
+import "./ui/experience.css";
 import { connectLive } from "./core/live.ts";
 import { bootRuntime } from "./core/runtime.ts";
 import { makeGame } from "./game/config.ts";

@@ -82,8 +82,17 @@ export class HubScene extends Phaser.Scene {
     };
     const cameraAction = (event: Event) => {
       const action = (event as CustomEvent<string>).detail;
-      if (action === "home") { this.cameras.main.startFollow(this.player, true, .12, .12); this.cameras.main.setZoom(.65); }
-      else this.cameras.main.setZoom(Phaser.Math.Clamp(this.cameras.main.zoom * (action === "in" ? 1.2 : 1 / 1.2), .1, 2.2));
+      if (action === "home" || action === "fit") {
+        const camera = this.cameras.main;
+        const bounds = runtime.buildings.map(b => ({ x: b.tx, y: b.ty, w: hubById(b.hubId).w, h: hubById(b.hubId).h }));
+        if (!bounds.length) return;
+        const left = Math.min(...bounds.map(b => b.x)) - 3, right = Math.max(...bounds.map(b => b.x + b.w)) + 3;
+        const top = Math.min(...bounds.map(b => b.y)) - 3, bottom = Math.max(...bounds.map(b => b.y + b.h)) + 3;
+        camera.stopFollow();
+        camera.setZoom(Phaser.Math.Clamp(Math.min(camera.width * .82 / ((right - left) * TILE), camera.height * .65 / ((bottom - top) * TILE)), .1, 2.2));
+        camera.centerOn((left + right) * TILE / 2, (top + bottom) * TILE / 2);
+      }
+      else if (action === "in" || action === "out") this.cameras.main.setZoom(Phaser.Math.Clamp(this.cameras.main.zoom * (action === "in" ? 1.2 : 1 / 1.2), .1, 2.2));
     };
     window.addEventListener("area67-district", district);
     window.addEventListener("area67-camera", cameraAction);

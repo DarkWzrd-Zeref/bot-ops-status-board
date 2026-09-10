@@ -6,11 +6,11 @@ import { createArchitecture } from "../src/game/architecture.ts";
 import { NIGHT_LOOK } from "../src/game/World3D.ts";
 import hubs from "../src/content/hubs.json";
 
-test("night look matches the visual-only spec (dusk gold key, teal rim, forest fog)", () => {
-  assert.equal(NIGHT_LOOK.background, 0x0b100c);
-  assert.equal(NIGHT_LOOK.fog, 0x0a140e);
-  assert.equal(NIGHT_LOOK.key, 0xffd5a6);
-  assert.equal(NIGHT_LOOK.rim, 0x43b7d5);
+test("blue-hour look keeps slate atmosphere, warm key and readable cyan rim", () => {
+  assert.equal(NIGHT_LOOK.background, 0x142938);
+  assert.equal(NIGHT_LOOK.fog, 0x243f50);
+  assert.equal(NIGHT_LOOK.key, 0xffe3bd);
+  assert.equal(NIGHT_LOOK.rim, 0x71cbe8);
 });
 
 test("HUD night tokens retint colors only; layout anchors stay", () => {
