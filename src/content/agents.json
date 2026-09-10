@@ -1,0 +1,172 @@
+{
+  "player": {
+    "id": "zeref",
+    "name": "Zeref",
+    "title": "Base owner",
+    "color": "#f4d03f"
+  },
+  "agents": [
+    {
+      "id": "codex", "name": "Codex", "role": "Builder", "model": "Codex desktop", "account": "codex",
+      "discordChannel": null, "color": "#6ff5c3", "mimicOf": null, "homeHub": "cursor",
+      "bio": "Your Codex desktop teammate. Builds, tests and ships from the repository, then reports back to the command center.",
+      "work": ["code", "research", "command"]
+    },
+    {
+      "id": "grok-am-a",
+      "name": "Grok Twin A",
+      "role": "Account Manager",
+      "model": "Grok",
+      "account": "grok-1",
+      "discordChannel": "the-account-managers",
+      "color": "#7dd3fc",
+      "mimicOf": null,
+      "homeHub": "discord",
+      "bio": "Primary Grok account-manager. Twin B copies its moves.",
+      "work": ["comms"]
+    },
+    {
+      "id": "grok-am-b",
+      "name": "Grok Twin B",
+      "role": "Account Manager",
+      "model": "Grok",
+      "account": "grok-2",
+      "discordChannel": "account-manager",
+      "color": "#38bdf8",
+      "mimicOf": "grok-am-a",
+      "homeHub": "discord",
+      "bio": "Second Grok account. Paths after Twin A so you can see echo / drift.",
+      "work": ["comms"]
+    },
+    {
+      "id": "chief-of-staff",
+      "name": "Chief of Staff",
+      "role": "CoS",
+      "model": "Claude Pro",
+      "account": "claude-pro",
+      "discordChannel": "chief-of-staff",
+      "color": "#f5c16c",
+      "mimicOf": null,
+      "homeHub": "bank",
+      "bio": "Queue, park/go, handoffs. Banks memory at the ledger.",
+      "work": ["memory", "quests"]
+    },
+    {
+      "id": "police",
+      "name": "Police",
+      "role": "Guard",
+      "model": "Claude Pro",
+      "account": "claude-pro",
+      "discordChannel": "police",
+      "color": "#60a5fa",
+      "mimicOf": null,
+      "homeHub": "github",
+      "bio": "MCP-first rules, no-clone, waste flags.",
+      "work": ["scan", "code"]
+    },
+    {
+      "id": "researcher",
+      "name": "ChatGPT",
+      "role": "Scout",
+      "model": "ChatGPT Pro",
+      "account": "chatgpt-pro",
+      "discordChannel": "researcher",
+      "color": "#c4b5fd",
+      "mimicOf": null,
+      "homeHub": "firecrawl",
+      "bio": "Web insight, vision board, proposals.",
+      "work": ["research"]
+    },
+    {
+      "id": "engineer",
+      "name": "Engineer",
+      "role": "Crafter",
+      "model": "Cursor Ultra",
+      "account": "cursor-ultra",
+      "discordChannel": "engineer-bot",
+      "color": "#34d399",
+      "mimicOf": null,
+      "homeHub": "cursor",
+      "bio": "Boarding packets, PRs, cloud-agent handoff.",
+      "work": ["code"]
+    },
+    {
+      "id": "stay-on-track",
+      "name": "Stay on Track",
+      "role": "Scribe",
+      "model": "Claude Pro",
+      "account": "claude-pro",
+      "discordChannel": "stay-on-track",
+      "color": "#fb7185",
+      "mimicOf": null,
+      "homeHub": "calendar",
+      "bio": "One-LIVE rule, syllabus, done artifacts.",
+      "work": ["ops"]
+    },
+    {
+      "id": "director",
+      "name": "Grok Heavy",
+      "role": "Overlord",
+      "model": "Grok Heavy",
+      "account": "grok-heavy",
+      "discordChannel": "director",
+      "color": "#f97316",
+      "mimicOf": null,
+      "homeHub": "grand-exchange",
+      "bio": "Sets the quest board. Watches the plaza.",
+      "work": ["quests", "command"]
+    },
+    {
+      "id": "claude",
+      "name": "Claude",
+      "role": "Architect",
+      "model": "Claude Pro",
+      "account": "claude-pro",
+      "discordChannel": "director",
+      "color": "#d4a574",
+      "mimicOf": null,
+      "homeHub": "grand-exchange",
+      "bio": "Anthropic pal on the AREA 67 MCP. Talks through the plaza radio with Grok. Zeref directs.",
+      "work": ["quests", "command"]
+    },
+    {
+      "id": "grok",
+      "name": "Grok",
+      "role": "Architect",
+      "model": "Grok",
+      "account": "grok-desk",
+      "discordChannel": "director",
+      "color": "#bef264",
+      "mimicOf": null,
+      "homeHub": "grand-exchange",
+      "bio": "Grok on grok.com. Not the Cursor cloud agent. Not Twin A/B. Not Heavy. Own MCP at /mcp/grok.",
+      "work": ["quests", "command"]
+    },
+    {
+      "id": "cursor-ultra",
+      "name": "Cursor Ultra",
+      "role": "Cloud smith",
+      "model": "Cursor Ultra",
+      "account": "cursor-ultra",
+      "discordChannel": null,
+      "color": "#a3e635",
+      "mimicOf": null,
+      "homeHub": "cursor",
+      "bio": "This Cursor account and its cloud agents. Own MCP at /mcp/cursor. Cursor, not Grok.",
+      "work": ["code", "cloud-agent"]
+    },
+    {
+      "id": "n8n",
+      "name": "n8n",
+      "role": "Automator",
+      "model": "n8n-self-host",
+      "account": "n8n",
+      "discordChannel": "n8n-self-host",
+      "color": "#f472b6",
+      "mimicOf": null,
+      "homeHub": "railway",
+      "bio": "Already in Community Brain Discord. Workflows as a workstation.",
+      "work": ["infra"]
+    }
+  ]
+}

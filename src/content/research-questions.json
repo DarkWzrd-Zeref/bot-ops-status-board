@@ -1,0 +1,425 @@
+{
+  "project": "community-brain-base",
+  "updated": "2026-09-09",
+  "purpose": "Open questions to research before locking the RPG agent-tracker. The game is a Palworld-style base around a RuneScape community hub; buildings are MCP/API/app hubs; pals are agents.",
+  "questions": [
+    {
+      "id": "q-perspective",
+      "category": "aesthetic",
+      "priority": "high",
+      "question": "Top-down SNES, RuneScape 3/4 camera, or Palworld-ish 3D?",
+      "why_it_matters": "Every sprite, building footprint, and click target depends on camera. Mixing RS hub UX with Palworld placement is easier in 2D; 3D is a different engine.",
+      "options": ["2d-top-down", "2d-three-quarter-rs", "isometric", "3d-palworld"],
+      "research_targets": [
+        "https://github.com/workadventure/workadventure",
+        "https://github.com/LostCityRS/Client-TS",
+        "https://github.com/a16z-infra/ai-town"
+      ],
+      "status": "open",
+      "current_guess": "2d-top-down for v1, RS UI chrome, Palworld placement rules"
+    },
+    {
+      "id": "q-hub-reference",
+      "category": "aesthetic",
+      "priority": "high",
+      "question": "Which RuneScape hub is the plaza: Grand Exchange, Lumbridge, Falador, or Player-owned house?",
+      "why_it_matters": "GE is a trading floor (tasks). Lumbridge is a tutorial town. POH is a player-built house with rooms you unlock — closest to Palworld base + RS hub.",
+      "options": ["grand-exchange", "lumbridge", "falador", "player-owned-house", "mix-ge-plus-poh"],
+      "research_targets": [
+        "https://github.com/runelite/runelite",
+        "https://github.com/LostCityRS/Server"
+      ],
+      "status": "open",
+      "current_guess": "mix-ge-plus-poh: plaza is GE, plots around it are POH/Palworld"
+    },
+    {
+      "id": "q-art-pipeline",
+      "category": "aesthetic",
+      "priority": "medium",
+      "question": "Chibi sprite source: procedural (now), Kenney CC0, custom sheet, or generated per agent?",
+      "why_it_matters": "Need distinct twins, models (Grok vs Claude vs GPT vs Cursor), and idle/walk/work frames without ripping Jagex or Pocketpair art.",
+      "options": ["procedural", "kenney-cc0", "custom-commission", "image-gen-sheet"],
+      "research_targets": [
+        "https://kenney.nl/assets/tiny-town",
+        "https://mounirtohami.itch.io/pixel-art-gui-elements"
+      ],
+      "status": "open",
+      "current_guess": "procedural until a CC0 town pack is dropped in"
+    },
+    {
+      "id": "q-legal-lookalike",
+      "category": "legal",
+      "priority": "high",
+      "question": "How close to OSRS / Palworld can the UI get before it is a lookalike problem?",
+      "why_it_matters": "We want GE-style booths and Palbox-style assignment, not cloned trademarks, fonts, or character IP.",
+      "options": ["inspired-chrome-only", "generic-fantasy-hub", "original-mascot-set"],
+      "research_targets": [],
+      "status": "open",
+      "current_guess": "inspired-chrome-only, original building names"
+    },
+    {
+      "id": "q-palbox-ux",
+      "category": "building",
+      "priority": "high",
+      "question": "How do you assign an agent to a workstation: throw (Palworld), walk-up dialogue (RS), drag from roster, or click-to-seat (Pixel Agents)?",
+      "why_it_matters": "This is the core verb. Twins mimicking each other need a visible assign + copy.",
+      "options": ["throw-at-building", "rs-talk-to", "drag-from-roster", "seat-bind"],
+      "research_targets": [
+        "https://github.com/pixel-agents-hq/pixel-agents",
+        "https://www.ign.com/wikis/palworld/How_to_Assign_Pals_to_Work"
+      ],
+      "status": "open",
+      "current_guess": "drag-from-roster plus walk-up talk, throw later if 3D"
+    },
+    {
+      "id": "q-build-rules",
+      "category": "building",
+      "priority": "high",
+      "question": "Snap grid size, overlap rules, and can you build on the plaza?",
+      "why_it_matters": "Palworld bases have a radius from the Palbox. RS POH has room slots. We need a radius from the Command Well so the GE stays walkable.",
+      "options": ["well-radius", "plot-unlocks", "free-place-anywhere"],
+      "research_targets": [
+        "https://necessewiki.com/Settlements"
+      ],
+      "status": "open",
+      "current_guess": "well-radius, inner plaza locked"
+    },
+    {
+      "id": "q-unlock-loop",
+      "category": "building",
+      "priority": "medium",
+      "question": "Do new MCP buildings unlock by connecting the MCP, by quest, or by spending token-gold?",
+      "why_it_matters": "If connecting Discord instantly drops Discord Hall, the base is an honest map of available tools. If it is a tech tree, it is more game and less tracker.",
+      "options": ["mcp-online-unlocks", "quest-unlocks", "token-economy", "both-mcp-and-quest"],
+      "research_targets": [
+        "https://github.com/samanhappy/mcphub",
+        "https://github.com/HabitRPG/habitica"
+      ],
+      "status": "open",
+      "current_guess": "mcp-online-unlocks with a quest overlay"
+    },
+    {
+      "id": "q-live-sources",
+      "category": "tracking",
+      "priority": "high",
+      "question": "What is the source of truth for 'where is this agent right now'?",
+      "why_it_matters": "Discord last message, Cursor cloud-agent status, GitHub PR activity, n8n execution, and MCP tool calls will disagree. Need a merge rule.",
+      "options": ["discord-channel-pulse", "cursor-cloud-agents", "mcp-tool-trace", "n8n-executions", "merged-bus"],
+      "research_targets": [
+        "https://github.com/langfuse/langfuse",
+        "https://github.com/openclaw/openclaw",
+        "https://github.com/geezerrrr/agent-town"
+      ],
+      "status": "open",
+      "current_guess": "merged-bus: each source emits, sim maps to a hub + animation"
+    },
+    {
+      "id": "q-twin-mimic",
+      "category": "tracking",
+      "priority": "high",
+      "question": "How should the two Grok AM twins show mimic vs drift?",
+      "why_it_matters": "You said they copy each other. The game should make echo obvious (same path, delayed) and drift obvious (split to different buildings).",
+      "options": ["shadow-path", "leash-tether", "split-meter", "both-shadow-and-meter"],
+      "research_targets": [],
+      "status": "open",
+      "current_guess": "B follows A's last destination after a short delay; a drift meter if they desync"
+    },
+    {
+      "id": "q-identity-model",
+      "category": "tracking",
+      "priority": "high",
+      "question": "Is one chibi a Discord bot, a model subscription, a Cursor cloud run, or a role (Police / Researcher)?",
+      "why_it_matters": "Claude Pro is a subscription used by several roles. Cursor Ultra is both a seat and live cloud agents. Grok is two accounts. Collapsing these wrong makes the tracker a lie.",
+      "options": ["one-sprite-per-role", "one-sprite-per-account", "one-sprite-per-live-run", "nested-pals"],
+      "research_targets": [
+        "https://github.com/pixel-agents-hq/pixel-agents"
+      ],
+      "status": "open",
+      "current_guess": "role sprites as residents; live Cursor runs spawn as temporary smiths"
+    },
+    {
+      "id": "q-cursor-runs",
+      "category": "tracking",
+      "priority": "high",
+      "question": "Do live Cursor cloud agents walk into the forge as visitors, or is there one Cursor Ultra pal whose status bar is the active run?",
+      "why_it_matters": "list-cloud-agents can return many runs. A crowd of Cursor sprites vs one pal with a queue.",
+      "options": ["one-pal-plus-queue", "one-visitor-per-run", "forge-interior-instance"],
+      "research_targets": [],
+      "status": "open",
+      "current_guess": "one-pal-plus-queue, extra runs as nametags at the forge"
+    },
+    {
+      "id": "q-discord-mapping",
+      "category": "tracking",
+      "priority": "medium",
+      "question": "Does each Community Brain channel become a stall inside Discord Hall, or its own plot?",
+      "why_it_matters": "You already have ~20 ai-pals channels. Twenty buildings will sprawl; one hall with interior rooms is more RS.",
+      "options": ["one-hall-many-stalls", "one-building-per-channel", "channel-as-quest"],
+      "research_targets": [],
+      "status": "open",
+      "current_guess": "one-hall-many-stalls, click hall to enter a mini-map of channels"
+    },
+    {
+      "id": "q-mcp-gateway",
+      "category": "infra",
+      "priority": "high",
+      "question": "Which MCP gateway sits behind the world: MCPHub, Docker MCP Gateway, mcp-use, or Cursor's native MCP list?",
+      "why_it_matters": "Buildings should light up when the server is actually connected. Need one catalog API the game can poll.",
+      "options": ["cursor-native", "mcphub", "docker-mcp-gateway", "mcp-use"],
+      "research_targets": [
+        "https://github.com/samanhappy/mcphub",
+        "https://github.com/docker/mcp-gateway",
+        "https://github.com/mcp-use/mcp-use",
+        "https://github.com/modelcontextprotocol/inspector"
+      ],
+      "status": "open",
+      "current_guess": "cursor-native for this environment, MCPHub if we self-host the game"
+    },
+    {
+      "id": "q-event-transport",
+      "category": "infra",
+      "priority": "high",
+      "question": "WebSocket from a small server, SSE, or client-only polling of MCPs?",
+      "why_it_matters": "This repo was a static PWA. A live tracker wants a pulse. Railway can host a thin socket. Client-only is simpler but weaker.",
+      "options": ["client-poll", "sse", "websocket", "n8n-webhooks"],
+      "research_targets": [
+        "https://github.com/n8n-io/n8n"
+      ],
+      "status": "open",
+      "current_guess": "client-poll + sim now; n8n webhooks into a socket next"
+    },
+    {
+      "id": "q-n8n-role",
+      "category": "infra",
+      "priority": "medium",
+      "question": "Is n8n a pal, a building, or the nervous system that moves everyone?",
+      "why_it_matters": "n8n is already in Discord. It can fan Discord/GitHub events into the game better than the browser can.",
+      "options": ["pal-only", "building-only", "event-spine"],
+      "research_targets": [
+        "https://github.com/n8n-io/n8n"
+      ],
+      "status": "open",
+      "current_guess": "event-spine plus a station building"
+    },
+    {
+      "id": "q-persistence",
+      "category": "infra",
+      "priority": "medium",
+      "question": "Where does the base layout live: localStorage, Neon, Railway volume, or Discord?",
+      "why_it_matters": "Palworld bases persist. If the layout is the tracker, losing it on a refresh is bad. Neon is already an MCP hub.",
+      "options": ["localStorage", "neon", "railway-volume", "github-json"],
+      "research_targets": [
+        "https://github.com/neondatabase/neon"
+      ],
+      "status": "open",
+      "current_guess": "localStorage now, Neon when the schema settles"
+    },
+    {
+      "id": "q-multiplayer",
+      "category": "product",
+      "priority": "medium",
+      "question": "Is this your private POH, or a shared world where other humans walk the GE?",
+      "why_it_matters": "WorkAdventure / AI Town are multiplayer. Palworld bases can be coop. A private tracker is simpler and matches bot-ops.",
+      "options": ["solo-commander", "coop-base", "public-ge"],
+      "research_targets": [
+        "https://github.com/workadventure/workadventure",
+        "https://github.com/a16z-infra/ai-town"
+      ],
+      "status": "open",
+      "current_guess": "solo-commander, Discord bots as the other 'players'"
+    },
+    {
+      "id": "q-player-avatar",
+      "category": "product",
+      "priority": "medium",
+      "question": "Do you walk a commander avatar (RS), or only god-cam the base (Palworld build mode / RimWorld)?",
+      "why_it_matters": "Click-to-walk + talk-to is the hub feel. God-cam is better for placing 20 buildings fast.",
+      "options": ["walk-avatar", "god-cam", "toggle-both"],
+      "research_targets": [
+        "https://github.com/geezerrrr/agent-town"
+      ],
+      "status": "open",
+      "current_guess": "toggle-both: WASD walk, B for build cam"
+    },
+    {
+      "id": "q-skills-metaphor",
+      "category": "game",
+      "priority": "low",
+      "question": "Do we map RS skills to agent stats (Mining=tokens, Crafting=PRs, Firemaking=deploys) or keep a straight status HUD?",
+      "why_it_matters": "Fun, but easy to bury the tracker. Habitica already did RPG-for-tasks.",
+      "options": ["no-skills", "cosmetic-skills", "full-skill-loop"],
+      "research_targets": [
+        "https://github.com/HabitRPG/habitica",
+        "https://github.com/screeps/screeps"
+      ],
+      "status": "open",
+      "current_guess": "cosmetic-skills on inspect panel only"
+    },
+    {
+      "id": "q-combat",
+      "category": "game",
+      "priority": "low",
+      "question": "Is there combat, or is 'danger' just failed CI / MCP down / budget burn?",
+      "why_it_matters": "Palworld has guns. RS has wild. A tracker probably wants outages as goblins, not a FPS.",
+      "options": ["no-combat", "outage-mobs", "full-combat"],
+      "research_targets": [],
+      "status": "open",
+      "current_guess": "outage-mobs later, none in v1"
+    },
+    {
+      "id": "q-economy",
+      "category": "game",
+      "priority": "medium",
+      "question": "Is gold tokens, Railway spend, or completed tasks?",
+      "why_it_matters": "You already flag network burn. A GE implies a currency. AgentOps tokencost exists.",
+      "options": ["no-currency", "token-gold", "task-gp", "burn-as-tax"],
+      "research_targets": [
+        "https://github.com/AgentOps-AI/tokencost"
+      ],
+      "status": "open",
+      "current_guess": "token-gold as a readout, not a paywall"
+    },
+    {
+      "id": "q-mobile",
+      "category": "product",
+      "priority": "medium",
+      "question": "Does the iOS PWA stay first-class, or is this a desktop command room?",
+      "why_it_matters": "The old board was mobile-first. Palworld/RS hubs are desktop. AM-mobile channel exists.",
+      "options": ["desktop-only", "mobile-watch-only", "full-mobile-build"],
+      "research_targets": [],
+      "status": "open",
+      "current_guess": "desktop play, mobile watch (roster + minimap)"
+    },
+    {
+      "id": "q-sound",
+      "category": "aesthetic",
+      "priority": "low",
+      "question": "RS-style UI clicks + area music, ElevenLabs agent barks, or silent?",
+      "why_it_matters": "ElevenLabs MCP is already connected. Voice barks when an agent starts a job would sell 'live'.",
+      "options": ["silent", "ui-sfx", "agent-barks"],
+      "research_targets": [],
+      "status": "open",
+      "current_guess": "ui-sfx first, optional barks"
+    },
+    {
+      "id": "q-interior-instances",
+      "category": "building",
+      "priority": "medium",
+      "question": "Clicking a hub: inspect panel, or fade into an interior like an RS door?",
+      "why_it_matters": "Interiors let Discord Hall hold 20 stalls. Also a lot more art.",
+      "options": ["panel-only", "interior-scene", "both"],
+      "research_targets": [
+        "https://github.com/workadventure/workadventure"
+      ],
+      "status": "open",
+      "current_guess": "panel-only v1, interior for Discord + Cursor later"
+    },
+    {
+      "id": "q-observability-overlay",
+      "category": "tracking",
+      "priority": "medium",
+      "question": "Do we embed Langfuse/Phoenix traces in the inspect panel, or is the game the only view?",
+      "why_it_matters": "When a pal is stuck you need the last tool call, not just a walking sprite.",
+      "options": ["game-only", "inspect-trace", "deep-link-langfuse"],
+      "research_targets": [
+        "https://github.com/langfuse/langfuse",
+        "https://github.com/Arize-ai/phoenix"
+      ],
+      "status": "open",
+      "current_guess": "inspect-trace stub, deep-link later"
+    },
+    {
+      "id": "q-engine",
+      "category": "tech",
+      "priority": "low",
+      "question": "Stay on Phaser+Vite, or move to Godot (my_ai_town) / Pixi / WorkAdventure maps?",
+      "why_it_matters": "Phaser is enough for a 2D hub. Godot if Palworld-3D becomes real. WorkAdventure if we want multiplayer maps for free.",
+      "options": ["phaser", "pixi", "godot", "workadventure-fork"],
+      "research_targets": [
+        "https://github.com/mewamew/my_ai_town",
+        "https://github.com/workadventure/workadventure"
+      ],
+      "status": "open",
+      "current_guess": "phaser until interiors + multiplayer force a switch"
+    },
+    {
+      "id": "q-reference-clone",
+      "category": "tech",
+      "priority": "medium",
+      "question": "Which existing repo should we steal the most from: Pixel Agents, Agent Town, AI Town, WorkAdventure, or Screeps?",
+      "why_it_matters": "Avoid rewriting pathfinding, seating, and live hooks. Screeps is 'code is the units'. WorkAdventure is the hub. Pixel Agents is the office tracker.",
+      "options": ["pixel-agents", "agent-town", "ai-town", "workadventure", "screeps"],
+      "research_targets": [
+        "https://github.com/pixel-agents-hq/pixel-agents",
+        "https://github.com/geezerrrr/agent-town",
+        "https://github.com/a16z-infra/ai-town",
+        "https://github.com/workadventure/workadventure",
+        "https://github.com/screeps/screeps"
+      ],
+      "status": "open",
+      "current_guess": "agent-town (Phaser office) + Palworld placement on top"
+    },
+    {
+      "id": "q-old-ledger",
+      "category": "product",
+      "priority": "low",
+      "question": "Kill the Google Sheet ledger, or keep it as the Bank's vault data?",
+      "why_it_matters": "This repo used to be a sheet mirror. The Bank building could still read it so CoS data is not lost.",
+      "options": ["kill-sheet", "bank-reads-sheet", "neon-replaces-sheet"],
+      "research_targets": [],
+      "status": "open",
+      "current_guess": "bank-reads-sheet until Neon exists"
+    },
+    {
+      "id": "q-skillspector-station",
+      "category": "skillspector",
+      "priority": "high",
+      "question": "Is SkillSpector a Palworld workstation (place it, assign Police, skills walk there) or an invisible CI gate?",
+      "why_it_matters": "NVIDIA SkillSpector is a scanner with scan_skill MCP, JSON risk 0-100, SAFE/CAUTION/DO_NOT_INSTALL. In Palworld terms it should be a standing building that changes whether pals can equip skills.",
+      "options": ["station-plus-gate", "invisible-ci", "both-station-and-ci"],
+      "research_targets": [
+        "https://github.com/NVIDIA/SkillSpector",
+        "https://docs.nvidia.com/skills/scanning-agent-skills"
+      ],
+      "status": "open",
+      "current_guess": "both-station-and-ci: Spector Gate on the map, same JSON as CI"
+    },
+    {
+      "id": "q-skillspector-transport",
+      "category": "skillspector",
+      "priority": "high",
+      "question": "Call skillspector mcp HTTP, shell out to the CLI, or keep fixtures until a sidecar exists?",
+      "why_it_matters": "This app is a static Vite/nginx PWA. SkillSpector is Python 3.12+. VITE_SKILLSPECTOR_URL is the hook. HTTP MCP has no auth — must stay loopback.",
+      "options": ["http-mcp-loopback", "railway-sidecar", "fixtures-only"],
+      "research_targets": [
+        "https://github.com/NVIDIA/SkillSpector"
+      ],
+      "status": "open",
+      "current_guess": "fixtures now, loopback HTTP MCP next, Railway sidecar if the base is hosted"
+    },
+    {
+      "id": "q-skill-as-palgear",
+      "category": "skillspector",
+      "priority": "high",
+      "question": "Are skills Palworld gear (equip on a pal after scan) or buildings of their own?",
+      "why_it_matters": "You asked for standing buildings that change the AI. Stations grant MCP tools. Skills are smaller modifiers that must pass Spector before they attach. Mixing those two layers is the Palworld loop (base buildings vs pal moves).",
+      "options": ["skills-are-gear", "skills-are-buildings", "both"],
+      "research_targets": [],
+      "status": "open",
+      "current_guess": "skills-are-gear, stations-are-buildings"
+    },
+    {
+      "id": "q-caution-policy",
+      "category": "skillspector",
+      "priority": "medium",
+      "question": "Does CAUTION prompt, block, or install-with-warning? NVIDIA leaves that to the integrator.",
+      "why_it_matters": "Exit code 0 includes SAFE and CAUTION. Police pal assigned to Spector Gate should own this policy.",
+      "options": ["prompt", "block", "warn-and-install"],
+      "research_targets": [
+        "https://github.com/NVIDIA/SkillSpector"
+      ],
+      "status": "open",
+      "current_guess": "warn-and-install, with a CAUTION-blocks toggle on the Gate"
+    }
+  ]
+}

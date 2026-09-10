@@ -1,6 +1,6 @@
 // Minimal app-shell service worker: same-origin assets are served stale-while-revalidate,
 // cross-origin requests (Google Sheets) always go to the network.
-const CACHE = "bot-passport-v1";
+const CACHE = "area67-campus-walk-v7";
 
 self.addEventListener("install", (event) => {
   event.waitUntil(
@@ -21,6 +21,7 @@ self.addEventListener("fetch", (event) => {
   if (req.method !== "GET") return;
   const url = new URL(req.url);
   if (url.origin !== self.location.origin) return;
+  if (url.pathname.startsWith("/api") || url.pathname === "/mcp" || url.pathname.startsWith("/mcp/") || url.pathname === "/health") return;
 
   event.respondWith(
     caches.open(CACHE).then(async (cache) => {
@@ -31,7 +32,9 @@ self.addEventListener("fetch", (event) => {
           return res;
         })
         .catch(() => cached);
-      return cached || network;
+      // Load the newest app shell after deployment. Only immutable assets may
+      // prefer their cached copy; never cache event streams or MCP requests.
+      return req.mode === "navigate" ? (await network || Response.error()) : (cached || await network || Response.error());
     }),
   );
 });
