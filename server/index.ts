@@ -14,6 +14,7 @@ import { projectSchema, workSchema } from "../shared/workspace.ts";
 import { MAP_W, MAP_H } from "../shared/map.ts";
 import { cardSchema, cardActionSchema, registrationSchema } from "../shared/ecosystem.ts";
 import { EcosystemAccessError, ecosystemAuthorized, requireEcosystemWriter } from "./ecosystem-auth.ts";
+import { boosterCapabilities, readUsage, searchMemory, recordMemory } from "./boosters.ts";
 
 store.loadStore();
 
@@ -110,6 +111,19 @@ app.get("/api/status", (c) =>
 app.get("/api/architect", (c) => c.json({ notes: store.notes(80) }));
 
 app.get("/api/ecosystem", c => c.json(store.ecosystem()));
+app.get("/api/boosters", c => { c.header("Cache-Control", "no-store"); return c.json({ skills: boosterCapabilities() }); });
+app.get("/api/boosters/usage", async c => {
+  c.header("Cache-Control", "no-store"); requireEcosystemWriter(c.req.raw, "zeref");
+  return c.json(await readUsage());
+});
+app.get("/api/boosters/memory", async c => {
+  c.header("Cache-Control", "no-store"); requireEcosystemWriter(c.req.raw, "zeref");
+  return c.json(await searchMemory(c.req.query("q") ?? ""));
+});
+app.post("/api/boosters/memory", async c => {
+  c.header("Cache-Control", "no-store"); requireEcosystemWriter(c.req.raw, "zeref");
+  return c.json(await recordMemory("zeref", await c.req.json()));
+});
 app.get("/api/ecosystem/access", c => c.json({ canWrite: ecosystemAuthorized(c.req.raw, "zeref") }));
 app.post("/api/ecosystem/cards", async c => {
   requireEcosystemWriter(c.req.raw, "zeref");
