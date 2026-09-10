@@ -11,7 +11,7 @@ import { CORE_X, CORE_Y, DISTRICTS } from "../../shared/map.ts";
 import { WalkView } from "./WalkView.ts";
 import { createArchitecture, createCharacter } from "./architecture.ts";
 import { packLabels, type LabelCandidate } from "./labelLayout.ts";
-import { enableGlbShadows, hubGlbPath, seatGlbInFootprint } from "./stationModels.ts";
+import { disposeObject3D, enableGlbShadows, hubGlbPath, rejectLoadedGlb, seatGlbInFootprint } from "./stationModels.ts";
 
 const colors = { attentive: 0x80f5b8, busy: 0x80c8ff, away: 0xe4b76a, offline: 0x536570 };
 /** Heavy visual-only night look. Same campus, no new kits. */
@@ -284,13 +284,7 @@ export class World3D {
     this.scene.add(group); this.stations.set(uid, group);
   }
   private disposeNode(obj: THREE.Object3D) {
-    obj.traverse(o => {
-      if (o instanceof THREE.Mesh) {
-        o.geometry.dispose();
-        if (Array.isArray(o.material)) o.material.forEach(m => m.dispose());
-        else o.material.dispose();
-      }
-    });
+    disposeObject3D(obj);
   }
   /** Claude/Blender Friday drop. 404 or oversize keeps the architecture kit. */
   private async trySeatGlb(group: THREE.Group, h: ReturnType<typeof hubById>) {
@@ -298,10 +292,10 @@ export class World3D {
     group.userData.glbToken = token;
     try {
       const gltf = await this.gltf.loadAsync(hubGlbPath(h.id));
-      if (group.userData.glbToken !== token || !this.stations.has(group.userData.uid)) return;
       const model = gltf.scene;
       enableGlbShadows(model);
-      if (!seatGlbInFootprint(model, h.w, h.h)) return;
+      const keep = group.userData.glbToken === token && this.stations.has(group.userData.uid) && seatGlbInFootprint(model, h.w, h.h);
+      if (rejectLoadedGlb(model, keep)) return;
       const kit = group.getObjectByName("kit");
       if (kit) { this.disposeNode(kit); group.remove(kit); }
       model.name = "kit";

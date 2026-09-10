@@ -2,7 +2,7 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import * as THREE from "three";
-import { GLB_LIP, glbFitsFootprint, hubGlbPath, seatGlbInFootprint } from "../src/game/stationModels.ts";
+import { GLB_LIP, disposeObject3D, glbFitsFootprint, hubGlbPath, rejectLoadedGlb, seatGlbInFootprint } from "../src/game/stationModels.ts";
 import hubs from "../src/content/hubs.json";
 
 test("Blender GLB paths are hub-scoped and never Claude kind hashes", () => {
@@ -11,6 +11,7 @@ test("Blender GLB paths are hub-scoped and never Claude kind hashes", () => {
   const world = readFileSync(new URL("../src/game/World3D.ts", import.meta.url), "utf8");
   assert.match(world, /hubGlbPath/);
   assert.match(world, /GLTFLoader/);
+  assert.match(world, /rejectLoadedGlb/);
   assert.doesNotMatch(world, /kind\.\w+\.glb/);
 });
 
@@ -36,4 +37,24 @@ test("oversized Blender mesh is uniformly scaled into the saved footprint; junk 
   assert.ok(glbFitsFootprint(size, 4, 3, GLB_LIP));
   const empty = new THREE.Group();
   assert.equal(seatGlbInFootprint(empty, 4, 3), false);
+});
+
+test("rejected or late GLB loads dispose geometry, materials and owned textures; keep is a no-op", () => {
+  let geo = 0, mat = 0, tex = 0;
+  const map = new THREE.Texture();
+  map.dispose = () => { tex++; };
+  const material = new THREE.MeshStandardMaterial({ map });
+  material.dispose = () => { mat++; };
+  const geometry = new THREE.BoxGeometry(1, 1, 1);
+  geometry.dispose = () => { geo++; };
+  const mesh = new THREE.Mesh(geometry, material);
+  assert.equal(rejectLoadedGlb(mesh, false), true);
+  assert.equal(geo, 1);
+  assert.equal(mat, 1);
+  assert.equal(tex, 1);
+  const kept = new THREE.Mesh(new THREE.BoxGeometry(1, 1, 1), new THREE.MeshStandardMaterial());
+  const before = kept.geometry.uuid;
+  assert.equal(rejectLoadedGlb(kept, true), false);
+  assert.equal(kept.geometry.uuid, before);
+  disposeObject3D(new THREE.Mesh(new THREE.BoxGeometry(2, 1, 2), new THREE.MeshStandardMaterial({ map: new THREE.Texture() })));
 });

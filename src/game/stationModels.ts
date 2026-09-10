@@ -49,3 +49,30 @@ export function enableGlbShadows(root: THREE.Object3D): void {
     }
   });
 }
+
+function disposeMaterial(material: THREE.Material): void {
+  for (const value of Object.values(material)) {
+    if (value && typeof value === "object" && "isTexture" in value && (value as THREE.Texture).isTexture) {
+      (value as THREE.Texture).dispose();
+    }
+  }
+  material.dispose();
+}
+
+/** Drop a loaded GLB that will not be seated so GPU resources do not leak. */
+export function disposeObject3D(root: THREE.Object3D): void {
+  root.traverse((o) => {
+    if (o instanceof THREE.Mesh) {
+      o.geometry.dispose();
+      if (Array.isArray(o.material)) o.material.forEach(disposeMaterial);
+      else disposeMaterial(o.material);
+    }
+  });
+}
+
+/** Keep the architecture kit when the load is stale, missing, or oversized. */
+export function rejectLoadedGlb(model: THREE.Object3D, keep: boolean): boolean {
+  if (keep) return false;
+  disposeObject3D(model);
+  return true;
+}
