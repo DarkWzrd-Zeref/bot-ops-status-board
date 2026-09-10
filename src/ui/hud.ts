@@ -152,7 +152,7 @@ function skills(pal?: string) {
 function buildTools() {
   const mode = runtime.mode;
   const kind = buildPanelKind(mode);
-  return `<div class="build-toolbar"><div class="mode-buttons"><button data-new-project>+ Project</button>${[["play", "Explore"], ["build", "Build"], ["move", "Move"]].map(([id, label]) => `<button data-mode="${id}" class="${mode === id ? "active" : ""}">${label}</button>`).join("")}</div></div>
+  return `<div class="build-toolbar"><span class="eyebrow">CAMPUS EDITOR</span><div class="mode-buttons"><button data-new-project>+ Project</button>${[["play", "Select"], ["build", "Build"], ["move", "Move"]].map(([id, label]) => `<button data-mode="${id}" class="${mode === id ? "active" : ""}">${label}</button>`).join("")}</div></div>
     ${kind === "catalog" ? `<div class="build-catalog"><div class="build-tabs">${BUILD_TABS.map(t => `<button class="${runtime.buildTab === t.id ? "active" : ""}" data-tab="${t.id}">${t.label}</button>`).join("")}</div><div class="station-options">${catalogForTab().map(h => `<button data-hub="${h.id}" class="${runtime.ghostHub === h.id ? "active" : ""}" title="${esc(h.blurb)}"><span style="background:${h.color}"></span>${esc(h.short)}</button>`).join("")}</div><p class="microcopy">Choose a station. The panel folds away while you pick a plot.</p></div>` : kind === "move" ? '<p class="mode-help">Tap a building on the map, then choose its new plot. Cancel restores its original location.</p>' : '<p class="mode-help">Choose Build to add a station, or select something on the map for details.</p>'}`;
 }
 function closeOperations() {
@@ -166,13 +166,14 @@ function render() {
   const selected = runtime.selectedAgent || runtime.selectedBuilding || "";
   if (selected && selected !== inspectedKey) {
     operationsOpen = true;
-    if (innerWidth < 1000) chatOpen = false;
+    chatOpen = false;
     if (innerWidth <= 700) friendsOpen = false;
   }
   inspectedKey = selected;
   if (runtime.mode !== previousMode && runtime.mode !== "play" && !runtime.ghostHub && !runtime.lifting) {
     operationsOpen = true;
-    if (innerWidth < 1000) { chatOpen = false; friendsOpen = false; }
+    chatOpen = false;
+    if (innerWidth < 1000) friendsOpen = false;
   }
   previousMode = runtime.mode;
   document.documentElement.classList.toggle("friends-collapsed", !friendsOpen);
@@ -219,8 +220,8 @@ export function mountHud(root: HTMLElement) {
       <div class="header-center"><span class="breadcrumb">Operations</span><span>/</span><strong>Command deck</strong></div>
       <div class="header-actions"><span id="connection" class="connection" role="status" aria-live="polite"></span><button class="subtle" id="connect-button">Connect AI ↗</button><span class="commander-avatar">Z</span><span class="commander-name">Zeref<small>Commander</small></span></div></header>
     <aside class="crew-panel" aria-label="Agent online list"><div class="friends-heading"><button id="friends-toggle" aria-label="Toggle agent online list" title="Agents — online list" aria-controls="roster">☷</button><div><h2>Agents</h2><span id="team-count"></span></div></div><label class="friends-filter"><input id="online-only" type="checkbox"> Online only</label><div id="roster"></div><div class="crew-footer"><b>Live agent status</b><p>Dots reflect real check-ins. They fade when an agent stops responding.</p></div><div id="project-list"></div></aside>
-    <div class="world-overlay"><div class="world-heading"><span class="eyebrow">SECTOR 01 / THE PALBOX</span><h1>AREA 67</h1><span>Alien minds. Machine muscle.</span></div><div id="mission-summary"></div><div class="world-controls"><button data-camera="out" aria-label="Zoom out">−</button><button data-camera="home" aria-label="Center map">⌖</button><button data-camera="in" aria-label="Zoom in">+</button></div><div class="world-caption"><span>Click to explore · select a pal to assign</span><span>WASD move · scroll to zoom</span></div></div>
-    <nav class="map-launchers" aria-label="Hub controls"><button id="agents-launcher" aria-controls="roster" aria-expanded="false">Agents</button><button id="tools-launcher" aria-controls="operations-panel" aria-expanded="false">Tools</button></nav>
+    <div class="world-overlay"><div class="world-heading"><span class="eyebrow">YOUR CONNECTED WORKSPACE</span><h1>AREA 67</h1><span>One campus. Every possibility.</span></div><div id="mission-summary"></div><div class="world-controls" role="group" aria-label="Map zoom"><button data-camera="out" aria-label="Zoom out" title="Zoom out">−</button><button data-camera="home" aria-label="Reset and fit campus" title="Reset and fit campus">⌖</button><button data-camera="in" aria-label="Zoom in" title="Zoom in">+</button></div><div class="world-caption"><span>Click a station to inspect · / to find anything</span><span>Drag to pan · scroll to zoom</span></div></div>
+    <nav class="map-launchers" aria-label="Hub controls"><button id="agents-launcher" aria-controls="roster" aria-expanded="false">Agents</button><button id="usage-launcher" data-ecosystem="skill-altar" aria-label="Usage, shared memory and skills" title="Account usage, shared memory and skills — no map navigation needed"><span class="launcher-wide">Usage & skills</span><span class="launcher-short">Usage</span></button><button id="planning-launcher" data-ecosystem="war-table" aria-label="War Table planning" title="Open shared planning and decisions"><span class="launcher-wide">War Table</span><span class="launcher-short">Plans</span></button><button id="tools-launcher" aria-controls="operations-panel" aria-expanded="false" title="Edit campus buildings and project workspaces">Edit map</button></nav>
     <section class="operations-panel" id="operations-panel" aria-labelledby="operations-title" hidden><div class="operations-heading"><h2 id="operations-title">Map tools</h2><button id="operations-close" aria-label="Close panel and cancel placement">Close <span aria-hidden="true">&#215;</span></button></div><div class="operations-body"><div id="build-tools"></div><div id="inspector-content"></div></div></section>
     <div id="placement-strip" hidden><span id="placement-label"></span><button id="placement-tools">Tools</button><button id="placement-cancel">Cancel</button></div>
     <button id="chat-launcher" aria-controls="chat-panel" aria-expanded="true">Chat</button><aside class="comms-panel" id="chat-panel"><div class="comms-heading"><div><span class="eyebrow">LIVE COMMUNICATIONS</span><h2>Team chat</h2></div><button id="sound-toggle" class="subtle" aria-pressed="false" title="Toggle message sound">Sound off</button><button id="chat-minimize" class="subtle" aria-label="Minimize chat">−</button></div>
@@ -268,7 +269,8 @@ function showProjectForm(uid?: string) {
 }
 function scopeName(uid: string) { const b = runtime.buildings.find(b => b.uid === uid); return b ? buildingName(b) : "Removed station · history"; }
 function openChat(projectUid?: string) {
-  if (innerWidth < 1000) { friendsOpen = false; closeOperations(); }
+  closeOperations();
+  if (innerWidth < 1000) friendsOpen = false;
   if (chatProject !== projectUid) replyTo = undefined;
   chatProject = projectUid; chatOpen = true; channel = "team"; onlyDirectives = false;
   host.querySelector<HTMLInputElement>("#directives-only")!.checked = false;
@@ -288,6 +290,10 @@ async function pingSeats(seats: (Speaker | "all")[], projectUid?: string) {
   } catch (error) { flash(error instanceof Error ? error.message : "Ping could not be queued.", "bad"); }
 }
 function bind() {
+  window.addEventListener("area67-navigation-open", () => {
+    // Search is navigation only; retain any in-progress placement and every draft.
+    operationsOpen = false; friendsOpen = false; chatOpen = false; render();
+  });
   host.querySelector<HTMLInputElement>("#agent-search")!.addEventListener("input", e => {
     agentSearch = (e.target as HTMLInputElement).value.trim().toLowerCase(); render();
   });
@@ -314,9 +320,9 @@ function bind() {
     if (b.dataset.ping) void pingSeats([b.dataset.ping as Speaker | "all"], chatProject);
     if (b.dataset.pingProject) void pingSeats(SEATS.filter(s => runtime.agents.find(a => a.id === s.palId)?.buildingUid === b.dataset.pingProject).map(s => s.id), b.dataset.pingProject);
     if (b.id === "friends-toggle" || b.id === "agents-launcher") { friendsOpen = !friendsOpen; if (friendsOpen && innerWidth < 1000) { chatOpen = false; closeOperations(); } }
-    if (b.id === "tools-launcher" || b.id === "placement-tools") { if (operationsOpen) closeOperations(); else { operationsOpen = true; if (innerWidth < 1000) { friendsOpen = false; chatOpen = false; } } }
+    if (b.id === "tools-launcher" || b.id === "placement-tools") { if (operationsOpen) closeOperations(); else { operationsOpen = true; chatOpen = false; if (innerWidth < 1000) friendsOpen = false; } }
     if (b.id === "operations-close" || b.id === "placement-cancel") { closeOperations(); host.querySelector<HTMLButtonElement>("#tools-launcher")!.focus(); }
-    if (b.id === "chat-launcher" || b.id === "chat-minimize") { chatOpen = !chatOpen; if (chatOpen) { unread[channel] = 0; if (innerWidth < 1000) { friendsOpen = false; closeOperations(); } } }
+    if (b.id === "chat-launcher" || b.id === "chat-minimize") { chatOpen = !chatOpen; if (chatOpen) { unread[channel] = 0; closeOperations(); if (innerWidth < 1000) friendsOpen = false; } }
     if (b.dataset.agent) { runtime.selectedAgent = b.dataset.agent; runtime.selectedBuilding = null; if (innerWidth < 1000) chatOpen = false; if (innerWidth <= 700) friendsOpen = false; }
     if (b.hasAttribute("data-clear")) closeOperations();
     if (b.dataset.focus) bus.emit({ type: "focus-agent", agentId: b.dataset.focus });

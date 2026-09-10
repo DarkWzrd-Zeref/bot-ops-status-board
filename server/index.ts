@@ -36,7 +36,7 @@ app.get("/health", (c) =>
   c.json({
     ok: true,
     name: "area67",
-    version: "1.3.0",
+    version: "1.4.0",
     commit: process.env.RAILWAY_GIT_COMMIT_SHA ?? null,
     mcp: "/mcp",
     connect: "/connect",
