@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { readFileSync } from "node:fs";
+import { readdirSync, readFileSync } from "node:fs";
 import {
   applyStationArtManifest,
   hubSpritePath,
@@ -17,6 +17,17 @@ test("HubScene keeps district camera controls and does not stretch sprites to th
   assert.match(src, /DISTRICTS/);
   assert.match(src, /seatStationImage/);
   assert.doesNotMatch(src, /setDisplaySize\(hub\.w \* TILE, hub\.h \* TILE\)/);
+});
+
+test("Cursor look-dev hub stills exist for all 25 buildings and are real PNGs", () => {
+  const dir = new URL("../public/sprites/stations/", import.meta.url);
+  const files = readdirSync(dir).filter((f) => f.startsWith("hub-") && f.endsWith(".png"));
+  assert.equal(files.length, 25);
+  for (const h of ["well", "cursor", "discord", "x", "war-table"]) {
+    const buf = readFileSync(new URL("hub-" + h + ".png", dir));
+    assert.equal(buf[0], 0x89);
+    assert.ok(buf.length > 20_000, h);
+  }
 });
 
 test("BootScene loads hub-<id>.png first so Imagine stills seat without touching kind hashes", () => {

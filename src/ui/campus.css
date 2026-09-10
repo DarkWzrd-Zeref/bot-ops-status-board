@@ -1,17 +1,17 @@
 /* The canvas is the workspace; UI occupies predictable edges, never the center. */
 :root { --header: 64px; --mint: #9deccf; --line: #30434f; }
-.app-header { background: #0d1923; gap: 16px; padding: 0 18px; }
+.app-header { background: #0b100ce8; gap: 16px; padding: 0 18px; backdrop-filter: blur(10px); }
 .brand { min-width: 165px; font-size: 24px; }
 .brand-mark { border-radius: 9px; transform: none; font-size: 20px; padding: 5px 7px; }
 .brand small { display: none; }
 .header-center { gap: 6px; }
 .header-center button { min-height: 40px; padding: 7px 10px; }
 .commander-avatar, .commander-name { display: none; }
-.map-launchers { padding: 4px; gap: 3px; background: #101e28ed; border: 1px solid #3c5865; border-radius: 14px; }
+.map-launchers { padding: 4px; gap: 3px; background: #0b100ccc; border: 1px solid #3c5865; border-radius: 14px; }
 .map-launchers button { border: 0; box-shadow: none; background: transparent; border-radius: 9px; }
 .map-launchers button[aria-expanded=true] { background: #294653; }
 #agents-launcher span { color: #a8c4ce; }
-.district-nav { min-width: 138px; padding: 14px; border-radius: 14px; background: #101e28ed; border-color: #3c5865; }
+.district-nav { min-width: 138px; padding: 14px; border-radius: 14px; background: #0b100ccc; border-color: #3c5865; }
 .district-nav[open] { width: min(280px, calc(100vw - 24px)); max-width: none; max-height: calc(100dvh - var(--header) - 160px); overflow: auto; }
 .district-nav summary { font-size: 14px; }
 .district-nav nav { display: grid; grid-template-columns: 1fr 1fr; gap: 5px; }

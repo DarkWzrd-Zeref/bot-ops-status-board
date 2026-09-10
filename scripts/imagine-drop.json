@@ -1,7 +1,8 @@
 {
   "sourceDir": "artifacts/imagine-stations",
   "destDir": "public/sprites/stations",
-  "rule": "Imagine = 2D hub-<id>.png. Claude/Blender Friday = public/models/stations/hub-<id>.glb. Do not write kind.{sha12}.png.",
+  "rule": "Imagine or Cursor look-dev = 2D hub-<id>.png. Claude/Blender Friday = public/models/stations/hub-<id>.glb. Do not write kind.{sha12}.png.",
+  "authorship": "hub PNGs in this PR are Cursor look-dev until Heavy drops grok.com Imagine stills into artifacts/imagine-stations/. Not Claude.",
   "promptPrefix": "AREA 67 night classified campus station. True isometric orthographic (elevation 35.264, azimuth 45). Transparent ground, no shadow catcher, no people, no text, no HUD, no UI. Glass + stone, gold key light from the Well, teal rim from comms. Single building on empty void. High detail game art, not a screenshot.",
   "stations": [
     { "id": "war-table", "still": "war-table.jpg", "hubPng": "hub-war-table.png", "subject": "open command pavilion with a floating tactical lattice over a round table" },

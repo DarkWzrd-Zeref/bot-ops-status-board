@@ -88,9 +88,19 @@ export class World3D {
     this.scene.add(key, key.target);
     const rim = new THREE.DirectionalLight(NIGHT_LOOK.rim, 2.15);
     rim.position.set(cx + 20, 15, cz + 18); this.scene.add(rim);
+    const wellLamp = new THREE.PointLight(NIGHT_LOOK.key, 3.2, 16, 1.8);
+    wellLamp.position.set(cx, 3.1, cz);
+    this.scene.add(wellLamp);
     this.createTerrain();
     this.createDistrictGrounds();
     this.syncStations();
+    const comms = runtime.buildings.find(b => hubById(b.hubId).kind === "comms");
+    if (comms) {
+      const h = hubById(comms.hubId);
+      const teal = new THREE.PointLight(NIGHT_LOOK.rim, 2.4, 14, 1.8);
+      teal.position.set(comms.tx + h.w / 2, 3.4, comms.ty + h.h / 2);
+      this.scene.add(teal);
+    }
     this.createActors();
     this.walk = new WalkView(this.renderer.domElement, () => runtime.grid, () => this.inspectWalkTarget(), () => this.setView(false));
     this.scene.add(this.ghost);
