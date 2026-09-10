@@ -2,14 +2,17 @@ import Phaser from "phaser";
 import { cookTextures } from "./textures.ts";
 import { HubScene } from "./HubScene.ts";
 import { HUBS } from "../core/runtime.ts";
-import { hydrateStationArt, kindSpritePath } from "./stationArt.ts";
+import { hydrateStationArt, hubSpritePath, kindSpritePath } from "./stationArt.ts";
 
 class BootScene extends Phaser.Scene {
   constructor() { super("boot"); }
   preload(): void {
     this.load.image("robot", "/characters/robot.png");
     this.load.image("alien", "/characters/alien.png");
-    this.load.on("loaderror", () => { /* Missing kind PNG keeps the painted box. */ });
+    this.load.on("loaderror", () => { /* Missing hub/kind PNG keeps the painted box. */ });
+    for (const hub of HUBS) {
+      this.load.image("sprite-hub-" + hub.id, hubSpritePath(hub.id));
+    }
     for (const kind of new Set(HUBS.map(h => h.kind))) {
       const path = kindSpritePath(kind);
       if (path) this.load.image("sprite-kind-" + kind, path);

@@ -169,6 +169,14 @@ function groundSize(seat: GroundSeat | undefined, pixelWidth: number, pixelHeigh
   return { w: imgW, h: imgH };
 }
 
+function seatForTexture(kind: string, textureKey?: string): GroundSeat | undefined {
+  if (textureKey?.startsWith("sprite-hub-")) {
+    const hubId = textureKey.slice("sprite-hub-".length);
+    return seats.get("hub:" + hubId) ?? seats.get(hubId);
+  }
+  return seats.get(kind);
+}
+
 /** Uniform scale from the plinth, not the full PNG bounds. Painted boxes still fill the tile footprint. */
 export function stationSeatLayout(opts: {
   painted: boolean;
@@ -177,6 +185,7 @@ export function stationSeatLayout(opts: {
   footprintWidth: number;
   footprintHeight: number;
   kind: string;
+  textureKey?: string;
 }): StationSeatLayout {
   if (opts.painted) {
     return {
@@ -187,7 +196,7 @@ export function stationSeatLayout(opts: {
       painted: true,
     };
   }
-  const seat = seats.get(opts.kind);
+  const seat = seatForTexture(opts.kind, opts.textureKey);
   const imgW = Math.max(1, opts.pixelWidth);
   const imgH = Math.max(1, opts.pixelHeight);
   const ground = groundSize(seat, imgW, imgH);
@@ -222,6 +231,7 @@ export function seatStationImage(
     footprintWidth,
     footprintHeight,
     kind: opts.kind,
+    textureKey: opts.textureKey,
   });
   img.setOrigin(layout.originX, layout.originY);
   img.setPosition(opts.tileX * TILE + footprintWidth / 2, opts.tileY * TILE + footprintHeight / 2);

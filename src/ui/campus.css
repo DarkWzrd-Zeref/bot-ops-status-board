@@ -1,25 +1,25 @@
 /* The canvas is the workspace; UI occupies predictable edges, never the center. */
-:root { --header: 64px; --mint: #9deccf; --line: #30434f; }
-.app-header { background: #0d1923; gap: 16px; padding: 0 18px; }
+:root { --header: 64px; --mint: #bef264; --line: #3a4a38; }
+.app-header { background: #0b100c; gap: 16px; padding: 0 18px; }
 .brand { min-width: 165px; font-size: 24px; }
 .brand-mark { border-radius: 9px; transform: none; font-size: 20px; padding: 5px 7px; }
 .brand small { display: none; }
 .header-center { gap: 6px; }
 .header-center button { min-height: 40px; padding: 7px 10px; }
 .commander-avatar, .commander-name { display: none; }
-.map-launchers { padding: 4px; gap: 3px; background: #101e28ed; border: 1px solid #3c5865; border-radius: 14px; }
+.map-launchers { padding: 4px; gap: 3px; background: #0d1410f2; border: 1px solid #4a5540; border-radius: 14px; }
 .map-launchers button { border: 0; box-shadow: none; background: transparent; border-radius: 9px; }
 .map-launchers button[aria-expanded=true] { background: #294653; }
 #agents-launcher span { color: #a8c4ce; }
-.district-nav { min-width: 138px; padding: 14px; border-radius: 14px; background: #101e28ed; border-color: #3c5865; }
+.district-nav { min-width: 138px; padding: 14px; border-radius: 14px; background: #0d1410f2; border-color: #4a5540; }
 .district-nav[open] { width: min(280px, calc(100vw - 24px)); max-width: none; max-height: calc(100dvh - var(--header) - 160px); overflow: auto; }
 .district-nav summary { font-size: 14px; }
 .district-nav nav { display: grid; grid-template-columns: 1fr 1fr; gap: 5px; }
 .district-nav nav button { min-height: 44px; padding: 6px; font-size: 13px; text-align: left; }
 .district-nav nav button:first-child, .district-nav nav button:last-child { grid-column: 1 / -1; }
-.campus-minimap { width: 100%; height: auto; margin: 14px 0 4px; background: #1b303d; border: 1px solid #425665; border-radius: 8px; }
+.campus-minimap { width: 100%; height: auto; margin: 14px 0 4px; background: #16201a; border: 1px solid #425665; border-radius: 8px; }
 .agent-search { display: block; margin: 8px 0; }
-.agent-search input { width: 100%; min-height: 44px; background: #0c1a25; border: 1px solid #39515d; padding: 8px 10px; color: #e0edf1; border-radius: 8px; }
+.agent-search input { width: 100%; min-height: 44px; background: #0b100c; border: 1px solid #39515d; padding: 8px 10px; color: #e0edf1; border-radius: 8px; }
 #hud .crew-panel { border-radius: 16px; top: calc(var(--header) + 82px); }
 #hud .operations-panel { left: auto; right: 18px; bottom: 90px; top: calc(var(--header) + 82px); max-height: none; width: 350px; border-radius: 16px; }
 .operations-heading { padding: 8px 14px; }
@@ -28,25 +28,25 @@
 .project-banner h2 { font-size: 24px; line-height: 1.15; }
 .project-banner p, #inspector-content > p { font-size: 14px; }
 .building-id { overflow-wrap: anywhere; }
-#quick-chat { width: min(560px, calc(100vw - 116px)); right: auto; left: 50%; transform: translateX(-50%); border-radius: 14px; padding: 6px; background: #10222feb; border: 1px solid #415767; }
+#quick-chat { width: min(560px, calc(100vw - 116px)); right: auto; left: 50%; transform: translateX(-50%); border-radius: 14px; padding: 6px; background: #0d1410f2; border: 1px solid #4a5540; }
 #quick-chat input { min-height: 44px; font-size: 16px; background: transparent; }
 #quick-chat button { min-height: 44px; border-radius: 9px; }
-#chat-launcher { border-radius: 14px; background: #9deccf; color: #13352f; min-width: 76px; }
+#chat-launcher { border-radius: 14px; background: #bef264; color: #13352f; min-width: 76px; }
 .station-banner { width: auto; max-width: 150px; padding: 0; margin: 0; text-transform: none; letter-spacing: 0; background: none; border: 0; box-shadow: none; }
-.station-chip { justify-content: center; min-height: 27px; border: 1px solid #526c7a80; border-radius: 8px; background: #122736d9; padding: 3px 8px; box-shadow: 0 4px 12px #0003; }
+.station-chip { justify-content: center; min-height: 27px; border: 1px solid #4a554080; border-radius: 8px; background: #10180fd9; padding: 3px 8px; box-shadow: 0 4px 12px #0003; }
 .station-chip strong { font-size: 12px; font-weight: 500; }
-.station-banner.selected .station-chip { background: #d8eee7; }
+.station-banner.selected .station-chip { background: #d8f0c4; }
 .station-banner.selected .station-chip strong { color: #153c3d; }
 [data-culled=true] { display: none !important; }
 .station-details { width: 230px; text-align: left; }
 .map-agent-label { border: 0; background: #102432db; padding: 4px 7px; font-size: 12px; }
 .map-agent-label:not(.selected) .agent-action { display: none; }
 .map-player-label { font-size: 12px; padding: 4px 8px; }
-.world-controls { display: flex; flex-direction: row; gap: 4px; bottom: 88px; border-radius: 12px; padding: 4px; background: #101e28ed; }
+.world-controls { display: flex; flex-direction: row; gap: 4px; bottom: 88px; border-radius: 12px; padding: 4px; background: #0d1410f2; }
 .world-controls button { border: 0; background: transparent; }
-.view-switch { position: absolute; top: calc(var(--header) + 12px); left: 50%; transform: translateX(-50%); display: flex; padding: 4px; gap: 2px; border: 1px solid #3c5865; background: #101e28ed; border-radius: 14px; pointer-events: auto; z-index: 6; box-shadow: 0 8px 24px #0004; }
+.view-switch { position: absolute; top: calc(var(--header) + 12px); left: 50%; transform: translateX(-50%); display: flex; padding: 4px; gap: 2px; border: 1px solid #4a5540; background: #0d1410f2; border-radius: 14px; pointer-events: auto; z-index: 6; box-shadow: 0 8px 24px #0004; }
 .view-switch button { min-height: 44px; padding: 8px 14px; border: 0; background: transparent; font-size: 14px; border-radius: 9px; }
-.view-switch button[aria-pressed=true] { background: #9deccf; color: #102b29; }
+.view-switch button[aria-pressed=true] { background: #bef264; color: #102b29; }
 .view-switch button:disabled { opacity: .45; cursor: not-allowed; }
 .walk-controls { position: absolute; inset: var(--header) 0 0; pointer-events: none; z-index: 5; }
 .walk-reticle { position: absolute; left: 50%; top: 50%; width: 7px; height: 7px; transform: translate(-50%, -50%); border: 1px solid white; border-radius: 50%; box-shadow: 0 0 0 3px #0d222880; }

@@ -11,7 +11,13 @@ export function createArchitecture(h: StationShape, project = false) {
   const mats = new Map<string, THREE.MeshStandardMaterial>();
   const mat = (color: number, glow = false) => {
     const key = color + ":" + glow;
-    if (!mats.has(key)) mats.set(key, new THREE.MeshStandardMaterial({ color, metalness: glow ? .25 : .55, roughness: glow ? .35 : .65, emissive: glow ? color : 0, emissiveIntensity: glow ? .65 : 0 }));
+    if (!mats.has(key)) mats.set(key, new THREE.MeshStandardMaterial({
+      color,
+      metalness: glow ? .18 : .42,
+      roughness: glow ? .26 : .48,
+      emissive: glow ? color : 0,
+      emissiveIntensity: glow ? .88 : 0,
+    }));
     return mats.get(key)!;
   };
   const mesh = (geo: THREE.BufferGeometry, c: number, x: number, y: number, z: number, glow = false) => {

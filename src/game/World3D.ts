@@ -1,5 +1,6 @@
 import * as THREE from "three";
 import { OrbitControls } from "three/addons/controls/OrbitControls.js";
+import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
 import { CSS2DObject, CSS2DRenderer } from "three/addons/renderers/CSS2DRenderer.js";
 import { AGENTS, HUBS, BASE_RADIUS, MAP_W, MAP_H, assignAgent, beginMove, buildingAt, buildingName, cancelMove, demolish, finishMove, hubById, placementOk, runtime, stationMapLabel, stepAgents, tryPlace, walkPlayerTo } from "../core/runtime.ts";
 import { bus } from "../core/events.ts";
@@ -10,8 +11,18 @@ import { CORE_X, CORE_Y, DISTRICTS } from "../../shared/map.ts";
 import { WalkView } from "./WalkView.ts";
 import { createArchitecture, createCharacter } from "./architecture.ts";
 import { packLabels, type LabelCandidate } from "./labelLayout.ts";
+import { disposeObject3D, enableGlbShadows, hubGlbPath, rejectLoadedGlb, seatGlbInFootprint } from "./stationModels.ts";
 
 const colors = { attentive: 0x80f5b8, busy: 0x80c8ff, away: 0xe4b76a, offline: 0x536570 };
+/** Heavy visual-only night look. Same campus, no new kits. */
+export const NIGHT_LOOK = {
+  background: 0x0b100c,
+  fog: 0x0a140e,
+  hemiSky: 0x8aa89a,
+  hemiGround: 0x1a2218,
+  key: 0xffd5a6,
+  rim: 0x43b7d5,
+} as const;
 const cx = CORE_X, cz = CORE_Y;
 type Actor = { group: THREE.Group; body: THREE.Group; light: THREE.Mesh<THREE.SphereGeometry, THREE.MeshBasicMaterial>; ring: THREE.Mesh; label: HTMLElement; signal: HTMLElement; action: HTMLElement };
 const typing = () => !!document.activeElement?.closest("input, textarea, select, dialog");
@@ -41,6 +52,7 @@ export class World3D {
   private standbyLabel!: HTMLElement;
   private walk: WalkView;
   private walkTarget: string | null = null;
+  private gltf = new GLTFLoader();
 
   constructor(parent: HTMLElement) {
     this.renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true, powerPreference: "high-performance" });
@@ -49,7 +61,7 @@ export class World3D {
     this.renderer.shadowMap.type = THREE.PCFSoftShadowMap;
     this.renderer.outputColorSpace = THREE.SRGBColorSpace;
     this.renderer.toneMapping = THREE.ACESFilmicToneMapping;
-    this.renderer.toneMappingExposure = 1.05;
+    this.renderer.toneMappingExposure = 0.92;
     parent.append(this.renderer.domElement);
     this.renderer.domElement.setAttribute("aria-label", "Interactive 3D AREA 67 base. Use crew and station controls for keyboard access.");
     this.labels.domElement.style.cssText = "position:absolute;inset:0;pointer-events:none;overflow:hidden";
@@ -64,21 +76,31 @@ export class World3D {
     this.controls.mouseButtons = { LEFT: undefined as unknown as THREE.MOUSE, MIDDLE: THREE.MOUSE.PAN, RIGHT: THREE.MOUSE.ROTATE };
     this.controls.touches = { ONE: THREE.TOUCH.PAN, TWO: THREE.TOUCH.DOLLY_ROTATE };
     this.resetCamera();
-    this.scene.background = new THREE.Color(0x182b40);
-    this.scene.fog = new THREE.FogExp2(0x182b40, .006);
-    this.scene.add(new THREE.HemisphereLight(0xc6dfff, 0x233839, 2));
-    const key = new THREE.DirectionalLight(0xffd5a6, 3);
+    this.scene.background = new THREE.Color(NIGHT_LOOK.background);
+    this.scene.fog = new THREE.FogExp2(NIGHT_LOOK.fog, .008);
+    this.scene.add(new THREE.HemisphereLight(NIGHT_LOOK.hemiSky, NIGHT_LOOK.hemiGround, 1.35));
+    const key = new THREE.DirectionalLight(NIGHT_LOOK.key, 2.85);
     key.position.set(cx - 14, 28, cz - 8); key.target.position.set(cx, 0, cz);
     key.castShadow = true;
     key.shadow.mapSize.set(2048, 2048);
     Object.assign(key.shadow.camera, { left: -75, right: 75, top: 75, bottom: -75, far: 150 });
     key.shadow.normalBias = .04;
     this.scene.add(key, key.target);
-    const rim = new THREE.DirectionalLight(0x43b7d5, 2);
+    const rim = new THREE.DirectionalLight(NIGHT_LOOK.rim, 2.15);
     rim.position.set(cx + 20, 15, cz + 18); this.scene.add(rim);
+    const wellLamp = new THREE.PointLight(NIGHT_LOOK.key, 3.2, 16, 1.8);
+    wellLamp.position.set(cx, 3.1, cz);
+    this.scene.add(wellLamp);
     this.createTerrain();
     this.createDistrictGrounds();
     this.syncStations();
+    const comms = runtime.buildings.find(b => hubById(b.hubId).kind === "comms");
+    if (comms) {
+      const h = hubById(comms.hubId);
+      const teal = new THREE.PointLight(NIGHT_LOOK.rim, 2.4, 14, 1.8);
+      teal.position.set(comms.tx + h.w / 2, 3.4, comms.ty + h.h / 2);
+      this.scene.add(teal);
+    }
     this.createActors();
     this.walk = new WalkView(this.renderer.domElement, () => runtime.grid, () => this.inspectWalkTarget(), () => this.setView(false));
     this.scene.add(this.ghost);
@@ -117,8 +139,8 @@ export class World3D {
     });
     this.renderer.setAnimationLoop(() => this.frame());
   }
-  private material(color: number, metalness = .4) {
-    return new THREE.MeshStandardMaterial({ color, metalness, roughness: .6 });
+  private material(color: number, metalness = .4, roughness = .6) {
+    return new THREE.MeshStandardMaterial({ color, metalness, roughness });
   }
   private mesh(geometry: THREE.BufferGeometry, color: number, x: number, y: number, z: number, parent: THREE.Object3D, metal = .4) {
     const m = new THREE.Mesh(geometry, this.material(color, metal));
@@ -133,15 +155,15 @@ export class World3D {
   }
   private createTerrain() {
     const platform = new THREE.Group(); platform.position.set(MAP_W / 2, -.44, MAP_H / 2);
-    this.box(MAP_W + .6, .85, MAP_H + .6, 0x14252a, 0, 0, 0, platform);
-    this.box(MAP_W, .18, MAP_H, 0x314b4a, 0, .49, 0, platform);
+    this.box(MAP_W + .6, .85, MAP_H + .6, 0x0d1410, 0, 0, 0, platform);
+    this.box(MAP_W, .18, MAP_H, 0x1a2420, 0, .49, 0, platform);
     this.scene.add(platform);
     const tileGeo = new THREE.BoxGeometry(1, .04, 1);
     const tileMats: Record<string, THREE.MeshStandardMaterial> = {
-      sand: this.material(0x283d43, .1), sand2: this.material(0x293f45, .1),
-      plaza: this.material(0x3f535e), pad: this.material(0x596b74),
-      path: this.material(0x63747b), water: this.material(0x143847), fence: this.material(0x364953),
-      blocked: this.material(0x243641),
+      sand: this.material(0x1c2420, .28, .42), sand2: this.material(0x18201c, .28, .42),
+      plaza: this.material(0x24302a, .32, .38), pad: this.material(0x2a3830, .35, .36),
+      path: this.material(0x3a4238, .38, .34), water: this.material(0x0a1c14, .55, .18),
+      fence: this.material(0x1a2218, .2, .5), blocked: this.material(0x141c18, .15, .55),
     };
     // Instancing keeps the raised tile deck light enough for laptop GPUs.
     for (const [kind, material] of Object.entries(tileMats)) {
@@ -224,7 +246,9 @@ export class World3D {
     const group = new THREE.Group(); group.position.set(b.tx + h.w / 2, .19, b.ty + h.h / 2);
     group.userData = { uid, signature: JSON.stringify([b.tx, b.ty, b.hubId, b.project]) };
     const architecture = createArchitecture(h, !!b.project);
+    architecture.name = "kit";
     group.add(architecture);
+    void this.trySeatGlb(group, h);
     const banner = this.label("", "map-station-label station-banner", b.project ? 3.5 : 3.3, group);
     const chip = document.createElement("span"); chip.className = "station-chip";
     const name = document.createElement("strong"); name.textContent = stationMapLabel(b, runtime.selectedBuilding === uid);
@@ -259,7 +283,29 @@ export class World3D {
     group.userData.banner = banner; group.userData.signal = signal; group.userData.chipName = name;
     this.scene.add(group); this.stations.set(uid, group);
   }
+  private disposeNode(obj: THREE.Object3D) {
+    disposeObject3D(obj);
+  }
+  /** Claude/Blender Friday drop. 404 or oversize keeps the architecture kit. */
+  private async trySeatGlb(group: THREE.Group, h: ReturnType<typeof hubById>) {
+    const token = {};
+    group.userData.glbToken = token;
+    try {
+      const gltf = await this.gltf.loadAsync(hubGlbPath(h.id));
+      const model = gltf.scene;
+      enableGlbShadows(model);
+      const keep = group.userData.glbToken === token && this.stations.has(group.userData.uid) && seatGlbInFootprint(model, h.w, h.h);
+      if (rejectLoadedGlb(model, keep)) return;
+      const kit = group.getObjectByName("kit");
+      if (kit) { this.disposeNode(kit); group.remove(kit); }
+      model.name = "kit";
+      group.add(model);
+    } catch {
+      /* Missing GLB is expected until Claude's Blender drop. */
+    }
+  }
   private disposeGroup(group: THREE.Group) {
+    group.userData.glbToken = null;
     group.userData.disposeLabel?.();
     group.traverse(o => {
       if (o instanceof THREE.Mesh) { o.geometry.dispose(); if (Array.isArray(o.material)) o.material.forEach(m => m.dispose()); else o.material.dispose(); }
