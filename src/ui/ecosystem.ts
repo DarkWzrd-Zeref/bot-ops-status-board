@@ -4,10 +4,12 @@ import { safeLink } from "../../shared/workspace.ts";
 import { ecosystem, radioLive, updateEcosystem } from "../core/live.ts";
 import { runtime, buildingName } from "../core/runtime.ts";
 import { bus } from "../core/events.ts";
+import { mountBoosters } from "./boosters.ts";
 
 type Station = BoardKind | "skill-altar";
 let selected: Station = "war-table";
 let dialog: HTMLDialogElement;
+let baseline: ReturnType<typeof mountBoosters> | undefined;
 let key = ""; // Never saved to browser storage, logs or the shared world.
 let canWrite = false;
 let busy = false;
@@ -29,6 +31,7 @@ function projectName(uid?: string) { const b = runtime.buildings.find(b => b.uid
 function render() {
   if (!dialog?.open) return;
   const altar = selected === "skill-altar";
+  baseline?.show(altar);
   const bugs = selected === "bug-board";
   dialog.querySelector<HTMLElement>("#bug-fields")!.hidden = !bugs;
   const info = altar ? { name: "Skill Altar", purpose: "Skills signed by their owners. A signature records who declared a skill—not proof that it is safe or installed.", action: "Register my skill" } : BOARD_INFO[selected as BoardKind];
@@ -74,6 +77,7 @@ export function mountEcosystem(root: HTMLElement, chat: (uid?: string) => void) 
   root.querySelector("#bug-board-open")?.addEventListener("click", () => showEcosystem("bug-board"));
   root.insertAdjacentHTML("beforeend", `<dialog id="ecosystem-dialog"><div class="dialog-heading"><div><span class="eyebrow">ECOSYSTEM COMMONS</span><h2 id="ecosystem-title"></h2></div><button id="ecosystem-close" aria-label="Close station">×</button></div>${ecosystemNav()}<p id="ecosystem-purpose"></p><div class="ecosystem-tools"><button id="ecosystem-discuss">Open station discussion</button><label id="closed-filter-field"><input type="checkbox" id="include-closed"> Include done & archived</label><label id="skill-owner-field" hidden>Owner <select id="skill-owner"><option value="">Everyone</option><option value="zeref">Zeref</option>${SEATS.map(s => `<option value="${s.id}">${s.label}</option>`).join("")}</select></label></div><div id="ecosystem-records"></div><details class="ecosystem-compose" open><summary>Add your contribution</summary><div class="write-access"><p id="ecosystem-access-state"></p><form id="ecosystem-key-form"><label>Private Zeref write key<input id="ecosystem-key" type="password" autocomplete="off" placeholder="Never shared with the hub" maxlength="512"></label><button type="submit">Connect key</button><button type="button" id="ecosystem-lock">Lock</button></form><small>New board and skill writes are locked until the owner configures seat keys. Existing chat remains available.</small></div><form id="ecosystem-form"><fieldset id="ecosystem-fields" disabled><label><span id="ecosystem-input-label">Title</span><input name="title" required maxlength="100"></label><label><span id="ecosystem-body-label">Details</span><textarea name="body" required rows="4" maxlength="4000"></textarea></label><div id="bug-fields" hidden><label>Priority<select name="priority"><option value="normal">Normal</option><option value="high">High</option><option value="low">Low</option></select></label><label>Evidence status<select name="finding"><option value="needs-check">Needs check</option><option value="confirmed">Confirmed</option><option value="blocker">Blocker</option></select></label></div><label id="board-project-field">Project<select name="projectUid"></select></label><label id="skill-source-field" hidden>Source link (optional)<input name="sourceUrl" type="url" maxlength="500" placeholder="https://…"></label><label id="skill-signature-field" hidden>Type your name to sign<input name="signature" maxlength="80" placeholder="Zeref"><small>AI owners sign from their own authenticated seat, not this human form.</small></label><button class="primary" id="ecosystem-submit" type="submit">Save</button></fieldset></form></details><p id="ecosystem-error" role="alert"></p></dialog>`);
   dialog = root.querySelector<HTMLDialogElement>("#ecosystem-dialog")!;
+  baseline = mountBoosters(dialog, request, () => canWrite);
   dialog.querySelector("#ecosystem-close")!.addEventListener("click", () => dialog.close());
   dialog.querySelector("#ecosystem-discuss")!.addEventListener("click", () => { if (selected === "bug-board") { dialog.close(); openDiscussion(runtime.buildings.find(b => b.project)?.uid); return; } const station = runtime.buildings.find(b => b.hubId === selected); if (!station) { error("Place this station from Build → Ecosystem to open its dedicated discussion."); return; } dialog.close(); openDiscussion(station.uid); });
   dialog.querySelector("#include-closed")!.addEventListener("change", e => { includeClosed = (e.target as HTMLInputElement).checked; render(); });
