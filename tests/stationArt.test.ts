@@ -19,13 +19,14 @@ test("HubScene keeps district camera controls and does not stretch sprites to th
   assert.doesNotMatch(src, /setDisplaySize\(hub\.w \* TILE, hub\.h \* TILE\)/);
 });
 
-test("Cursor look-dev hub stills exist for all 25 buildings and are real PNGs", () => {
+test("Imagine hub stills exist for all 25 buildings and are real PNGs", () => {
   const dir = new URL("../public/sprites/stations/", import.meta.url);
   const files = readdirSync(dir).filter((f) => f.startsWith("hub-") && f.endsWith(".png"));
   assert.equal(files.length, 25);
   for (const h of ["well", "cursor", "discord", "x", "war-table"]) {
     const buf = readFileSync(new URL("hub-" + h + ".png", dir));
     assert.equal(buf[0], 0x89);
+    assert.equal(buf[25], 6, h + " must be RGBA");
     assert.ok(buf.length > 20_000, h);
   }
 });

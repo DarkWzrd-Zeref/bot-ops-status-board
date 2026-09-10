@@ -6,7 +6,7 @@
  * Never writes Claude kind.{sha12}.png. Missing files stay painted boxes.
  */
 import { execFileSync } from "node:child_process";
-import { copyFileSync, existsSync, mkdirSync, readFileSync } from "node:fs";
+import { existsSync, mkdirSync, readFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -17,11 +17,8 @@ const destDir = join(root, drop.destDir);
 mkdirSync(destDir, { recursive: true });
 
 function convert(src, dest) {
-  if (src.endsWith(".png")) {
-    copyFileSync(src, dest);
-    return;
-  }
-  execFileSync("ffmpeg", ["-y", "-i", src, dest], { stdio: "ignore" });
+  // Punch Imagine's black void to alpha so Phaser seats cutouts, not cards.
+  execFileSync("ffmpeg", ["-y", "-i", src, "-vf", "colorkey=0x000000:0.14:0.12,format=rgba", dest], { stdio: "ignore" });
 }
 
 let seated = 0;

@@ -24,6 +24,9 @@ test("Imagine drop map covers all 25 hubs and never targets hashed kind PNGs", (
     assert.match(row.hubPng, /^hub-.+\.png$/);
     assert.doesNotMatch(row.hubPng, /\.[a-f0-9]{12}\.png$/);
   }
+  const seater = readFileSync(new URL("../scripts/seat-imagine-stills.mjs", import.meta.url), "utf8");
+  assert.match(seater, /colorkey=0x000000/);
+  assert.doesNotMatch(seater, /kind\.\w+\.png/);
 });
 
 test("oversized Blender mesh is uniformly scaled into the saved footprint; junk is rejected", () => {
