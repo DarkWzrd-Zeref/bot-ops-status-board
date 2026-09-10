@@ -1,5 +1,6 @@
 import * as THREE from "three";
 import { OrbitControls } from "three/addons/controls/OrbitControls.js";
+import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
 import { CSS2DObject, CSS2DRenderer } from "three/addons/renderers/CSS2DRenderer.js";
 import { AGENTS, HUBS, BASE_RADIUS, MAP_W, MAP_H, assignAgent, beginMove, buildingAt, buildingName, cancelMove, demolish, finishMove, hubById, placementOk, runtime, stationMapLabel, stepAgents, tryPlace, walkPlayerTo } from "../core/runtime.ts";
 import { bus } from "../core/events.ts";
@@ -10,6 +11,7 @@ import { CORE_X, CORE_Y, DISTRICTS } from "../../shared/map.ts";
 import { WalkView } from "./WalkView.ts";
 import { createArchitecture, createCharacter } from "./architecture.ts";
 import { packLabels, type LabelCandidate } from "./labelLayout.ts";
+import { enableGlbShadows, hubGlbPath, seatGlbInFootprint } from "./stationModels.ts";
 
 const colors = { attentive: 0x80f5b8, busy: 0x80c8ff, away: 0xe4b76a, offline: 0x536570 };
 /** Heavy visual-only night look. Same campus, no new kits. */
@@ -50,6 +52,7 @@ export class World3D {
   private standbyLabel!: HTMLElement;
   private walk: WalkView;
   private walkTarget: string | null = null;
+  private gltf = new GLTFLoader();
 
   constructor(parent: HTMLElement) {
     this.renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true, powerPreference: "high-performance" });
@@ -233,7 +236,9 @@ export class World3D {
     const group = new THREE.Group(); group.position.set(b.tx + h.w / 2, .19, b.ty + h.h / 2);
     group.userData = { uid, signature: JSON.stringify([b.tx, b.ty, b.hubId, b.project]) };
     const architecture = createArchitecture(h, !!b.project);
+    architecture.name = "kit";
     group.add(architecture);
+    void this.trySeatGlb(group, h);
     const banner = this.label("", "map-station-label station-banner", b.project ? 3.5 : 3.3, group);
     const chip = document.createElement("span"); chip.className = "station-chip";
     const name = document.createElement("strong"); name.textContent = stationMapLabel(b, runtime.selectedBuilding === uid);
@@ -268,7 +273,35 @@ export class World3D {
     group.userData.banner = banner; group.userData.signal = signal; group.userData.chipName = name;
     this.scene.add(group); this.stations.set(uid, group);
   }
+  private disposeNode(obj: THREE.Object3D) {
+    obj.traverse(o => {
+      if (o instanceof THREE.Mesh) {
+        o.geometry.dispose();
+        if (Array.isArray(o.material)) o.material.forEach(m => m.dispose());
+        else o.material.dispose();
+      }
+    });
+  }
+  /** Claude/Blender Friday drop. 404 or oversize keeps the architecture kit. */
+  private async trySeatGlb(group: THREE.Group, h: ReturnType<typeof hubById>) {
+    const token = {};
+    group.userData.glbToken = token;
+    try {
+      const gltf = await this.gltf.loadAsync(hubGlbPath(h.id));
+      if (group.userData.glbToken !== token || !this.stations.has(group.userData.uid)) return;
+      const model = gltf.scene;
+      enableGlbShadows(model);
+      if (!seatGlbInFootprint(model, h.w, h.h)) return;
+      const kit = group.getObjectByName("kit");
+      if (kit) { this.disposeNode(kit); group.remove(kit); }
+      model.name = "kit";
+      group.add(model);
+    } catch {
+      /* Missing GLB is expected until Claude's Blender drop. */
+    }
+  }
   private disposeGroup(group: THREE.Group) {
+    group.userData.glbToken = null;
     group.userData.disposeLabel?.();
     group.traverse(o => {
       if (o instanceof THREE.Mesh) { o.geometry.dispose(); if (Array.isArray(o.material)) o.material.forEach(m => m.dispose()); else o.material.dispose(); }
