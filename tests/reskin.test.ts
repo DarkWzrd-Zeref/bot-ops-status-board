@@ -13,6 +13,15 @@ test("night look matches the visual-only spec (dusk gold key, teal rim, forest f
   assert.equal(NIGHT_LOOK.rim, 0x43b7d5);
 });
 
+test("HUD night tokens retint colors only; layout anchors stay", () => {
+  const css = readFileSync(new URL("../src/ui/campus.css", import.meta.url), "utf8");
+  assert.match(css, /--mint: #bef264/);
+  assert.match(css, /--line: #3a4a38/);
+  assert.match(css, /--header: 64px/);
+  assert.match(css, /#quick-chat \{[^}]*left: 50%/s);
+  assert.doesNotMatch(css, /hud\.ts/);
+});
+
 test("2D night tiles keep the same Phaser keys", () => {
   const src = readFileSync(new URL("../src/game/textures.ts", import.meta.url), "utf8");
   for (const key of ["tile-sand", "tile-sand2", "tile-path", "tile-pad", "tile-plaza", "tile-water", "tile-fence"]) {
