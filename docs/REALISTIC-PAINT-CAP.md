@@ -1,54 +1,75 @@
-# Realistic paint cap — 2026-09-09
+# Realistic paint cap — Cursor codes, Heavy does not
 
-Zeref: Cursor codes. Heavy faces what we can actually implement.
+Signed: grok-heavy 2026-09-09 20:18 ET
+Zeref: Cursor is the coder. Heavy faces what can actually land.
 
-## Roles
-- Cursor Fast (`/mcp/cursor`, pal=cursor-ultra) CODES.
-- Heavy (`/mcp/grok-heavy`) look-dev + contract + review. Does not take Cursor files.
-- Imagine = 2D targets only. Not meshes.
-- Claude Friday = GLB only.
+Live stays 1.2.6 / bb1cf2d. No deploy. 1.3.0 HOLD.
 
-## What the live hub can look like this week
-Live 1.2.6 is Phaser boxes + ops-teal HUD. It will NOT match Imagine walk frames.
-Closest honest look without a deploy:
-1. `hub-{id}.png` skins on existing stationArt hook (2D, same footprints).
-2. Night CSS tokens in `src/ui/campus.css` + `:root` colors in `src/style.css`. Do not change `--left --right --header --lower`.
-3. World3D night lights/fog/ground hex (PR22 already started). Same meshes.
-4. `textures.ts` night tile keys already on grok-heavy/reskin-spec-4777.
+## Who does what
 
-## What it cannot look like this week
-- Photo-real wet concrete campus in the live PWA
-- Per-station unique 3D architecture (that is Friday GLB)
-- New camera, new HUD layout, new drawers
-- Imagine JPG used as a World3D mesh
+| seat | implements |
+|---|---|
+| Cursor Fast `/mcp/cursor` | code in PR22 + CSS token retint |
+| Heavy `/mcp/grok-heavy` | Imagine look-dev, spec, review SHAs, radio |
+| Claude Friday | GLB only |
+| Imagine | stills / walk frames. Not meshes. Not HUD. |
 
-## Cursor codes on PR22 only
-https://github.com/DarkWzrd-Zeref/bot-ops-status-board/pull/22
-Do not mix PR15 camera, PR21 memories, PR13, PR8.
-Do not edit hubs.json / agents.json / runtime / pathfinder / hud.ts logic.
+Heavy does not take `src/ui/hud.ts`, `src/game/World3D.ts`, or Cursor branches.
 
-## CSS token map (values only)
-Keep selectors. Swap paint:
-- `--mint` keep phosphor `#80f5cd`
-- `--amber` → brass `#c9a15b`
-- `--panel` → `#0a1216`
-- `--line` → `#3a4a42`
-- `.app-header` bg → `#0a1418`
-- `.map-launchers` / `.world-controls` / `.view-switch` bg stay translucent; border → `#4a5e52`
-- pressed / chat launcher keep mint on dark, not a new accent system
+## What is already coded (PR22 `c291b47`)
 
-## World3D numbers if not already in PR22
-- fog `FogExp2(0x0a161c, 0.012)`
-- hemi `0x6a8a9a / 0x141c18 / 1.1`
-- key `0xc9a15b / 1.6`
-- rim `0x3aa8b8 / 1.1`
-- exposure `0.92`
+- Night World3D `NIGHT_LOOK` + wetter terrain materials
+- architecture roughness/emissive tweak
+- Boot loads `hub-{id}.png` first, fail-closed
+- `scripts/seat-imagine-stills.mjs` + `scripts/imagine-drop.json`
+- Fail-closed GLB hook for Friday (`stationModels.ts`)
 
-## Blocker (honest)
-Repo `public/sprites/stations/` still only has `manifest.json`.
-Heavy session has 25 PNGs at `artifacts/hub-sprites/hub-{id}.png`.
-Cursor VM reported 0/25. Zeref must drop bytes into her workspace or attach them. Loader is fail-closed until then.
+78 tests. Draft. Not live.
 
-## Ship rule
-No deploy. Live stays 1.2.6 / bb1cf2d. 1.3.0 HOLD.
-Review = SHA + file list + confirmation hubs.json untouched.
+## What Heavy can actually implement from this seat
+
+- Docs and token maps (this file)
+- Identity notes (id-scan)
+- Radio / review
+- Imagine stills in the grok.com chat folder
+
+Heavy **cannot**: run Vite, npm test, put chat JPGs into Cursor's VM, rewrite HUD, invent GLB, deploy Railway.
+
+## Honest visual cap this week
+
+| surface | result if Cursor finishes |
+|---|---|
+| Live 1.2.6 Phaser | night 2D tiles + hub-png skins if bytes exist. Still a board, not the photo. |
+| Local World3D (1.3.0 HOLD) | dusk fog/gold key/teal rim + wet ground. Kits stay kits until Friday GLB. |
+| HUD | night glass tokens. Same anchors. Not cinematic UI. |
+
+The walk frames are **look-dev**. They will not become the live camera.
+
+## Blocker (do not paper over)
+
+`artifacts/imagine-stations` is empty in Cursor's VM. Seater = 0/25. Loader is ready. Files are not.
+Zeref must drop the 25 stills into that folder or `public/sprites/stations/hub-*.png`.
+
+## Cursor next code (one slice)
+
+Retint `src/ui/campus.css` colors only. Do not change `--header`, panel `top/left/right/bottom`, `#quick-chat` center, or media-query layout.
+
+| current | night |
+|---|---|
+| `--mint: #9deccf` | `#bef264` |
+| `--line: #30434f` | `#3a4a38` |
+| `.app-header` `#0d1923` | `#0b100c` |
+| `.map-launchers` / `.district-nav` / `.view-switch` / `.world-controls` bg `#101e28ed` | `#0d1410f2` |
+| borders `#3c5865` | `#4a5540` |
+| `#quick-chat` `#10222feb` / `#415767` | `#0d1410f2` / `#4a5540` |
+| `#chat-launcher` / pressed view `#9deccf` | `#bef264` |
+| `.station-chip` `#122736d9` / `#526c7a80` | `#10180fd9` / `#4a554080` |
+| selected chip `#d8eee7` | `#d8f0c4` |
+| `.campus-minimap` `#1b303d` | `#16201a` |
+| inputs `#0c1a25` | `#0b100c` |
+
+Do not edit `hud.ts`.
+
+## Frozen
+
+hubs.json, agents.json, assign/move/radio/MCP, collision, PR15, PR13 merge, 1.3.0 ACK, Railway.
