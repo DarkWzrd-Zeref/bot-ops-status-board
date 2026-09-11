@@ -6,14 +6,20 @@ function hex(n: string): number {
   return Number.parseInt(n.replace("#", ""), 16);
 }
 
-/** Slice 1 paint: night classified ground. Same texture keys. No data change. */
+/**
+ * Classified-night ground for the 2D fallback. Same texture keys, no data change.
+ *
+ * These base tones are kept in step with the tile materials in World3D so the
+ * 2D and 3D campuses cannot drift into different palettes again — that drift is
+ * what left three disagreeing night specs in the tree.
+ */
 export function cookTextures(scene: Phaser.Scene): void {
-  paintTile(scene, "tile-sand", 0x2a3238, 0x1c2228, 0x3a4650);
-  paintTile(scene, "tile-sand2", 0x243038, 0x182028, 0x334048);
-  paintTile(scene, "tile-path", 0x4a5560, 0x323840, 0x6a7884);
-  paintTile(scene, "tile-pad", 0x3d4a52, 0x2a343c, 0x5a6a74);
-  paintTile(scene, "tile-plaza", 0x2c3840, 0x1e282e, 0x4a5a64);
-  paintTile(scene, "tile-water", 0x0c2430, 0x061820, 0x1a4a58);
+  paintTile(scene, "tile-sand", 0x212429, 0x15171b, 0x343941);
+  paintTile(scene, "tile-sand2", 0x1c1f24, 0x121418, 0x2e333b);
+  paintTile(scene, "tile-path", 0x393d42, 0x24272b, 0x5a6068);
+  paintTile(scene, "tile-pad", 0x30343a, 0x1e2126, 0x4c535c);
+  paintTile(scene, "tile-plaza", 0x2a2e33, 0x1a1d21, 0x434a53);
+  paintTile(scene, "tile-water", 0x0c1a22, 0x050e14, 0x1a3f4e);
   paintFence(scene);
   paintCactus(scene);
   paintWell(scene);
@@ -57,9 +63,9 @@ function paintTile(scene: Phaser.Scene, key: string, a: number, b: number, grit:
 
 function paintFence(scene: Phaser.Scene): void {
   g2t(scene, "tile-fence", TILE, TILE, (g) => {
-    g.fillStyle(0x141c22, 1);
+    g.fillStyle(0x111417, 1);
     g.fillRect(0, 0, TILE, TILE);
-    g.fillStyle(0x3a4650, 1);
+    g.fillStyle(0x343941, 1);
     g.fillRect(14, 4, 4, 24);
     g.fillStyle(0x76b900, 0.75);
     g.fillRect(2, 10, 28, 2);
@@ -82,9 +88,9 @@ function paintCactus(scene: Phaser.Scene): void {
 
 function paintWell(scene: Phaser.Scene): void {
   g2t(scene, "well-mark", TILE * 2, TILE * 2, (g) => {
-    g.fillStyle(0x141c22, 1);
+    g.fillStyle(0x111417, 1);
     g.fillCircle(32, 40, 24);
-    g.fillStyle(0x0a1014, 1);
+    g.fillStyle(0x08090b, 1);
     g.fillCircle(32, 36, 16);
     g.fillStyle(0x76b900, 0.9);
     g.fillRect(30, 4, 4, 28);

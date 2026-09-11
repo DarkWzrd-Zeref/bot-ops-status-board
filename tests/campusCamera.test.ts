@@ -60,15 +60,36 @@ test("pinch, canceled pointers, and focus loss never synthesize clicks", () => {
   pointer.down(1, 10, 10, 0); assert.equal(pointer.up(1, 10, 10, 0), true);
 });
 
-test("blue-hour ground fixes the coplanar deck, retains semantic terrain, and loads real panorama", () => {
+test("classified-night ground fixes the coplanar deck, retains semantic terrain, and sits on the void", () => {
   const source = readFileSync(new URL("../src/game/World3D.ts", import.meta.url), "utf8");
-  assert.match(source, /MAP_W, \.12, MAP_H, 0x253d48, 0, \.45/);
+  assert.match(source, /MAP_W, \.12, MAP_H, 0x13171b, 0, \.45/);
   assert.match(source, /makeTranslation\(x \+ \.5, \.14, y \+ \.5\)/);
   assert.match(source, /batch\.castShadow = false/);
-  assert.match(source, /area67-bluehour-panorama\.png/);
-  assert.match(source, /parent\.style\.background = .*center \/ cover no-repeat/);
+  // The photographic backdrop is retired: the art direction is a black void,
+  // and a sky image both fights it and lights nothing.
+  assert.doesNotMatch(source, /area67-bluehour-panorama\.png/);
+  assert.match(source, /parent\.style\.background = "#000000"/);
   assert.match(source, /this\.scene\.background = null/);
   assert.match(source, /setClearColor\(NIGHT_LOOK\.background, 0\)/);
   assert.match(source, /LEFT: THREE\.MOUSE\.PAN/);
   assert.doesNotMatch(source, /Math\.min\(\.28/);
+});
+
+test("the night rig is practical-led, not ambient-led", () => {
+  const source = readFileSync(new URL("../src/game/World3D.ts", import.meta.url), "utf8");
+  const hemi = source.match(/HemisphereLight\(NIGHT_LOOK\.hemiSky, NIGHT_LOOK\.hemiGround, ([\d.]+)\)/);
+  assert.ok(hemi, "hemisphere light should be built from NIGHT_LOOK");
+  const ambient = parseFloat(hemi![1]);
+  // 2.1 was the flooding value that made the campus read flat and shadowless.
+  // Ambient may light the floor, but it must stay well under that.
+  assert.ok(ambient < 1.2, `ambient ${ambient} is back in flooding territory`);
+  // The real invariant is which light shapes the scene. Each station's own
+  // practical has to out-punch the global fill, or the pools of light vanish
+  // and we are back to a uniformly lit field.
+  const practical = source.match(/opacity: \.(\d+),/);
+  assert.ok(practical, "each station should carry a warm practical pool");
+  assert.match(source, /blending: THREE\.AdditiveBlending/);
+  assert.match(source, /background: 0x000000/);
+  // Named so a seated GLB swapping the "kit" child never takes the light with it.
+  assert.match(source, /pool\.name = "practical"/);
 });

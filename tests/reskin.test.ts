@@ -6,11 +6,32 @@ import { createArchitecture } from "../src/game/architecture.ts";
 import { NIGHT_LOOK } from "../src/game/World3D.ts";
 import hubs from "../src/content/hubs.json";
 
-test("blue-hour look keeps slate atmosphere, warm key and readable cyan rim", () => {
-  assert.equal(NIGHT_LOOK.background, 0x142938);
-  assert.equal(NIGHT_LOOK.fog, 0x243f50);
-  assert.equal(NIGHT_LOOK.key, 0xffe3bd);
-  assert.equal(NIGHT_LOOK.rim, 0x71cbe8);
+test("classified-night look is a black void, warm key and a restrained cool rim", () => {
+  // Values measured from the 25-still Grok Imagine set on 2026-09-11.
+  assert.equal(NIGHT_LOOK.background, 0x000000);
+  assert.equal(NIGHT_LOOK.fog, 0x04060a);
+  assert.equal(NIGHT_LOOK.key, 0xffc98a);
+  assert.equal(NIGHT_LOOK.rim, 0x4a86a8);
+  assert.equal(NIGHT_LOOK.practical, 0xffb163);
+  assert.equal(NIGHT_LOOK.accent, 0x8fe049);
+});
+
+test("the palette holds its measured hue budget: warm key and practical, cool rim, lime accent", () => {
+  const hue = (c: number) => {
+    const r = (c >> 16 & 255) / 255, g = (c >> 8 & 255) / 255, b = (c & 255) / 255;
+    const mx = Math.max(r, g, b), d = mx - Math.min(r, g, b);
+    if (!d) return 0;
+    const h = mx === r ? (g - b) / d % 6 : mx === g ? (b - r) / d + 2 : (r - g) / d + 4;
+    return (h * 60 + 360) % 360;
+  };
+  for (const warm of [NIGHT_LOOK.key, NIGHT_LOOK.practical]) {
+    const h = hue(warm);
+    assert.ok(h >= 15 && h <= 45, `warm light hue ${h.toFixed(0)} must sit in the amber band 15-45`);
+  }
+  const rim = hue(NIGHT_LOOK.rim);
+  assert.ok(rim >= 195 && rim <= 255, `rim hue ${rim.toFixed(0)} must sit in the cool band 195-255`);
+  const accent = hue(NIGHT_LOOK.accent);
+  assert.ok(accent >= 75 && accent <= 165, `accent hue ${accent.toFixed(0)} must sit in the lime band 75-165`);
 });
 
 test("HUD night tokens retint colors only; layout anchors stay", () => {

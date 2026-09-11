@@ -15,16 +15,43 @@ import { disposeObject3D, enableGlbShadows, hubGlbPath, rejectLoadedGlb, seatGlb
 import { fitCampusCamera, MapClickGesture } from "./campusCamera.ts";
 
 const colors = { attentive: 0x80f5b8, busy: 0x80c8ff, away: 0xe4b76a, offline: 0x536570 };
-/** Blue-hour campus: readable slate ground, cool sky, and warm station light. */
+/**
+ * Classified-night campus. Values measured from the Grok Imagine station set
+ * (25 stills, 2026-09-11): pure black void, wet stone reading #1c2328-#2d2e30,
+ * highlights #8f7c67 warm. Saturated-pixel hue budget is amber 15-45deg ~69%,
+ * cool blue 195-255deg ~17%, lime 75-165deg ~3.5%. The campus is lit by warm
+ * practicals against black, not by ambient fill — keep hemisphere near zero.
+ */
 export const NIGHT_LOOK = {
-  background: 0x142938,
-  fog: 0x243f50,
-  hemiSky: 0xbbdeed,
-  hemiGround: 0x263b43,
-  key: 0xffe3bd,
-  rim: 0x71cbe8,
+  background: 0x000000,
+  fog: 0x04060a,
+  hemiSky: 0x323b47,
+  hemiGround: 0x16130f,
+  key: 0xffc98a,
+  rim: 0x4a86a8,
+  /** Warm practical seated at every station: the source of the amber majority. */
+  practical: 0xffb163,
+  /** Lime stays an accent only — Well ring, boundary lamps, Altar runes. */
+  accent: 0x8fe049,
 } as const;
 const cx = CORE_X, cz = CORE_Y;
+/** One shared radial falloff for every station's light pool. Built on first use. */
+let poolTexture: THREE.CanvasTexture | null = null;
+function practicalPool() {
+  if (poolTexture) return poolTexture;
+  const size = 128, canvas = document.createElement("canvas");
+  canvas.width = canvas.height = size;
+  const ctx = canvas.getContext("2d")!;
+  const g = ctx.createRadialGradient(size / 2, size / 2, 0, size / 2, size / 2, size / 2);
+  g.addColorStop(0, "rgba(255,255,255,.85)");
+  g.addColorStop(.3, "rgba(255,255,255,.30)");
+  g.addColorStop(.62, "rgba(255,255,255,.08)");
+  g.addColorStop(1, "rgba(255,255,255,0)");
+  ctx.fillStyle = g; ctx.fillRect(0, 0, size, size);
+  poolTexture = new THREE.CanvasTexture(canvas);
+  poolTexture.colorSpace = THREE.SRGBColorSpace;
+  return poolTexture;
+}
 type Actor = { group: THREE.Group; body: THREE.Group; light: THREE.Mesh<THREE.SphereGeometry, THREE.MeshBasicMaterial>; ring: THREE.Mesh; label: HTMLElement; signal: HTMLElement; action: HTMLElement };
 const typing = () => !!document.activeElement?.closest("input, textarea, select, dialog");
 
@@ -65,7 +92,7 @@ export class World3D {
     this.renderer.shadowMap.type = THREE.PCFSoftShadowMap;
     this.renderer.outputColorSpace = THREE.SRGBColorSpace;
     this.renderer.toneMapping = THREE.ACESFilmicToneMapping;
-    this.renderer.toneMappingExposure = 1.12;
+    this.renderer.toneMappingExposure = 1.9;
     parent.append(this.renderer.domElement);
     this.renderer.domElement.setAttribute("aria-label", "Interactive 3D AREA 67 base. Use crew and station controls for keyboard access.");
     this.labels.domElement.style.cssText = "position:absolute;inset:0;pointer-events:none;overflow:hidden";
@@ -83,14 +110,16 @@ export class World3D {
     this.controls.mouseButtons = { LEFT: THREE.MOUSE.PAN, MIDDLE: THREE.MOUSE.PAN, RIGHT: THREE.MOUSE.ROTATE };
     this.controls.touches = { ONE: THREE.TOUCH.PAN, TWO: THREE.TOUCH.DOLLY_ROTATE };
     this.resetCamera();
-    // A cover backdrop works with both orthographic and perspective cameras.
-    // It stays out of lighting/materials, and missing art retains the blue fallback.
-    parent.style.background = "#142938 url('/environments/area67-bluehour-panorama.png') center / cover no-repeat";
+    // The void is the backdrop. A photographic sky fights the black-field art
+    // direction and re-lights nothing, so the campus sits on pure black.
+    parent.style.background = "#000000";
     this.scene.background = null;
     this.renderer.setClearColor(NIGHT_LOOK.background, 0);
-    this.scene.fog = new THREE.FogExp2(NIGHT_LOOK.fog, .0035);
-    this.scene.add(new THREE.HemisphereLight(NIGHT_LOOK.hemiSky, NIGHT_LOOK.hemiGround, 2.1));
-    const key = new THREE.DirectionalLight(NIGHT_LOOK.key, 2.3);
+    this.scene.fog = new THREE.FogExp2(NIGHT_LOOK.fog, .0038);
+    // Ambient is deliberately tiny. The previous 2.1 hemisphere flooded every
+    // surface evenly, which is why the campus read flat and had no pools of light.
+    this.scene.add(new THREE.HemisphereLight(NIGHT_LOOK.hemiSky, NIGHT_LOOK.hemiGround, .95));
+    const key = new THREE.DirectionalLight(NIGHT_LOOK.key, .62);
     key.position.set(cx - 14, 28, cz - 8); key.target.position.set(cx, 0, cz);
     key.castShadow = true;
     key.shadow.mapSize.set(2048, 2048);
@@ -98,18 +127,25 @@ export class World3D {
     key.shadow.normalBias = .12;
     key.shadow.bias = -.00015;
     this.scene.add(key, key.target);
-    const rim = new THREE.DirectionalLight(NIGHT_LOOK.rim, 1.65);
+    const rim = new THREE.DirectionalLight(NIGHT_LOOK.rim, .95);
     rim.position.set(cx + 20, 15, cz + 18); this.scene.add(rim);
-    const wellLamp = new THREE.PointLight(NIGHT_LOOK.key, 3.2, 16, 1.8);
+    const wellLamp = new THREE.PointLight(NIGHT_LOOK.key, 5.4, 20, 1.7);
     wellLamp.position.set(cx, 3.1, cz);
     this.scene.add(wellLamp);
+    // Lime containment ring at the Well — the one place the accent runs bright.
+    const wellRing = new THREE.Group(); wellRing.position.set(cx, 0, cz);
+    this.glowRing(2.3, NIGHT_LOOK.accent, 1.35, wellRing, 1);
+    this.glowRing(2.62, NIGHT_LOOK.accent, .32, wellRing, .4);
+    this.scene.add(wellRing);
+    const wellGlow = new THREE.PointLight(NIGHT_LOOK.accent, 3.6, 11, 1.9);
+    wellGlow.position.set(cx, 1.5, cz); this.scene.add(wellGlow);
     this.createTerrain();
     this.createDistrictGrounds();
     this.syncStations();
     const comms = runtime.buildings.find(b => hubById(b.hubId).kind === "comms");
     if (comms) {
       const h = hubById(comms.hubId);
-      const teal = new THREE.PointLight(NIGHT_LOOK.rim, 2.4, 14, 1.8);
+      const teal = new THREE.PointLight(NIGHT_LOOK.rim, 2.2, 14, 1.8);
       teal.position.set(comms.tx + h.w / 2, 3.4, comms.ty + h.h / 2);
       this.scene.add(teal);
     }
@@ -176,19 +212,22 @@ export class World3D {
   }
   private createTerrain() {
     const platform = new THREE.Group(); platform.position.set(MAP_W / 2, -.44, MAP_H / 2);
-    const foundation = this.box(MAP_W + .6, .85, MAP_H + .6, 0x172b38, 0, 0, 0, platform);
+    const foundation = this.box(MAP_W + .6, .85, MAP_H + .6, 0x090c0f, 0, 0, 0, platform);
     foundation.castShadow = false;
     // The previous deck top and tile top both sat at y=.14: coplanarity made
     // the whole map stripe/z-fight. Keep the structural deck below tile bottoms.
-    const deck = this.box(MAP_W, .12, MAP_H, 0x253d48, 0, .45, 0, platform);
+    const deck = this.box(MAP_W, .12, MAP_H, 0x13171b, 0, .45, 0, platform);
     deck.castShadow = false;
     this.scene.add(platform);
     const tileGeo = new THREE.BoxGeometry(1, .04, 1);
+    // Wet stone. Low roughness plus a little metalness is what turns each
+    // practical into the vertical specular streak the art set is built on;
+    // base colours sit in the measured #1c2328-#2d2e30 ground band.
     const tileMats: Record<string, THREE.MeshStandardMaterial> = {
-      sand: this.material(0x344d56, .08, .9), sand2: this.material(0x324b53, .08, .9),
-      plaza: this.material(0x43616b, .12, .82), pad: this.material(0x526f79, .16, .76),
-      path: this.material(0x71878c, .12, .78), water: this.material(0x174a64, .32, .25),
-      fence: this.material(0x2b444b, .1, .84), blocked: this.material(0x304650, .05, .92),
+      sand: this.material(0x212429, .30, .44), sand2: this.material(0x1c1f24, .30, .47),
+      plaza: this.material(0x2a2e33, .36, .33), pad: this.material(0x30343a, .36, .30),
+      path: this.material(0x393d42, .40, .26), water: this.material(0x0c1a22, .58, .11),
+      fence: this.material(0x191c1f, .22, .60), blocked: this.material(0x15171a, .18, .68),
     };
     // Instancing keeps the raised tile deck light enough for laptop GPUs.
     for (const [kind, material] of Object.entries(tileMats)) {
@@ -210,15 +249,15 @@ export class World3D {
       const a = point(i * Math.PI / 180), b = point((i + 1) * Math.PI / 180);
       if ([a, b].every(p => p.x >= 0 && p.z >= 0 && p.x <= MAP_W && p.z <= MAP_H)) boundary.push(a, b);
     }
-    this.scene.add(new THREE.LineSegments(new THREE.BufferGeometry().setFromPoints(boundary), new THREE.LineBasicMaterial({ color: 0x80f5cd, transparent: true, opacity: .45 })));
+    this.scene.add(new THREE.LineSegments(new THREE.BufferGeometry().setFromPoints(boundary), new THREE.LineBasicMaterial({ color: NIGHT_LOOK.accent, transparent: true, opacity: .5 })));
     for (let i = 0; i < 32; i++) {
       const angle = i / 32 * Math.PI * 2;
       if (i % 8 === 0) continue;
       const x = cx + Math.cos(angle) * BASE_RADIUS, z = cz + Math.sin(angle) * BASE_RADIUS;
       if (x < 0 || z < 0 || x > MAP_W || z > MAP_H) continue;
-      this.box(.18, .8, .18, 0x293f47, x, .4, z, this.scene);
-      const lamp = this.mesh(new THREE.SphereGeometry(.08, 8, 6), 0x80f5cd, x, .86, z, this.scene);
-      (lamp.material as THREE.MeshStandardMaterial).emissive.setHex(0x80f5cd);
+      this.box(.18, .8, .18, 0x14191d, x, .4, z, this.scene);
+      const lamp = this.mesh(new THREE.SphereGeometry(.08, 8, 6), NIGHT_LOOK.accent, x, .86, z, this.scene);
+      (lamp.material as THREE.MeshStandardMaterial).emissive.setHex(NIGHT_LOOK.accent);
     }
   }
   private label(text: string, cls: string, y: number, parent: THREE.Object3D) {
@@ -226,19 +265,21 @@ export class World3D {
     const obj = new CSS2DObject(el); obj.position.y = y; parent.add(obj); return el;
   }
   private createDistrictGrounds() {
-    const palette = [0x82dfcc, 0x94baff, 0xe7ba79, 0x8cccb7, 0xb4a3e8, 0xceadc9];
+    // District inlays are wayfinding, not lighting: keep them dim so they do not
+    // compete with the practicals for the scene's colour budget.
+    const palette = [0x6f9c8e, 0x6d84ae, 0xc79a63, 0x709c8c, 0x8175a4, 0x96798f];
     // Flush, non-colliding navigation inlays; no saved plot or road is moved.
     DISTRICTS.forEach((d, i) => {
       const group = new THREE.Group(); group.position.set(d.x, .18, d.y);
-      this.glowRing(6.6, palette[i], .01, group, .2);
+      this.glowRing(6.6, palette[i], .01, group, .12);
       this.scene.add(group);
     });
     // Water banks gain readable elevation; pathways remain flush and walkable.
     const strips = new THREE.Group();
     for (let x = 1; x < 63; x += 2) {
       if ([27, 29, 59, 61].includes(x)) continue;
-      this.box(1.4, .09, .12, 0x8ca2ae, x, .22, 45.94, strips);
-      this.box(1.4, .09, .12, 0x8ca2ae, x, .22, 48.04, strips);
+      this.box(1.4, .09, .12, 0x39434a, x, .22,45.94, strips);
+      this.box(1.4, .09, .12, 0x39434a, x, .22,48.04, strips);
     }
     this.scene.add(strips);
   }
@@ -273,6 +314,28 @@ export class World3D {
     const architecture = createArchitecture(h, !!b.project);
     architecture.name = "kit";
     group.add(architecture);
+    // Every station spills a warm practical pool onto the wet stone. This is
+    // what produces the amber majority the art set is built on.
+    //
+    // These were real PointLights for a few passes and they looked right, but
+    // MeshStandardMaterial loops every light per fragment, so 26 of them cost
+    // 2.3x the frame time on a software rasteriser. On an iOS PWA that is not
+    // affordable for a static pool of light that never moves. An unlit additive
+    // decal buys the same wash for one transparent quad and no shading cost;
+    // the few real lights that remain (key, rim, Well, comms) still carry the
+    // specular and the shadows. Named so a seated GLB never takes it away.
+    const pool = new THREE.Mesh(
+      new THREE.PlaneGeometry(Math.max(h.w, h.h) * 4.4 + 6, Math.max(h.w, h.h) * 4.4 + 6),
+      new THREE.MeshBasicMaterial({
+        color: NIGHT_LOOK.practical, map: practicalPool(), transparent: true,
+        blending: THREE.AdditiveBlending, depthWrite: false, opacity: .23,
+      }),
+    );
+    pool.name = "practical";
+    pool.rotation.x = -Math.PI / 2;
+    pool.position.y = -.02;
+    pool.renderOrder = -1;
+    group.add(pool);
     void this.trySeatGlb(group, h);
     const banner = this.label("", "map-station-label station-banner", b.project ? 3.5 : 3.3, group);
     const chip = document.createElement("span"); chip.className = "station-chip";
