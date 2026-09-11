@@ -86,7 +86,7 @@ describe("public machine boundary", () => {
 
     expect(discovery.privacy.classification).toBe("public_capability_metadata_only");
     expect(discovery.privacy.operational_packets_published).toBe(false);
-    expect(discovery.capabilities.private_cross_device_sync).toBe("walled");
+    expect(discovery.capabilities.private_cross_device_sync).toBe("implementation_ready_deployment_walled");
   });
 
   it("keeps all public JSON artifacts parseable", () => {
