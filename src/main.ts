@@ -1,5 +1,6 @@
 import "./style.css";
 import { DEMO_CSV, SHEET_URL, fetchSheet, parseSnapshot, storage, type Dataset } from "./data";
+import { efficiencyGuideJson, renderEfficiencyGuide } from "./efficiency";
 import { esc, renderBanner, renderCoverage, renderLedger, renderSections } from "./render";
 
 type SheetState = "idle" | "loading" | "ok" | "blocked";
@@ -40,8 +41,8 @@ function render(): void {
   app.innerHTML = `
     <header class="top">
       <div>
-        <p class="eyebrow">Bot Passport</p>
-        <h1>Bot Ops Status Board</h1>
+        <p class="eyebrow">Bot Passport · Area 67</p>
+        <h1>Area 67 · The Hub</h1>
         <p class="muted small">Ledger-first · source of truth is the <a class="link" href="${SHEET_URL}" target="_blank" rel="noopener noreferrer">Google Sheet</a></p>
       </div>
       <div class="controls">
@@ -53,6 +54,8 @@ function render(): void {
 
     ${renderBanner(bannerKind(), state.sheetError)}
     ${state.message ? `<div class="banner info">${esc(state.message)}</div>` : ""}
+
+    ${renderEfficiencyGuide()}
 
     <section class="panel" ${state.panelOpen ? "" : "hidden"}>
       <h2>Data</h2>
@@ -87,6 +90,23 @@ function render(): void {
 
 function bind(): void {
   document.querySelector<HTMLButtonElement>("#refresh")?.addEventListener("click", () => void loadSheet());
+  document.querySelector<HTMLButtonElement>("#copy-guide")?.addEventListener("click", async () => {
+    try {
+      await navigator.clipboard.writeText(efficiencyGuideJson());
+      state.message = "Area 67 efficiency guide copied as bot-readable JSON.";
+    } catch {
+      state.message = "Clipboard access was blocked. Use Download instead.";
+    }
+    render();
+  });
+  document.querySelector<HTMLButtonElement>("#download-guide")?.addEventListener("click", () => {
+    const url = URL.createObjectURL(new Blob([efficiencyGuideJson()], { type: "application/json" }));
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = "area-67-efficiency-guide.json";
+    link.click();
+    URL.revokeObjectURL(url);
+  });
   document.querySelector<HTMLButtonElement>("#toggle-panel")?.addEventListener("click", () => {
     state.panelOpen = !state.panelOpen;
     render();
