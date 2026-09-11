@@ -7,10 +7,12 @@
   "scripts": {
     "dev": "node scripts/gen-icons.mjs && vite --host 127.0.0.1 --port 4611",
     "build": "tsc && node scripts/gen-icons.mjs && vite build",
+    "test": "vitest run",
     "preview": "vite preview --host 127.0.0.1 --port 4611"
   },
   "devDependencies": {
     "typescript": "6.0.3",
-    "vite": "8.2.2"
+    "vite": "8.2.2",
+    "vitest": "5.0.0"
   }
 }

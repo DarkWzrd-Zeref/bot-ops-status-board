@@ -205,7 +205,7 @@ export function bindHandoffBridge(refresh: () => void): void {
 
   document.querySelector<HTMLFormElement>("#handoff-form")?.addEventListener("submit", (event) => {
     event.preventDefault();
-    const form = event.currentTarget;
+    const form = event.currentTarget as HTMLFormElement;
     const data = new FormData(form);
     const contract = String(data.get("contract")) as ContractName;
     const payload: Record<string, string> = {};
