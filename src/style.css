@@ -339,6 +339,7 @@ footer { margin-top: 20px; text-align: center; }
 .handoff-form { display: grid; gap: 10px; }
 .form-grid { display: grid; gap: 8px; }
 .packet-fields { display: grid; gap: 8px; }
+.packet-fields[hidden] { display: none; }
 .packet-fields textarea { min-height: 68px; }
 .machine-link { display: inline-flex; align-items: center; text-decoration: none; }
 .local-inbox { display: grid; gap: 8px; padding-top: 12px; border-top: 1px solid var(--line); scroll-margin-top: 58px; }
