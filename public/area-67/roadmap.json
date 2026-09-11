@@ -16,7 +16,7 @@
     { "id": 11, "name": "stable_machine_endpoint", "status": "LIVE" },
     { "id": 12, "name": "navigation_filters", "status": "LIVE" },
     { "id": 13, "name": "provenance_audit", "status": "LIVE" },
-    { "id": 14, "name": "automated_tests", "status": "BUILDING" },
+    { "id": 14, "name": "automated_tests", "status": "LIVE" },
     { "id": 15, "name": "artifact_promotion", "status": "WALLED", "needed": "Choose R2, Google Drive, or Railway storage plus retention policy", "help": "Grok Imagine then Cursor Sol" }
   ]
 }

@@ -117,7 +117,7 @@ export const ROADMAP: RoadmapItem[] = [
   {
     id: 14,
     title: "Automated tests",
-    status: "BUILDING",
+    status: "LIVE",
     outcome: "Routing, packet validation, schema adaptation, approval walls, and redaction are regression-tested.",
     help: "ChatGPT Codex or Cursor Sol",
   },

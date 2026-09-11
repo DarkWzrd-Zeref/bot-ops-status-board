@@ -1,6 +1,6 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://area67.example/area-67/handoff.schema.json",
+  "$id": "https://status-board-production-806b.up.railway.app/area-67/handoff.schema.json",
   "title": "Area 67 Handoff Packet",
   "type": "object",
   "additionalProperties": false,
