@@ -27,10 +27,13 @@ implementation roadmap, pending-work aging, and public machine-readable contract
 - `/area-67/efficiency-guide.json` contains public routing policy only.
 - `/area-67/handoff.schema.json` defines versioned private packet structure.
 - `/area-67/roadmap.json` reports LIVE, BUILDING, and WALLED capabilities.
-- Composed packets are saved only to browser `localStorage` and must not contain secrets.
-- Shared MCP delivery, encrypted synchronization, authenticated write-back, real provider quota
-  telemetry, and artifact storage remain explicitly WALLED until private infrastructure and
-  credentials are approved. The UI names the required decision and recommended model for each wall.
+- Composed packets start in browser `localStorage` and must not contain secrets. A packet can be
+  explicitly promoted while an authenticated private MCP session is connected; its access token
+  remains in memory and is erased on reload.
+- The implementation-ready Worker/D1 service lives in `mcp/`. Production OAuth, database
+  provisioning, provider connectors, real quota telemetry, and artifact storage remain explicitly
+  WALLED until private infrastructure and credentials are approved. The UI names the required
+  decision and recommended model for each wall.
 
 Accepted shapes:
 

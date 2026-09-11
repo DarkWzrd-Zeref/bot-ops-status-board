@@ -336,6 +336,16 @@ footer { margin-top: 20px; text-align: center; }
   background: rgba(245, 185, 66, 0.08);
   font-size: 0.8rem;
 }
+.remote-connect {
+  padding: 10px;
+  border: 1px dashed var(--line);
+  border-radius: 10px;
+  display: grid;
+  gap: 8px;
+  align-items: end;
+}
+.remote-connect .btn { min-height: 40px; }
+.remote-message { grid-column: 1 / -1; margin: 0; }
 .handoff-form { display: grid; gap: 10px; }
 .form-grid { display: grid; gap: 8px; }
 .packet-fields { display: grid; gap: 8px; }
@@ -370,6 +380,7 @@ footer { margin-top: 20px; text-align: center; }
   .guide-grid { grid-template-columns: 1.1fr 1fr 0.9fr; }
   .queue-grid { grid-template-columns: repeat(2, 1fr); }
   .form-grid, .packet-fields { grid-template-columns: repeat(2, 1fr); }
+  .remote-connect { grid-template-columns: minmax(180px, 1fr) minmax(180px, 1fr) auto auto; }
   .packet-grid { grid-template-columns: repeat(2, 1fr); }
   .roadmap-grid { grid-template-columns: repeat(3, 1fr); }
   h1 { font-size: 1.7rem; }

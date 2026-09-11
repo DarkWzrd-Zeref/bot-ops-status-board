@@ -52,6 +52,7 @@ export function createArea67Server(repository: JobRepository, ownerId: string): 
     {
       description: "Validate and store one private, owner-scoped handoff packet.",
       inputSchema: {
+        client_task_id: z.uuid().optional(),
         parent_id: z.string().min(8).max(100).nullable().optional(),
         source: z.string().min(1).max(120),
         intent: z.string().min(1).max(80),

@@ -21,7 +21,7 @@
     "authenticated_writeback": "walled",
     "provider_connectors": "walled",
     "provider_quota_telemetry": "walled",
-    "private_cross_device_sync": "walled"
+    "private_cross_device_sync": "implementation_ready_deployment_walled"
   },
   "walled_reason": "Private shared operations require an authenticated server, storage boundary, provider credentials, and explicit owner approval."
 }

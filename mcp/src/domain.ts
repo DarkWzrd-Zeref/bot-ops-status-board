@@ -12,6 +12,7 @@ export const contractFields = {
 } as const;
 
 export const packetInputSchema = z.object({
+  client_task_id: z.uuid().optional(),
   parent_id: z.string().min(8).max(100).nullable().optional(),
   source: z.string().min(1).max(120),
   intent: z.string().min(1).max(80),
@@ -121,7 +122,7 @@ export function createStoredPacket(input: PacketInput, ownerId: string): StoredP
   const now = new Date().toISOString();
   return {
     schema: "area67.handoff.v1",
-    task_id: crypto.randomUUID(),
+    task_id: input.client_task_id ?? crypto.randomUUID(),
     parent_id: input.parent_id ?? null,
     version: 1,
     created_at: now,

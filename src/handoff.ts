@@ -35,9 +35,15 @@ export interface HandoffPacket {
     approved_by: string | null;
     revision: number;
   };
+  remote?: {
+    endpoint: string;
+    synced_at: string;
+  };
 }
 
 const STORAGE_KEY = "area67.handoffs.v1";
+let remoteSession: { endpoint: string; token: string } | null = null;
+let remoteMessage = "";
 
 export function routeIntent(intent: string): { owner: string; quotaGuard: string } {
   const route = EFFICIENCY_GUIDE.router.find((entry) => entry.if === intent);
@@ -136,9 +142,12 @@ function renderPacketCard(packet: HandoffPacket): string {
     <p class="muted small">${esc(packet.task_id)} · v${packet.version} · ${esc(packet.contract.type)}</p>
     <p><strong>Route:</strong> ${esc(packet.route.owner)}</p>
     <p class="muted small">${esc(packet.route.quota_guard)}</p>
+    ${packet.remote ? `<p class="small"><span class="badge ok">PRIVATE MCP SYNCED</span> ${esc(packet.remote.endpoint)}</p>` : ""}
     <div class="packet-actions">
       <button class="btn ghost packet-copy" data-task="${esc(packet.task_id)}" type="button">Copy</button>
       <button class="btn ghost packet-download" data-task="${esc(packet.task_id)}" type="button">Download</button>
+      ${remoteSession && !packet.remote && packet.status === "READY" ? `<button class="btn ghost packet-sync" data-task="${esc(packet.task_id)}" type="button">Send to private MCP</button>` : ""}
+      ${remoteSession && !packet.remote && packet.status !== "READY" ? `<span class="badge warn">SYNC A NEW READY PACKET</span>` : ""}
       ${packet.status !== "DONE" ? `<button class="btn ghost packet-advance" data-task="${esc(packet.task_id)}" type="button">Move to ${next}</button>` : ""}
     </div>
   </article>`;
@@ -158,7 +167,14 @@ export function renderHandoffBridge(): string {
       <div><p class="eyebrow">Private device workspace</p><h2 id="compose-title">Compose a handoff</h2></div>
       <span class="pill info">${packets.length} local packet${packets.length === 1 ? "" : "s"}</span>
     </header>
-    <div class="privacy-warning"><strong>Private boundary:</strong> packets stay in this browser only. They are not on the public sheet or machine endpoint. Do not enter secrets; authenticated encrypted sync is still WALLED.</div>
+    <div class="privacy-warning"><strong>Private boundary:</strong> new packets stay in this browser unless you explicitly send one to a connected private MCP service. The access token stays in memory and is erased on reload. Never enter provider credentials inside task fields.</div>
+    <form id="remote-connect-form" class="remote-connect">
+      <label class="field"><span>Private MCP base URL</span><input name="endpoint" type="url" placeholder="https://area67-private-mcp.example.workers.dev" value="${remoteSession ? esc(remoteSession.endpoint) : ""}" required /></label>
+      <label class="field"><span>Session access token (never stored)</span><input name="token" type="password" autocomplete="off" minlength="24" placeholder="${remoteSession ? "Connected for this page session" : "Bearer token"}" ${remoteSession ? "" : "required"} /></label>
+      <button class="btn ghost" type="submit">${remoteSession ? "Reconnect" : "Connect private MCP"}</button>
+      <span class="badge ${remoteSession ? "ok" : "bad"}">${remoteSession ? "PRIVATE MCP CONNECTED" : "DEPLOYMENT WALLED"}</span>
+      <p class="muted small remote-message" role="status">${esc(remoteMessage || (remoteSession ? "Authenticated private delivery is available for this page session." : "Service code is ready; production D1 and OAuth identity still require approval."))}</p>
+    </form>
     <form id="handoff-form" class="handoff-form">
       <div class="form-grid">
         <label class="field"><span>Task intent</span><select name="intent">${intentOptions}</select></label>
@@ -193,7 +209,78 @@ function downloadPacket(packet: HandoffPacket): void {
   URL.revokeObjectURL(url);
 }
 
+function normalizeEndpoint(value: string): string {
+  const url = new URL(value);
+  const local = url.hostname === "localhost" || url.hostname === "127.0.0.1";
+  if (url.protocol !== "https:" && !(local && url.protocol === "http:")) {
+    throw new Error("Private MCP must use HTTPS outside localhost.");
+  }
+  url.pathname = url.pathname.replace(/\/+$/, "");
+  url.search = "";
+  url.hash = "";
+  return url.toString().replace(/\/$/, "");
+}
+
+async function remoteRequest(path: string, init: RequestInit = {}): Promise<Response> {
+  if (!remoteSession) throw new Error("Connect a private MCP service first.");
+  const response = await fetch(`${remoteSession.endpoint}${path}`, {
+    ...init,
+    headers: {
+      ...init.headers,
+      "Authorization": `Bearer ${remoteSession.token}`,
+    },
+  });
+  if (!response.ok) {
+    const body = await response.json().catch(() => null) as { error?: string } | null;
+    throw new Error(body?.error ?? `Private MCP returned HTTP ${response.status}.`);
+  }
+  return response;
+}
+
+async function syncPacket(packet: HandoffPacket): Promise<void> {
+  const response = await remoteRequest("/api/handoffs", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      client_task_id: packet.task_id,
+      parent_id: packet.parent_id,
+      source: packet.source,
+      intent: packet.route.intent,
+      contract_type: packet.contract.type,
+      payload: packet.contract.payload,
+    }),
+  });
+  await response.json();
+  const packets = loadPackets();
+  const local = packets.find((entry) => entry.task_id === packet.task_id);
+  if (!local || !remoteSession) return;
+  local.remote = { endpoint: remoteSession.endpoint, synced_at: new Date().toISOString() };
+  savePackets(packets);
+}
+
 export function bindHandoffBridge(refresh: () => void): void {
+  document.querySelector<HTMLFormElement>("#remote-connect-form")?.addEventListener("submit", async (event) => {
+    event.preventDefault();
+    const form = event.currentTarget as HTMLFormElement;
+    const data = new FormData(form);
+    const previous = remoteSession;
+    try {
+      const endpoint = normalizeEndpoint(String(data.get("endpoint")));
+      const enteredToken = String(data.get("token"));
+      const token = enteredToken || previous?.token || "";
+      if (token.length < 24) throw new Error("Session token must be at least 24 characters.");
+      remoteSession = { endpoint, token };
+      await remoteRequest("/api/handoffs?limit=1");
+      remoteMessage = "Authenticated. Packets move only when you press Send to private MCP.";
+      refresh();
+    } catch (error) {
+      remoteSession = previous;
+      remoteMessage = error instanceof Error ? error.message : String(error);
+      const message = form.querySelector<HTMLElement>(".remote-message");
+      if (message) message.textContent = remoteMessage;
+    }
+  });
+
   const contractSelect = document.querySelector<HTMLSelectElement>("#contract-type");
   contractSelect?.addEventListener("change", () => {
     document.querySelectorAll<HTMLElement>(".packet-fields").forEach((group) => {
@@ -235,6 +322,21 @@ export function bindHandoffBridge(refresh: () => void): void {
   document.querySelectorAll<HTMLButtonElement>(".packet-download").forEach((button) => button.addEventListener("click", () => {
     const packet = packetById(button.dataset.task ?? "");
     if (packet) downloadPacket(packet);
+  }));
+  document.querySelectorAll<HTMLButtonElement>(".packet-sync").forEach((button) => button.addEventListener("click", async () => {
+    const packet = packetById(button.dataset.task ?? "");
+    if (!packet) return;
+    button.disabled = true;
+    button.textContent = "Sending…";
+    try {
+      await syncPacket(packet);
+      remoteMessage = `${packet.task_id} stored in the private MCP service.`;
+      refresh();
+    } catch (error) {
+      remoteMessage = error instanceof Error ? error.message : String(error);
+      button.disabled = false;
+      button.textContent = "Retry private MCP";
+    }
   }));
   document.querySelectorAll<HTMLButtonElement>(".packet-advance").forEach((button) => button.addEventListener("click", () => {
     const id = button.dataset.task ?? "";

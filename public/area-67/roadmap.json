@@ -12,7 +12,7 @@
     { "id": 7, "name": "aging_escalation", "status": "LIVE" },
     { "id": 8, "name": "executable_routing", "status": "LIVE" },
     { "id": 9, "name": "provider_quota_telemetry", "status": "WALLED", "needed": "Provider credentials or approved manual budget import" },
-    { "id": 10, "name": "public_private_separation", "status": "BUILDING", "needed": "Identity provider and retention policy" },
+    { "id": 10, "name": "public_private_separation", "status": "BUILDING", "delivered": "Explicit per-packet private promotion using an in-memory authenticated browser session", "needed": "Production identity provider and retention policy" },
     { "id": 11, "name": "stable_machine_endpoint", "status": "LIVE" },
     { "id": 12, "name": "navigation_filters", "status": "LIVE" },
     { "id": 13, "name": "provenance_audit", "status": "LIVE" },

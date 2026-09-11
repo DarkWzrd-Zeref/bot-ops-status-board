@@ -68,4 +68,10 @@ describe("Area 67 private service domain", () => {
     expect(packet.provenance).toMatchObject({ owner_id: "jorge", public_sync: false });
     expect(packet.audit.validation).toContain("secret_scan");
   });
+
+  it("preserves a client UUID when promoting a local packet", () => {
+    const clientTaskId = "8ea484d8-e224-4e80-a1a4-9dabc57579e8";
+    const packet = createStoredPacket(validInput({ client_task_id: clientTaskId }), "jorge");
+    expect(packet.task_id).toBe(clientTaskId);
+  });
 });
