@@ -179,7 +179,7 @@ export function renderActionQueue(data: Dataset | null): string {
       const approver = approverCol ? row[approverCol] : "";
       const next = row[nextCol] ?? "";
       const notes = notesCol ? row[notesCol] : "";
-      const approvalWalled = !approver && /approve|approval|\bgo\b|await/i.test(`${status} ${next}`);
+      const approvalWalled = !approver && status.toLowerCase() === "pending";
       return `<article class="queue-card">
         <div class="queue-card-head">
           <h3>${esc(item || "Unlabeled ledger item")}</h3>
