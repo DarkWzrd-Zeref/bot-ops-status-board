@@ -88,6 +88,15 @@ export function createArchitecture(h: StationShape, project = false) {
     }
     box(2.5, .07, .24, ink, 0, 2.32, -.55, true);
     cyl(.19, .28, .65, edge, 0, .72, .74, 8);
+  } else if (id === "efficiency-guide") {
+    // Hub-and-spokes routing pavilion: one core, four terminals, under the 12-mesh kit cap.
+    cyl(.42, .42, 1.15, ink, 0, 1.05, 0, 12);
+    cyl(.22, .22, .35, glass, 0, 1.85, 0, 10);
+    ring(.52, .04, ink, 1.55);
+    for (const [x, z] of [[-1.15, -1.05], [1.15, -1.05], [-1.15, 1.05], [1.15, 1.05]] as const) {
+      box(.72, .55, .72, shell, x, .62, z);
+    }
+    box(1.05, .08, 1.05, edge, 0, .28, 0);
   } else if (id === "pending-work" || id === "skill-rack") {
     // Archive capsules sit under a pitched shelter, visibly distinct from the civic buildings.
     for (const x of [-1.15, 1.15]) box(.1, 1.9, 1.8, edge, x, 1.17, 0);

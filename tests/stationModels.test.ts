@@ -15,12 +15,16 @@ test("Blender GLB paths are hub-scoped and never Claude kind hashes", () => {
   assert.doesNotMatch(world, /kind\.\w+\.glb/);
 });
 
-test("Imagine drop map covers all 25 hubs and never targets hashed kind PNGs", () => {
+test("Imagine drop map covers the painted 25 hubs and never targets hashed kind PNGs", () => {
   const drop = JSON.parse(readFileSync(new URL("../scripts/imagine-drop.json", import.meta.url), "utf8"));
   assert.equal(drop.stations.length, 25);
-  assert.equal(hubs.hubs.length, 25);
+  assert.equal(hubs.hubs.length, 26);
   const ids = new Set(drop.stations.map((s: { id: string }) => s.id));
-  for (const h of hubs.hubs) assert.ok(ids.has(h.id), h.id);
+  for (const h of hubs.hubs) {
+    if (h.id === "efficiency-guide") continue;
+    assert.ok(ids.has(h.id), h.id);
+  }
+  assert.equal(ids.has("efficiency-guide"), false);
   for (const row of drop.stations) {
     assert.match(row.hubPng, /^hub-.+\.png$/);
     assert.doesNotMatch(row.hubPng, /\.[a-f0-9]{12}\.png$/);

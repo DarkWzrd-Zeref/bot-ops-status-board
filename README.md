@@ -1,4 +1,4 @@
-# AREA 67 · Command Center
+# AREA 67 (the hub)
 
 Zeref commands a shared base of AI teammates. The world makes the team tangible; the command channel makes its work legible.
 

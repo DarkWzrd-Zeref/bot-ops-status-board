@@ -1,0 +1,14 @@
+{
+  "schema": "area67.roadmap.v1",
+  "hub": "AREA 67 (the hub)",
+  "updated": "2026-09-11",
+  "privacy": "public_status_no_operational_task_content",
+  "items": [
+    { "id": 1, "name": "efficiency_guide_station", "status": "BUILDING", "needed": "Live campus deploy of this branch", "help": "Cursor Grok 4.6" },
+    { "id": 2, "name": "seat_mcp", "status": "LIVE", "scope": "/mcp/:seat" },
+    { "id": 3, "name": "shared_mcp_job_store", "status": "WALLED", "needed": "Jorge approves production D1 and OAuth identity", "help": "Claude Opus 5 then Cursor Opus/Sol" },
+    { "id": 4, "name": "authenticated_writeback", "status": "WALLED", "needed": "Identity provider plus retention policy" },
+    { "id": 5, "name": "provider_quota_telemetry", "status": "WALLED", "needed": "Provider credentials or approved import format" },
+    { "id": 6, "name": "artifact_promotion", "status": "WALLED", "needed": "Choose R2, Drive, or Railway storage", "help": "Grok Imagine then Cursor Sol" }
+  ]
+}

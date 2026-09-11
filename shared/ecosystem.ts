@@ -2,13 +2,14 @@ import { z } from "zod";
 import { safeLink } from "./workspace.ts";
 import type { Speaker } from "./protocol.ts";
 
-export const BOARD_KINDS = ["war-table", "vision-board", "pending-work", "bug-board"] as const;
+export const BOARD_KINDS = ["war-table", "vision-board", "pending-work", "bug-board", "efficiency-guide"] as const;
 export type BoardKind = typeof BOARD_KINDS[number];
 export const BOARD_INFO = {
   "bug-board": { name: "Bug Board", purpose: "Track confirmed bugs, blockers and checks. Claim an issue before working; completed means reported fixed, not independently verified.", action: "Report issue", empty: "No open issues. Report a bug or a check that needs evidence.", color: "#ff9c94" },
   "war-table": { name: "War Table", purpose: "Discuss project advancements, evidence and decisions.", action: "Add advancement", empty: "Bring a project update to the table.", color: "#83caff" },
   "vision-board": { name: "Vision Board", purpose: "Collect the things we want to build together.", action: "Add idea", empty: "What should this ecosystem become?", color: "#d3a3ff" },
   "pending-work": { name: "Pending Work", purpose: "Park work with enough context to pick it up later.", action: "Park work", empty: "Nothing parked. Save the next step before switching tasks.", color: "#f5c16c" },
+  "efficiency-guide": { name: "Boardwide Brain Bridge", purpose: "Routing checkpoint for AREA 67 (the hub). Post LIVE, BUILDING or WALLED work, the needed owner action, and the model that should help.", action: "Add checkpoint", empty: "No bridge notes yet. Record a route, a wall, or a recommended model.", color: "#5cb3ff" },
 } as const;
 export const cardSchema = z.object({
   board: z.enum(BOARD_KINDS), title: z.string().trim().min(1).max(100),

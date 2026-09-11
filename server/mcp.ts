@@ -1,3 +1,4 @@
+import { existsSync, readFileSync } from "node:fs";
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { WebStandardStreamableHTTPServerTransport } from "@modelcontextprotocol/sdk/server/webStandardStreamableHttp.js";
 import { z } from "zod";
@@ -15,6 +16,13 @@ function textResult(text: string) {
   return { content: [{ type: "text" as const, text }] };
 }
 
+function efficiencyGuideText(): string {
+  for (const path of ["dist/area-67/efficiency-guide.json", "public/area-67/efficiency-guide.json"]) {
+    if (existsSync(path)) return readFileSync(path, "utf8");
+  }
+  return JSON.stringify({ error: "efficiency_guide_missing" });
+}
+
 export function createMcpServer(seat?: Seat, ecosystemWrite = false): McpServer {
   const name = seat ? "area67-" + seat.slug : "area67";
   const description = seat
@@ -23,7 +31,7 @@ export function createMcpServer(seat?: Seat, ecosystemWrite = false): McpServer 
 
   const server = new McpServer({
     name,
-    version: "1.4.0",
+    version: "1.4.1",
     description,
   });
 
@@ -284,6 +292,23 @@ export function createMcpServer(seat?: Seat, ecosystemWrite = false): McpServer 
     },
     async () => ({
       contents: [{ uri: "area67://seats", mimeType: "application/json", text: JSON.stringify(SEATS, null, 2) }],
+    }),
+  );
+
+  server.registerResource(
+    "efficiency-guide",
+    "area67://efficiency-guide",
+    {
+      title: "AREA 67 Boardwide Brain Bridge",
+      description: "Public routing checkpoint: owners, router, contracts, guards. No private task content.",
+      mimeType: "application/json",
+    },
+    async () => ({
+      contents: [{
+        uri: "area67://efficiency-guide",
+        mimeType: "application/json",
+        text: efficiencyGuideText(),
+      }],
     }),
   );
 

@@ -35,8 +35,8 @@ test("label packing suppresses collisions, bounds count and retains focused sele
   assert.deepEqual([...packLabels(items, 500, 500, 2)], ["selected", "b"]);
   assert.equal(packLabels(Array.from({ length: 40 }, (_, i) => ({ ...base, id: String(i), x: 50 + i * 110 })), 6000, 600, 6).size, 6);
 });
-test("all25 architectural kits are finite, batched and fit their saved footprints", () => {
-  assert.equal(hubs.hubs.length, 25);
+test("all architectural kits are finite, batched and fit their saved footprints", () => {
+  assert.equal(hubs.hubs.length, 26);
   for (const h of hubs.hubs) {
     const g = createArchitecture(h, h.id === "project-site"); g.updateMatrixWorld(true);
     const bounds = new THREE.Box3().setFromObject(g);

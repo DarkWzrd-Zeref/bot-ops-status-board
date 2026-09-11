@@ -35,11 +35,14 @@ app.use(
 app.get("/health", (c) =>
   c.json({
     ok: true,
-    name: "area67",
-    version: "1.4.0",
+    name: "area67-the-hub",
+    version: "1.4.1",
+    title: "AREA 67 (the hub)",
     commit: process.env.RAILWAY_GIT_COMMIT_SHA ?? null,
     mcp: "/mcp",
     connect: "/connect",
+    discovery: "/.well-known/area-67.json",
+    efficiencyGuide: "/area-67/efficiency-guide.json",
     seats: SEATS.map((s) => ({ id: s.id, url: seatUrl(s.slug), pal: s.palId })),
     radio: store.notes(1)[0] ?? null,
   }),

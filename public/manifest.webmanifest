@@ -1,7 +1,7 @@
 {
-  "name": "AREA 67",
-  "short_name": "AREA 67",
-  "description": "A 3D AI command center with live check-ins, shared directives and progress receipts.",
+  "name": "AREA 67 (the hub)",
+  "short_name": "AREA 67 Hub",
+  "description": "AREA 67 (the hub): live campus, MCP seats, and the Boardwide Brain Bridge.",
   "start_url": "./",
   "scope": "./",
   "display": "standalone",

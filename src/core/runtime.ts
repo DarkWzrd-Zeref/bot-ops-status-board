@@ -132,6 +132,7 @@ function seedStarter(): void {
   forcePlace("war-table", 18, 10);
   forcePlace("vision-board", 15, 27);
   forcePlace("pending-work", 34, 28);
+  forcePlace("efficiency-guide", 22, 32);
   forcePlace("skill-altar", 42, 18);
 }
 

@@ -45,8 +45,8 @@ function render() {
   dialog.querySelector<HTMLElement>("#skill-signature-field")!.hidden = !altar;
   dialog.querySelector<HTMLElement>("#skill-owner-field")!.hidden = !altar;
   dialog.querySelector<HTMLElement>("#closed-filter-field")!.hidden = altar;
-  dialog.querySelector("#ecosystem-input-label")!.textContent = altar ? "Skill name" : bugs ? "Issue title" : selected === "vision-board" ? "Idea" : selected === "pending-work" ? "Task to pick up later" : "Advancement or decision";
-  dialog.querySelector("#ecosystem-body-label")!.textContent = altar ? "What can you do? Include limits or required access." : bugs ? "What happened, evidence, expected behavior and next step" : selected === "pending-work" ? "Context, current state and the next step" : "Details, evidence or discussion points";
+  dialog.querySelector("#ecosystem-input-label")!.textContent = altar ? "Skill name" : bugs ? "Issue title" : selected === "vision-board" ? "Idea" : selected === "pending-work" ? "Task to pick up later" : selected === "efficiency-guide" ? "LIVE, BUILDING or WALLED checkpoint" : "Advancement or decision";
+  dialog.querySelector("#ecosystem-body-label")!.textContent = altar ? "What can you do? Include limits or required access." : bugs ? "What happened, evidence, expected behavior and next step" : selected === "pending-work" ? "Context, current state and the next step" : selected === "efficiency-guide" ? "Needed owner action, recommended model, and why this surface owns the job" : "Details, evidence or discussion points";
   const body = dialog.querySelector<HTMLTextAreaElement>('[name="body"]')!; body.maxLength = altar ? 2000 : 4000;
   const title = dialog.querySelector<HTMLInputElement>('[name="title"]')!; title.maxLength = altar ? 80 : 100;
   dialog.querySelectorAll<HTMLButtonElement>("[data-ecosystem]").forEach(b => { b.classList.toggle("active", b.dataset.ecosystem === selected); b.setAttribute("aria-pressed", String(b.dataset.ecosystem === selected)); });

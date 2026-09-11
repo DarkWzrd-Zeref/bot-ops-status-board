@@ -52,7 +52,7 @@ await test("inventory and preview are read-only, usable without keys, and explai
   const inventory = content(await call("claude", "station_inventory"));
   assert.equal(inventory.canWrite, false); assert.equal(inventory.revision, rev);
   assert.equal(inventory.map.width, 96); assert.equal(inventory.map.height, 72); assert.equal(inventory.map.districts.length, 6);
-  assert.equal(inventory.missing.length, 18); assert.equal(inventory.stations.find((s: {id:string}) => s.id === "railway").w, 4);
+  assert.equal(inventory.missing.length, 19); assert.equal(inventory.stations.find((s: {id:string}) => s.id === "railway").w, 4);
   assert.ok(inventory.map.blockedTiles.length); assert.equal(inventory.stations[0].connectionStatus, "unverified");
   const preview = content(await call("claude", "station_build_preview", plan));
   assert.equal(preview.ok, true, JSON.stringify(preview.errors)); assert.equal(preview.canWrite, false);
@@ -133,13 +133,13 @@ await test("project metadata, bounded batches and complete retry identity are en
   const base = structuredClone(store.base()!); base.buildings = base.buildings.filter(b => b.uid !== "build:claude:partial:1"); store.setBase(base);
   assert.equal(store.previewStations("claude", partial).errors[0].code, "request_conflict");
 });
-await test("all 18 missing types fit as a complete district plan around the unchanged seven-station base", () => {
+await test("all 19 missing types fit as a complete district plan around the unchanged seven-station base", () => {
   const layout = stationPlanSchema.parse(JSON.parse(readFileSync(new URL("../docs/station-layout.example.json", import.meta.url), "utf8")));
   store.setBase(structuredClone(seed));
   const result = store.buildStations("claude", { ...layout, expectedRevision: store.revision() });
   assert.equal(result.ok, true, JSON.stringify(result.errors));
   assert.equal(store.stationInventory().missing.length, 0);
-  assert.equal(store.base()!.buildings.length, 25);
+  assert.equal(store.base()!.buildings.length, 26);
   assert.deepEqual(store.base()!.buildings.slice(0, 7), seed.buildings);
   assert.deepEqual(store.base()!.assignments, seed.assignments);
 });

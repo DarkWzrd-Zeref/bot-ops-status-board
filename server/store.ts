@@ -112,6 +112,23 @@ export function loadStore(): void {
       persist();
     }
   }
+  ensureEfficiencyGuide();
+}
+
+/** Place the Brain Bridge on an already-initialized live base when a candidate tile is free. */
+function ensureEfficiencyGuide(): void {
+  if (process.env.AREA67_TEST) return;
+  if (!state.base || state.base.buildings.some(b => b.hubId === "efficiency-guide")) return;
+  for (const [tx, ty] of [[22, 32], [27, 32], [15, 30], [14, 31]] as const) {
+    const plan = planConstruction(state.base, "zeref", {
+      requestId: "system-efficiency-guide",
+      buildings: [{ hubId: "efficiency-guide", tx, ty }],
+    });
+    if (!plan.ok) continue;
+    state.base.buildings.push(...plan.planned);
+    persist();
+    return;
+  }
 }
 
 function persist(): void {
