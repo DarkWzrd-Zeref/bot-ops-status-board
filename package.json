@@ -7,10 +7,15 @@
   "scripts": {
     "dev": "node scripts/gen-icons.mjs && vite --host 127.0.0.1 --port 4611",
     "build": "tsc && node scripts/gen-icons.mjs && vite build",
+    "test": "vitest run",
+    "test:mcp": "npm --prefix mcp test",
+    "build:mcp": "npm --prefix mcp run build",
     "preview": "vite preview --host 127.0.0.1 --port 4611"
   },
   "devDependencies": {
+    "@types/node": "22.20.2",
     "typescript": "6.0.3",
-    "vite": "8.2.2"
+    "vite": "8.2.2",
+    "vitest": "5.0.0"
   }
 }

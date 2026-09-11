@@ -149,6 +149,74 @@ export function renderCoverage(data: Dataset | null): string {
   </div>`;
 }
 
+function headerFor(headers: string[], aliases: string[]): string | undefined {
+  const normalized = headers.map((header) => ({ header, key: normalizeKey(header) }));
+  return normalized.find(({ key }) => aliases.includes(key))?.header;
+}
+
+/** Surface row-oriented ledger work that would otherwise only appear in the raw table. */
+export function renderActionQueue(data: Dataset | null): string {
+  if (!data) return "";
+  const statusCol = headerFor(data.headers, ["approve_status", "approval_status", "approval"]);
+  const nextCol = headerFor(data.headers, ["next_step", "next_action", "action"]);
+  if (!statusCol || !nextCol) return "";
+
+  const itemCol = headerFor(data.headers, ["bot_or_item", "item", "task", "title", "bot", "name"]);
+  const ownerCol = headerFor(data.headers, ["owner", "assigned_to"]);
+  const approverCol = headerFor(data.headers, ["approved_by", "approver"]);
+  const notesCol = headerFor(data.headers, ["notes", "blocker", "risks"]);
+  const updatedCol = headerFor(data.headers, ["updated_et", "updated_at", "updated", "last_updated"]);
+  const pending = data.rows.filter((row) => {
+    const status = (row[statusCol] ?? "").trim().toLowerCase();
+    return /^(pending|waiting|blocked|needs approval|needs_approval)$/.test(status);
+  });
+  if (!pending.length) return "";
+  const owners = [...new Set(pending.map((row) => ownerCol ? row[ownerCol] : "").filter(Boolean))].sort();
+  const ownerOptions = owners.map((owner) => `<option value="${esc(owner)}">${esc(owner)}</option>`).join("");
+
+  const cards = pending
+    .map((row) => {
+      const status = (row[statusCol] ?? "pending").trim();
+      const item = itemCol ? row[itemCol] : "";
+      const owner = ownerCol ? row[ownerCol] : "";
+      const approver = approverCol ? row[approverCol] : "";
+      const next = row[nextCol] ?? "";
+      const notes = notesCol ? row[notesCol] : "";
+      const approvalWalled = !approver && status.toLowerCase() === "pending";
+      const updated = updatedCol ? row[updatedCol] : "";
+      const dateMatch = updated?.match(/\d{4}-\d{2}-\d{2}/)?.[0];
+      const ageDays = dateMatch ? Math.max(0, Math.floor((Date.now() - new Date(`${dateMatch}T00:00:00Z`).getTime()) / 86_400_000)) : null;
+      return `<article class="queue-card" data-owner="${esc(owner ?? "")}">
+        <div class="queue-card-head">
+          <h3>${esc(item || "Unlabeled ledger item")}</h3>
+          <div class="queue-badges">
+            ${ageDays !== null ? `<span class="badge ${ageDays >= 3 ? "warn" : "dim"}">${ageDays}d ${ageDays >= 3 ? "STALE" : "old"}</span>` : ""}
+            <span class="badge ${approvalWalled ? "bad" : "warn"}">${approvalWalled ? "WALLED · APPROVAL" : esc(status.toUpperCase())}</span>
+          </div>
+        </div>
+        ${owner ? `<p class="small"><span class="muted">Owner</span> ${esc(owner)}</p>` : ""}
+        <p>${esc(next || "No next step recorded.")}</p>
+        ${notes ? `<p class="muted small">${esc(notes)}</p>` : ""}
+      </article>`;
+    })
+    .join("");
+
+  return `<section class="action-queue" id="action-queue" aria-labelledby="action-queue-title">
+    <header>
+      <div>
+        <p class="eyebrow">Live ledger checkpoint</p>
+        <h2 id="action-queue-title">Pending / walled queue</h2>
+      </div>
+      <div class="queue-tools">
+        <label class="field queue-filter"><span>Owner</span><select id="queue-owner-filter"><option value="">All owners</option>${ownerOptions}</select></label>
+        <span class="pill warn">${pending.length} pending</span>
+      </div>
+    </header>
+    <p class="muted small">Approval-gated items are marked walled. The hub will not integrate them until the recorded approver gives GO.</p>
+    <div class="queue-grid">${cards}</div>
+  </section>`;
+}
+
 export function renderBanner(kind: "blocked" | "blocked-snapshot" | "demo" | null, detail = ""): string {
   if (!kind) return "";
   if (kind === "demo") {
