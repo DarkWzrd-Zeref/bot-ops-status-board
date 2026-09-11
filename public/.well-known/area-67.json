@@ -18,7 +18,7 @@
   "capabilities": {
     "campus": "live",
     "seat_mcp": "live",
-    "efficiency_guide_station": "building",
+    "efficiency_guide_station": "live",
     "shared_mcp_job_store": "walled",
     "authenticated_writeback": "walled",
     "provider_quota_telemetry": "walled",

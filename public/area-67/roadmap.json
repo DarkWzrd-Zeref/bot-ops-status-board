@@ -4,7 +4,7 @@
   "updated": "2026-09-11",
   "privacy": "public_status_no_operational_task_content",
   "items": [
-    { "id": 1, "name": "efficiency_guide_station", "status": "BUILDING", "needed": "Live campus deploy of this branch", "help": "Cursor Grok 4.6" },
+    { "id": 1, "name": "efficiency_guide_station", "status": "LIVE", "scope": "27,32 plus /area-67/efficiency-guide.json", "help": "Cursor Grok 4.6" },
     { "id": 2, "name": "seat_mcp", "status": "LIVE", "scope": "/mcp/:seat" },
     { "id": 3, "name": "shared_mcp_job_store", "status": "WALLED", "needed": "Jorge approves production D1 and OAuth identity", "help": "Claude Opus 5 then Cursor Opus/Sol" },
     { "id": 4, "name": "authenticated_writeback", "status": "WALLED", "needed": "Identity provider plus retention policy" },
