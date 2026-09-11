@@ -1,7 +1,7 @@
 import "./style.css";
 import { DEMO_CSV, SHEET_URL, fetchSheet, parseSnapshot, storage, type Dataset } from "./data";
 import { efficiencyGuideJson, renderEfficiencyGuide } from "./efficiency";
-import { esc, renderBanner, renderCoverage, renderLedger, renderSections } from "./render";
+import { esc, renderActionQueue, renderBanner, renderCoverage, renderLedger, renderSections } from "./render";
 
 type SheetState = "idle" | "loading" | "ok" | "blocked";
 
@@ -73,6 +73,7 @@ function render(): void {
     </section>
 
     ${renderCoverage(state.data)}
+    ${renderActionQueue(state.data)}
     <main class="grid">${renderSections(state.data)}</main>
 
     <details class="ledger" ${state.data && state.data.rows.length <= 12 ? "open" : ""}>

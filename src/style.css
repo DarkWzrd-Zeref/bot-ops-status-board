@@ -136,6 +136,22 @@ textarea { resize: vertical; min-height: 120px; }
 .stats strong { font-family: var(--mono); font-size: 1.2rem; }
 .stats span { color: var(--muted); font-size: 0.75rem; }
 
+.action-queue {
+  margin-top: 12px;
+  padding: 14px;
+  border: 1px solid rgba(245, 185, 66, 0.45);
+  border-radius: 12px;
+  background: var(--panel);
+  display: grid;
+  gap: 10px;
+}
+.action-queue > header { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+.queue-grid { display: grid; gap: 8px; }
+.queue-card { padding: 10px 12px; border: 1px solid var(--line); border-radius: 10px; background: var(--card); }
+.queue-card-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 8px; }
+.queue-card-head h3 { color: var(--text); overflow-wrap: anywhere; }
+.queue-card p { overflow-wrap: anywhere; }
+
 .grid {
   display: grid;
   grid-template-columns: 1fr;
@@ -279,6 +295,7 @@ footer { margin-top: 20px; text-align: center; }
   .brain-grid { grid-template-columns: repeat(4, 1fr); }
   .pipeline { grid-template-columns: repeat(6, 1fr); }
   .guide-grid { grid-template-columns: 1.1fr 1fr 0.9fr; }
+  .queue-grid { grid-template-columns: repeat(2, 1fr); }
   h1 { font-size: 1.7rem; }
 }
 @media (min-width: 1080px) {
