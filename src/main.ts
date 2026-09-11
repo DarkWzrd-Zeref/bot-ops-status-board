@@ -1,7 +1,9 @@
 import "./style.css";
 import { DEMO_CSV, SHEET_URL, fetchSheet, parseSnapshot, storage, type Dataset } from "./data";
 import { efficiencyGuideJson, renderEfficiencyGuide } from "./efficiency";
+import { bindHandoffBridge, renderHandoffBridge } from "./handoff";
 import { esc, renderActionQueue, renderBanner, renderCoverage, renderLedger, renderSections } from "./render";
+import { renderRoadmap } from "./roadmap";
 
 type SheetState = "idle" | "loading" | "ok" | "blocked";
 
@@ -51,11 +53,22 @@ function render(): void {
         <button id="toggle-panel" class="btn ghost" aria-expanded="${state.panelOpen}">${state.panelOpen ? "Hide data" : "Data"}</button>
       </div>
     </header>
+    <nav class="hub-nav" aria-label="Area 67 sections">
+      <a href="#efficiency-guide">Bridge</a>
+      <a href="#compose">Compose</a>
+      <a href="#inbox">Inbox</a>
+      <a href="#roadmap">Roadmap</a>
+      <a href="#action-queue">Pending</a>
+      <a href="#bots">Bots</a>
+      <a href="#ledger">Ledger</a>
+    </nav>
 
     ${renderBanner(bannerKind(), state.sheetError)}
     ${state.message ? `<div class="banner info">${esc(state.message)}</div>` : ""}
 
     ${renderEfficiencyGuide()}
+    ${renderHandoffBridge()}
+    ${renderRoadmap()}
 
     <section class="panel" ${state.panelOpen ? "" : "hidden"}>
       <h2>Data</h2>
@@ -74,9 +87,9 @@ function render(): void {
 
     ${renderCoverage(state.data)}
     ${renderActionQueue(state.data)}
-    <main class="grid">${renderSections(state.data)}</main>
+    <main class="grid" id="bots">${renderSections(state.data)}</main>
 
-    <details class="ledger" ${state.data && state.data.rows.length <= 12 ? "open" : ""}>
+    <details class="ledger" id="ledger" ${state.data && state.data.rows.length <= 12 ? "open" : ""}>
       <summary>Ledger — every column, every row</summary>
       ${renderLedger(state.data)}
     </details>
@@ -90,6 +103,13 @@ function render(): void {
 }
 
 function bind(): void {
+  bindHandoffBridge(render);
+  document.querySelector<HTMLSelectElement>("#queue-owner-filter")?.addEventListener("change", (event) => {
+    const owner = (event.currentTarget as HTMLSelectElement).value;
+    document.querySelectorAll<HTMLElement>(".queue-card").forEach((card) => {
+      card.hidden = Boolean(owner) && card.dataset.owner !== owner;
+    });
+  });
   document.querySelector<HTMLButtonElement>("#refresh")?.addEventListener("click", () => void loadSheet());
   document.querySelector<HTMLButtonElement>("#copy-guide")?.addEventListener("click", async () => {
     try {

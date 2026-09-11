@@ -1,0 +1,27 @@
+{
+  "schema": "area67.discovery.v1",
+  "name": "Area 67 · The Hub",
+  "privacy": {
+    "classification": "public_capability_metadata_only",
+    "operational_packets_published": false,
+    "warning": "Never send secrets or private task content to these static endpoints."
+  },
+  "endpoints": {
+    "efficiency_guide": "../area-67/efficiency-guide.json",
+    "handoff_schema": "../area-67/handoff.schema.json",
+    "roadmap": "../area-67/roadmap.json"
+  },
+  "capabilities": {
+    "task_packet_composer": "device_local",
+    "durable_task_ids": "available",
+    "intent_router": "available",
+    "quota_policy_guard": "available",
+    "pending_aging": "available",
+    "shared_mcp_service": "walled",
+    "authenticated_writeback": "walled",
+    "provider_connectors": "walled",
+    "provider_quota_telemetry": "walled",
+    "private_cross_device_sync": "walled"
+  },
+  "walled_reason": "Private shared operations require an authenticated server, storage boundary, provider credentials, and explicit owner approval."
+}

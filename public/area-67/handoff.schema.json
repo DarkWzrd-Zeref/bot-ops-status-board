@@ -1,0 +1,79 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://area67.example/area-67/handoff.schema.json",
+  "title": "Area 67 Handoff Packet",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema",
+    "task_id",
+    "parent_id",
+    "version",
+    "created_at",
+    "updated_at",
+    "status",
+    "privacy",
+    "source",
+    "route",
+    "contract",
+    "provenance",
+    "audit"
+  ],
+  "properties": {
+    "schema": { "const": "area67.handoff.v1" },
+    "task_id": { "type": "string", "minLength": 8 },
+    "parent_id": { "type": ["string", "null"] },
+    "version": { "type": "integer", "minimum": 1 },
+    "created_at": { "type": "string", "format": "date-time" },
+    "updated_at": { "type": "string", "format": "date-time" },
+    "status": {
+      "enum": ["READY", "CLAIMED", "WORKING", "REVIEW", "BLOCKED", "DONE"]
+    },
+    "privacy": { "const": "private_device_only" },
+    "source": { "type": "string", "minLength": 1 },
+    "route": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["intent", "owner", "quota_guard"],
+      "properties": {
+        "intent": { "type": "string", "minLength": 1 },
+        "owner": { "type": "string", "minLength": 1 },
+        "quota_guard": { "type": "string", "minLength": 1 }
+      }
+    },
+    "contract": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["type", "payload"],
+      "properties": {
+        "type": {
+          "enum": ["job_spec", "file_map", "diff", "asset_brief", "ship_packet"]
+        },
+        "payload": {
+          "type": "object",
+          "additionalProperties": { "type": "string" }
+        }
+      }
+    },
+    "provenance": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["created_by", "context_scope", "public_sync"],
+      "properties": {
+        "created_by": { "const": "area_67_hub" },
+        "context_scope": { "const": "task_only" },
+        "public_sync": { "const": false }
+      }
+    },
+    "audit": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["validation", "approved_by", "revision"],
+      "properties": {
+        "validation": { "type": "array", "items": { "type": "string" } },
+        "approved_by": { "type": ["string", "null"] },
+        "revision": { "type": "integer", "minimum": 1 }
+      }
+    }
+  }
+}
