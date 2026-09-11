@@ -3,7 +3,7 @@
   "updated": "2026-09-11",
   "privacy": "public_status_no_operational_task_content",
   "items": [
-    { "id": 1, "name": "shared_mcp_service", "status": "WALLED", "needed": "Jorge chooses private host and authentication boundary", "help": "Claude Opus 5 then Cursor Opus/Sol" },
+    { "id": 1, "name": "shared_mcp_service", "status": "BUILDING", "delivered": "Worker, D1 schema, private REST boundary, and seven MCP tools", "needed": "Jorge approves production D1 and OAuth identity boundary", "help": "Claude Opus 5 then Cursor Opus/Sol" },
     { "id": 2, "name": "inbox_outbox_lifecycle", "status": "LIVE", "scope": "device_local" },
     { "id": 3, "name": "task_specific_packets", "status": "LIVE" },
     { "id": 4, "name": "live_sheet_schema_adapter", "status": "BUILDING", "needed": "Jorge or AM approves canonical v2 tab" },

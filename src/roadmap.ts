@@ -16,9 +16,9 @@ export const ROADMAP: RoadmapItem[] = [
   {
     id: 1,
     title: "Shared MCP service",
-    status: "WALLED",
-    outcome: "One authenticated job store and tool surface shared by every compatible AI client.",
-    blocker: "Needs a private host, database, identity policy, and confirmation of which subscription surfaces accept remote MCP.",
+    status: "BUILDING",
+    outcome: "Worker, D1 schema, private REST boundary, and seven MCP tools are implementation-ready; deployment is not live.",
+    blocker: "Production needs a D1 database, OAuth identity policy, and confirmation of which subscription surfaces accept remote MCP.",
     ask: "Jorge: choose Cloudflare or Railway and approve the authentication boundary.",
     help: "Claude Opus 5 for threat model → Cursor Opus/Sol for implementation",
   },

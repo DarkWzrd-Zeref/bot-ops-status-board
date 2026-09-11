@@ -17,7 +17,7 @@
     "intent_router": "available",
     "quota_policy_guard": "available",
     "pending_aging": "available",
-    "shared_mcp_service": "walled",
+    "shared_mcp_service": "implementation_ready_deployment_walled",
     "authenticated_writeback": "walled",
     "provider_connectors": "walled",
     "provider_quota_telemetry": "walled",
