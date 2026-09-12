@@ -3,7 +3,7 @@ import { dirname, join } from "node:path";
 import { AGENTS, HUBS, MODS, SKILL_IDS, SEATS, SPEAKER_PAL, agentById, hubById, publicBase as siteBase, seatUrl, type Speaker } from "./catalog.ts";
 import { randomUUID } from "node:crypto";
 import { projectSchema, workSchema, type ProjectInfo, type WorkInput, type WorkReport } from "../shared/workspace.ts";
-import { effectiveAttention, isSpeaker, speakerLabel, seatForPal, type RadioNote, type Presence, type Attention, type Channel, type ReceiptState } from "../shared/protocol.ts";
+import { effectiveAttention, isSpeaker, speakerLabel, seatForPal, MAX_QUIET_MS, type RadioNote, type Presence, type Attention, type Channel, type ReceiptState } from "../shared/protocol.ts";
 import { MAP_W, MAP_H, CORE_X, CORE_Y, BASE_RADIUS } from "../shared/map.ts";
 import { cardSchema, cardActionSchema, registrationSchema, type Ecosystem, type CardInput, type CardAction, type BoardCard, type RegistrationInput, type SkillRegistration } from "../shared/ecosystem.ts";
 import { stationPlanSchema, stationBuildSchema, type StationPlan, type StationBuild } from "../shared/construction.ts";
@@ -112,6 +112,23 @@ export function loadStore(): void {
       persist();
     }
   }
+  ensureEfficiencyGuide();
+}
+
+/** Place the Brain Bridge on an already-initialized live base when a candidate tile is free. */
+function ensureEfficiencyGuide(): void {
+  if (process.env.AREA67_TEST) return;
+  if (!state.base || state.base.buildings.some(b => b.hubId === "efficiency-guide")) return;
+  for (const [tx, ty] of [[22, 32], [27, 32], [15, 30], [14, 31]] as const) {
+    const plan = planConstruction(state.base, "zeref", {
+      requestId: "system-efficiency-guide",
+      buildings: [{ hubId: "efficiency-guide", tx, ty }],
+    });
+    if (!plan.ok) continue;
+    state.base.buildings.push(...plan.planned);
+    persist();
+    return;
+  }
 }
 
 function persist(): void {
@@ -168,11 +185,18 @@ export function buildStations(seat: Speaker, input: StationBuild) {
 export function presence(): Presence[] {
   return [...SEATS.map(s => s.id), "zeref" as Speaker].map(seat => {
     const p = heartbeats.get(seat);
-    return { seat, state: effectiveAttention(p), lastSeen: p?.lastSeen ?? 0, activity: p?.activity ?? "No check-in yet", source: p?.source ?? "mcp", lastReadAt: p?.lastReadAt ?? 0 };
+    return { seat, state: effectiveAttention(p), lastSeen: p?.lastSeen ?? 0, activity: p?.activity ?? "No check-in yet", source: p?.source ?? "mcp", lastReadAt: p?.lastReadAt ?? 0, ...(p?.quietUntil ? { quietUntil: p.quietUntil } : {}) };
   });
 }
-export function heartbeat(seat: Speaker, attention: Attention = "attentive", activity = "Reading the hub", source: Presence["source"] = "mcp"): Presence {
-  const p: Presence = { seat, state: attention, activity: activity.slice(0, 200), source, lastSeen: Date.now(), lastReadAt: heartbeats.get(seat)?.lastReadAt ?? 0 };
+export function heartbeat(seat: Speaker, attention: Attention = "attentive", activity = "Reading the hub", source: Presence["source"] = "mcp", quietForMs?: number): Presence {
+  const now = Date.now();
+  // A heads-down claim is deliberately not sticky. Every later check-in
+  // restates or drops it, so a seat cannot declare itself busy once and then
+  // coast; and going offline clears it outright.
+  const quiet = attention === "offline" || !quietForMs
+    ? undefined
+    : now + Math.min(Math.max(quietForMs, 0), MAX_QUIET_MS);
+  const p: Presence = { seat, state: attention, activity: activity.slice(0, 200), source, lastSeen: now, lastReadAt: heartbeats.get(seat)?.lastReadAt ?? 0, ...(quiet ? { quietUntil: quiet } : {}) };
   heartbeats.set(seat, p);
   publish({ type: "presence", presence: presence() });
   return p;

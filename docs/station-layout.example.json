@@ -8,6 +8,7 @@
     { "hubId": "railway", "tx": 31, "ty": 34 },
     { "hubId": "cloudflare", "tx": 40, "ty": 26 },
     { "hubId": "firecrawl", "tx": 21, "ty": 6 },
+    { "hubId": "efficiency-guide", "tx": 27, "ty": 32 },
     { "hubId": "drive", "tx": 19, "ty": 33 },
     { "hubId": "skill-rack", "tx": 41, "ty": 13 },
     { "hubId": "github", "tx": 32, "ty": 9 },

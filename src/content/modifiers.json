@@ -4,6 +4,7 @@
     "war-table": { "work": "command", "slots": 0, "grants": [], "gate": null, "aiChange": "Shared project discussion. No external permissions granted." },
     "vision-board": { "work": "research", "slots": 0, "grants": [], "gate": null, "aiChange": "Shared ideas and future plans." },
     "pending-work": { "work": "quests", "slots": 0, "grants": [], "gate": null, "aiChange": "Park and claim tasks with durable context." },
+    "efficiency-guide": { "work": "command", "slots": 0, "grants": [], "gate": null, "aiChange": "Read the Boardwide Brain Bridge. Route via MCP; do not duplicate thinking across subscriptions." },
     "skill-altar": { "work": "register", "slots": 0, "grants": [], "gate": null, "aiChange": "Self-declared signed skill ownership. No installation or access grant." },
     "project-site": { "work": "code", "slots": 0, "grants": [], "gate": null, "aiChange": "Shared project workspace. Assignment does not grant repository access or execute code." },
     "well": {

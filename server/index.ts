@@ -9,12 +9,14 @@ import { SEATS, isSpeaker, publicBase, seatBySlug, seatUrl } from "./catalog.ts"
 import { handleMcp } from "./mcp.ts";
 import * as store from "./store.ts";
 import { z } from "zod";
-import { SPEAKERS } from "../shared/protocol.ts";
+import { SPEAKERS, MAX_QUIET_MS } from "../shared/protocol.ts";
 import { projectSchema, workSchema } from "../shared/workspace.ts";
 import { MAP_W, MAP_H } from "../shared/map.ts";
 import { cardSchema, cardActionSchema, registrationSchema } from "../shared/ecosystem.ts";
-import { EcosystemAccessError, ecosystemAuthorized, requireEcosystemWriter } from "./ecosystem-auth.ts";
+import { EcosystemAccessError, ecosystemAuthorized, requireAnySeat, requireEcosystemWriter } from "./ecosystem-auth.ts";
 import { boosterCapabilities, readUsage, searchMemory, recordMemory } from "./boosters.ts";
+import { lockerList, lockerPut, lockerRead, lockerUsage } from "./locker.ts";
+import { artifactPutSchema, MAX_ARTIFACT_BYTES, MAX_LOCKER_BYTES } from "../shared/locker.ts";
 
 store.loadStore();
 
@@ -35,11 +37,14 @@ app.use(
 app.get("/health", (c) =>
   c.json({
     ok: true,
-    name: "area67",
-    version: "1.4.0",
+    name: "area67-the-hub",
+    version: "1.4.1",
+    title: "AREA 67 (the hub)",
     commit: process.env.RAILWAY_GIT_COMMIT_SHA ?? null,
     mcp: "/mcp",
     connect: "/connect",
+    discovery: "/.well-known/area-67.json",
+    efficiencyGuide: "/area-67/efficiency-guide.json",
     seats: SEATS.map((s) => ({ id: s.id, url: seatUrl(s.slug), pal: s.palId })),
     radio: store.notes(1)[0] ?? null,
   }),
@@ -138,6 +143,35 @@ app.post("/api/ecosystem/skills", async c => {
   return c.json(store.registerSkill("zeref", registrationSchema.parse(await c.req.json()), "browser"));
 });
 
+app.get("/api/locker", c => {
+  c.header("Cache-Control", "no-store");
+  requireAnySeat(c.req.raw);
+  return c.json({ artifacts: lockerList(), usage: lockerUsage(), limits: { artifact: MAX_ARTIFACT_BYTES, locker: MAX_LOCKER_BYTES } });
+});
+app.get("/api/locker/:id", c => {
+  requireAnySeat(c.req.raw);
+  const found = lockerRead(c.req.param("id"));
+  if (!found) return c.json({ error: "No such artifact" }, 404);
+  // Uploaded bytes are never served as a renderable type on the hub's own
+  // origin: an artifact is a download, not a page. octet-stream + attachment +
+  // nosniff keeps a .patch or a stray .html from executing as hub content.
+  c.header("Content-Type", "application/octet-stream");
+  c.header("X-Content-Type-Options", "nosniff");
+  c.header("Content-Disposition", `attachment; filename="${found.meta.name}"`);
+  c.header("Cache-Control", "no-store");
+  c.header("X-Artifact-Sha256", found.meta.sha256);
+  return c.body(new Uint8Array(found.bytes));
+});
+app.post("/api/locker/:seat", async c => {
+  const seat = c.req.param("seat");
+  if (!isSpeaker(seat)) return c.json({ error: "Unknown seat" }, 404);
+  // Uploads are authenticated as the seat doing them. An open upload endpoint
+  // on a public host is an abuse vector, and authorship has to be real for the
+  // locker to be evidence rather than a shared dumping ground.
+  requireEcosystemWriter(c.req.raw, seat);
+  return c.json(lockerPut(seat, artifactPutSchema.parse(await c.req.json())));
+});
+
 app.post("/api/architect", async (c) => {
   const body = z.object({ from: z.enum(SPEAKERS), text: z.string().trim().min(1).max(2000),
     channel: z.enum(["command", "team"]).optional(), to: z.enum(["all", ...SPEAKERS]).optional(),
@@ -150,8 +184,9 @@ app.get("/api/presence", c => c.json(store.presence()));
 app.post("/api/presence/:seat", async c => {
   const seat = c.req.param("seat");
   if (!isSpeaker(seat)) return c.json({ error: "Unknown seat" }, 404);
-  const data = z.object({ state: z.enum(["attentive", "busy", "away", "offline"]), activity: z.string().max(200).optional() }).parse(await c.req.json());
-  return c.json(store.heartbeat(seat, data.state, data.activity, seat === "zeref" ? "browser" : "rest"));
+  const data = z.object({ state: z.enum(["attentive", "busy", "away", "offline"]), activity: z.string().max(200).optional(),
+    quietForSeconds: z.number().int().min(0).max(MAX_QUIET_MS / 1000).optional() }).parse(await c.req.json());
+  return c.json(store.heartbeat(seat, data.state, data.activity, seat === "zeref" ? "browser" : "rest", data.quietForSeconds ? data.quietForSeconds * 1000 : undefined));
 });
 app.get("/api/inbox/:seat", c => {
   const seat = c.req.param("seat");

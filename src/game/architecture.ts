@@ -2,12 +2,43 @@ import * as THREE from "three";
 import { mergeGeometries } from "three/addons/utils/BufferGeometryUtils.js";
 
 interface StationShape { id: string; kind: string; w: number; h: number; color: string }
-const shell = 0x263b50, edge = 0x678491, dark = 0x101f30, glass = 0x315e73;
+// A67-VISUAL-001, off Eng's Track B plates. CAMERA-NOTES: "Buildings: catalog
+// diffuse; Bank + Grand Exchange slight gold tint". Every station in both
+// campus plates reads as its own catalog colour — the pinks are pink, the
+// olive is olive — which the previous fixed navy `shell` could not do: it
+// painted the structural mass of all 26 the same blue and let only the trim
+// carry identity. The shell is now derived per station from that station's
+// own catalog colour, so identity survives at the ortho zoom the plates use.
+// Geometry and footprints are untouched — materials only.
+const edgeTint = 0x2a4a5a, dark = 0x0a0812, glass = 0x141226;
+/**
+ * Deck colour, duplicated rather than imported: World3D imports this module,
+ * so importing NIGHT_LOOK back would close a cycle. The reskin test pins both
+ * to the same literal, which is what stops them drifting apart.
+ */
+const DECK = 0x13111c;
+/** Mix two packed RGB colours, `t` of the way from `a` to `b`. */
+function mix(a: number, b: number, t: number) {
+  const ch = (shift: number) => {
+    const v = Math.round((a >> shift & 255) * (1 - t) + (b >> shift & 255) * t);
+    return Math.min(255, Math.max(0, v)) << shift;
+  };
+  return ch(16) | ch(8) | ch(0);
+}
+/** The single accent. One hue for every lit surface except the two gold
+ * "treasure" buildings, which CAMERA-NOTES keeps warm on purpose. */
+const cyanLit = 0x00e5ff, goldLit = 0xffc873;
 
 /** Native 3D architectural kit. All geometry stays within the station's saved footprint. */
 export function createArchitecture(h: StationShape, project = false) {
   const root = new THREE.Group();
+  const lit = h.id === "bank" || h.id === "grand-exchange" ? goldLit : cyanLit;
   const ink = parseInt(h.color.slice(1), 16);
+  // Structural mass: the catalog colour pulled most of the way to the deck, so
+  // it stays clearly dark under a real key light but still says which station
+  // this is. Edge/trim keeps a touch more of the colour so silhouettes read.
+  const shell = mix(ink, DECK, .62);
+  const edge = mix(ink, edgeTint, .55);
   const mats = new Map<string, THREE.MeshStandardMaterial>();
   const mat = (color: number, glow = false) => {
     const key = color + ":" + glow;
@@ -46,7 +77,7 @@ export function createArchitecture(h: StationShape, project = false) {
     for (const side of [-1, 1]) {
       box(.68, 1.35, 2.2, shell, side * .96, .95, 0);
       const roof = box(.9, .12, 2.32, edge, side * .92, 1.68, 0); roof.rotation.z = side * .22;
-      for (let i = 0; i < 4; i++) box(.035, .35, .3, glass, side * 1.315, 1.14, -.72 + i * .48, true);
+      for (let i = 0; i < 4; i++) box(.035, .35, .3, lit, side * 1.315, 1.14, -.72 + i * .48, true);
       for (let i = 0; i < 5; i++) box(.55, .05, .05, ink, side * .96, 1.05 + i * .1, 1.12, i === 4);
     }
     box(1.12, 1.42, 1.86, glass, 0, .98, 0);
@@ -83,11 +114,20 @@ export function createArchitecture(h: StationShape, project = false) {
     box(2.4, .16, 1.7, shell, 0, .34, .1);
     for (let i = -2; i <= 2; i++) {
       const a = i * .2, x = Math.sin(a) * 2.5, z = -.68 + (1 - Math.cos(a)) * 2.5;
-      const screen = box(.51, 1.5, .1, i % 2 ? glass : ink, x, 1.5, z, true); screen.rotation.y = -a;
+      const screen = box(.51, 1.5, .1, i % 2 ? lit : ink, x, 1.5, z, true); screen.rotation.y = -a;
       box(.035, 1.9, .13, edge, x - .24, 1.45, z);
     }
     box(2.5, .07, .24, ink, 0, 2.32, -.55, true);
     cyl(.19, .28, .65, edge, 0, .72, .74, 8);
+  } else if (id === "efficiency-guide") {
+    // Hub-and-spokes routing pavilion: one core, four terminals, under the 12-mesh kit cap.
+    cyl(.42, .42, 1.15, ink, 0, 1.05, 0, 12);
+    cyl(.22, .22, .35, glass, 0, 1.85, 0, 10);
+    ring(.52, .04, ink, 1.55);
+    for (const [x, z] of [[-1.15, -1.05], [1.15, -1.05], [-1.15, 1.05], [1.15, 1.05]] as const) {
+      box(.72, .55, .72, shell, x, .62, z);
+    }
+    box(1.05, .08, 1.05, edge, 0, .28, 0);
   } else if (id === "pending-work" || id === "skill-rack") {
     // Archive capsules sit under a pitched shelter, visibly distinct from the civic buildings.
     for (const x of [-1.15, 1.15]) box(.1, 1.9, 1.8, edge, x, 1.17, 0);
@@ -133,7 +173,7 @@ export function createArchitecture(h: StationShape, project = false) {
     cyl(1.1, 1.2, 1.05, shell, 0, .82, 0, 20);
     for (let i = 0; i < 10; i++) {
       const a = i * Math.PI / 5;
-      const w = box(.36, .42, .035, glass, Math.sin(a) * 1.11, .95, Math.cos(a) * 1.11, true); w.rotation.y = a;
+      const w = box(.36, .42, .035, lit, Math.sin(a) * 1.11, .95, Math.cos(a) * 1.11, true); w.rotation.y = a;
     }
     mesh(new THREE.SphereGeometry(1.13, 24, 12, 0, Math.PI * 2, 0, Math.PI / 2), edge, 0, 1.4, 0);
     const lens = cyl(.17, .28, 1.1, dark, .3, 2.15, .4, 12); lens.rotation.x = Math.PI / 3;
@@ -145,7 +185,7 @@ export function createArchitecture(h: StationShape, project = false) {
     cyl(1.25, 1.15, .14, edge, 0, 1.49, 0, 12);
     for (let i = 0; i < 8; i++) {
       const a = i * Math.PI / 4;
-      const w = box(.43, .5, .035, glass, Math.sin(a) * 1.12, .95, Math.cos(a) * 1.12, true); w.rotation.y = a;
+      const w = box(.43, .5, .035, lit, Math.sin(a) * 1.12, .95, Math.cos(a) * 1.12, true); w.rotation.y = a;
     }
     cyl(.04, .1, 1.05, edge, -.37, 2.05, -.24, 8);
     const dish = mesh(new THREE.SphereGeometry(.67, 20, 10, 0, Math.PI * 2, 0, Math.PI / 2), ink, -.37, 2.58, -.24);
@@ -158,7 +198,7 @@ export function createArchitecture(h: StationShape, project = false) {
     for (const x of [-.85, .85]) for (const z of [-.75, .75]) cyl(.04, .09, 1.65, edge, x, 1.12, z, 6);
     const canopy = mesh(new THREE.ConeGeometry(1.58, .65, 4), ink, 0, 2.02, 0); canopy.rotation.y = Math.PI / 4;
     box(1.9, .55, .48, shell, 0, .58, -.65);
-    for (const x of [-.65, 0, .65]) box(.45, .07, .33, glass, x, .91, -.6, true);
+    for (const x of [-.65, 0, .65]) box(.45, .07, .33, lit, x, .91, -.6, true);
     cyl(.05, .05, .4, edge, 0, 2.5, 0, 6); mesh(new THREE.OctahedronGeometry(.16), ink, 0, 2.8, 0, true);
   } else {
     // Logistics workshop, with layered roof fins and a recessed front console.

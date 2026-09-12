@@ -70,7 +70,7 @@ export class HubScene extends Phaser.Scene {
     this.cameras.main.setBounds(0, 0, MAP_W * TILE, MAP_H * TILE);
     this.cameras.main.startFollow(this.player, true, 0.12, 0.12);
     this.cameras.main.setZoom(0.78);
-    this.cameras.main.setBackgroundColor("#0b100c");
+    this.cameras.main.setBackgroundColor("#0d0d13");
     const district = (event: Event) => {
       const id = (event as CustomEvent<string>).detail;
       const camera = this.cameras.main;
@@ -213,9 +213,9 @@ export class HubScene extends Phaser.Scene {
   private drawRadius(): void {
     const c = palboxCenter(runtime.well);
     this.ring = this.add.graphics().setDepth(1);
-    this.ring.lineStyle(2, 0x76b900, 0.55);
+    this.ring.lineStyle(2, 0x00e5ff, 0.55);
     this.ring.strokeCircle(c.x * TILE + TILE / 2, c.y * TILE + TILE / 2, BASE_RADIUS * TILE);
-    this.ring.lineStyle(1, 0xbef264, 0.2);
+    this.ring.lineStyle(1, 0x00e5ff, 0.2);
     this.ring.strokeCircle(c.x * TILE + TILE / 2, c.y * TILE + TILE / 2, (BASE_RADIUS - 0.5) * TILE);
   }
 

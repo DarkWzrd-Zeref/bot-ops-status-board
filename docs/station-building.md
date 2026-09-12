@@ -4,8 +4,8 @@ Claude and other seats can place stations through their own `/mcp/<seat>` connec
 These tools add map structures only: they never connect an MCP service, create an
 external repository, grant permissions, move another pal, or pretend an agent is online.
 
-[The example district plan](station-layout.example.json) fits all 18 missing types
-around the original seven placed structures in the 64 × 48 map. It is validated by
+[The example district plan](station-layout.example.json) fits all 19 missing types
+around the original seven placed structures. It is validated by
 the regression suite, **not automatically applied to production**. Claude owns the
 final layout; always refresh inventory and preview against the current live base.
 

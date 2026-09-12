@@ -1,7 +1,8 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import * as THREE from "three";
-import { canStand, findWalkStart, moveWalker } from "../src/game/walk.ts";
+import { canStand, findWalkStart, moveWalker, walkEscapeAction, walkLookStep, walkMovementBlocked } from "../src/game/walk.ts";
+import { readFileSync } from "node:fs";
 import { packLabels } from "../src/game/labelLayout.ts";
 import { createArchitecture, createCharacter } from "../src/game/architecture.ts";
 import hubs from "../src/content/hubs.json";
@@ -29,14 +30,69 @@ test("walk helpers preserve input and reject unreasonable movement", () => {
   assert.deepEqual(moveWalker(grid, p, 1000, 0), p);
   moveWalker(grid, p, .5, 0); assert.deepEqual(p, { x: 1.5, z: 1.5 });
 });
+test("Escape leaves first person only when no composer, overlay or dialog is open", () => {
+  assert.equal(walkEscapeAction({}), "leave");
+  assert.equal(walkEscapeAction({ composerFocused: true }), "defer");
+  assert.equal(walkEscapeAction({ overlayOpen: true }), "defer");
+  assert.equal(walkEscapeAction({ dialogOpen: true }), "defer");
+  assert.equal(walkEscapeAction({ alreadyHandled: true }), "defer");
+  assert.equal(walkEscapeAction({ composerFocused: false, overlayOpen: false, dialogOpen: false, alreadyHandled: false }), "leave");
+});
+test("look drag ignores tap-sized pointer noise then arms after the slop", () => {
+  const start = { x: 10, y: 10, originX: 10, originY: 10, armed: false };
+  const tap = walkLookStep(start, 12, 11, 6);
+  assert.equal(tap.armed, false); assert.equal(tap.yaw, 0); assert.equal(tap.pitch, 0);
+  const drag = walkLookStep(start, 20, 10, 6);
+  assert.equal(drag.armed, true); assert.ok(drag.yaw < 0);
+  const follow = walkLookStep({ x: drag.x, y: drag.y, originX: drag.originX, originY: drag.originY, armed: true }, 22, 10, 6);
+  assert.equal(follow.armed, true); assert.ok(follow.yaw < 0);
+});
+test("cumulative-slop: slow successive look moves accumulate from pointerdown until the slop arms", () => {
+  let p: { x: number; y: number; originX: number; originY: number; armed: boolean } = { x: 0, y: 0, originX: 0, originY: 0, armed: false };
+  let yaw = 0;
+  for (let i = 0; i < 20; i++) {
+    const step = walkLookStep(p, p.x + 2, 0, 6);
+    p = { x: step.x, y: step.y, originX: step.originX, originY: step.originY, armed: step.armed };
+    yaw += step.yaw;
+  }
+  assert.equal(p.armed, true);
+  assert.ok(Math.abs(p.x - 40) < .001);
+  assert.ok(Math.abs(p.originX) < .001 && Math.abs(p.originY) < .001);
+  assert.ok(yaw < 0);
+});
+test("listener-order: HUD consumes Escape first and WalkView respects defaultPrevented", () => {
+  const event = { key: "Escape", defaultPrevented: false, preventDefault() { this.defaultPrevented = true; } };
+  const hudConsumesOverlay = true;
+  if (hudConsumesOverlay) event.preventDefault();
+  assert.equal(walkEscapeAction({ alreadyHandled: event.defaultPrevented }), "defer");
+  event.defaultPrevented = false;
+  assert.equal(walkEscapeAction({ alreadyHandled: event.defaultPrevented }), "leave");
+  const hud = readFileSync(new URL("../src/ui/hud.ts", import.meta.url), "utf8");
+  const walkView = readFileSync(new URL("../src/game/WalkView.ts", import.meta.url), "utf8");
+  const main = readFileSync(new URL("../src/main.ts", import.meta.url), "utf8");
+  assert.match(hud, /event\.defaultPrevented/);
+  assert.match(hud, /if \(hadOverlay\) event\.preventDefault\(\)/);
+  assert.match(walkView, /e\.defaultPrevented/);
+  assert.match(walkView, /alreadyHandled: e\.defaultPrevented/);
+  assert.ok(main.indexOf("mountHud(") < main.indexOf("makeGame("));
+});
+test("inspector-pause: inspector blocks movement even when chat is only visible", () => {
+  assert.equal(walkMovementBlocked({}), false);
+  assert.equal(walkMovementBlocked({ inspectorOpen: true }), true);
+  assert.equal(walkMovementBlocked({ composerFocused: true }), true);
+  assert.equal(walkMovementBlocked({ dialogOpen: true }), true);
+  const walkView = readFileSync(new URL("../src/game/WalkView.ts", import.meta.url), "utf8");
+  assert.match(walkView, /inspectorOpen: !!document\.querySelector\("#hud\.operations-open"\)/);
+  assert.match(walkView, /this\.inspect\(\); this\.clear\(\)/);
+});
 test("label packing suppresses collisions, bounds count and retains focused selection", () => {
   const base = { x: 200, y: 150, width: 100, height: 28, priority: 0 };
   const items = [{ ...base, id: "a" }, { ...base, id: "selected", pinned: true }, { ...base, id: "offscreen", x: -80 }, { ...base, id: "b", x: 360 }];
   assert.deepEqual([...packLabels(items, 500, 500, 2)], ["selected", "b"]);
   assert.equal(packLabels(Array.from({ length: 40 }, (_, i) => ({ ...base, id: String(i), x: 50 + i * 110 })), 6000, 600, 6).size, 6);
 });
-test("all25 architectural kits are finite, batched and fit their saved footprints", () => {
-  assert.equal(hubs.hubs.length, 25);
+test("all architectural kits are finite, batched and fit their saved footprints", () => {
+  assert.equal(hubs.hubs.length, 26);
   for (const h of hubs.hubs) {
     const g = createArchitecture(h, h.id === "project-site"); g.updateMatrixWorld(true);
     const bounds = new THREE.Box3().setFromObject(g);

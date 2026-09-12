@@ -11,7 +11,7 @@ test("public sources snapshot names only the public hub repo and does not publis
   assert.ok(sources.asOf);
   assert.equal(sources.publicGithub.name, "bot-ops-status-board");
   assert.equal(sources.publicGithub.hubStation, "project-area67");
-  assert.equal(sources.unplacedCatalogTypes.length, 18);
+  assert.equal(sources.unplacedCatalogTypes.length, 19);
   assert.equal(sources.onMap.length, 7);
   assert.equal(sources.githubRepos, undefined);
   assert.equal(sources.driveCanonical, undefined);
@@ -27,4 +27,8 @@ test("connect.html does not embed private repo names or Drive file URLs", () => 
   assert.doesNotMatch(connect, /drive\.google\.com/);
   assert.doesNotMatch(connect, /hub-quota|reserve-os|HARD-DRIVE|atlas-apex/);
   assert.match(connect, /fetch\("\/sources\.json"\)/);
+  assert.match(connect, /fetch\("\/api\/seats"\)/);
+  assert.match(connect, /\/mcp\/engineer/);
+  assert.match(connect, /grok\.com chat uses <code>\/mcp\/grok<\/code>/);
+  assert.doesNotMatch(connect, /EIGHT IDENTITIES/);
 });

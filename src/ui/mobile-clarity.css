@@ -54,7 +54,7 @@
 .map-agent-label[data-status=working] .agent-gem { background: #80c8ff; animation: signal-breathe 1.5s ease-in-out infinite; }
 .map-agent-label[data-status=blocked] .agent-gem { background: #f2b365; }
 .map-agent-label[data-status=moving] .agent-gem { background: #b8afff; }
-.map-agent-label[data-status=done] .agent-gem { background: #80f5cd; }
+.map-agent-label[data-status=done] .agent-gem { background: #00e5ff; }
 .map-agent-label[data-status=away] .agent-gem { background: #e4b76a; }
 .map-agent-label[data-status=offline] .agent-gem, .map-agent-label[data-status=disconnected] .agent-gem { background: #73858e; }
 .standby-label { color: #a3b5be; background: #0c1924db; border: 1px solid #41545f; border-radius: 6px; padding: 5px 8px; font-size: 12px; white-space: nowrap; }

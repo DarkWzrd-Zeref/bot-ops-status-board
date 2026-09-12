@@ -17,7 +17,7 @@
 Workspace update: check compact/expanded Friends, online filter, minimized chat/unread count, project create/edit/move/cancel/remove, project replies from All chat, ping deduplication and queued/seen states. Confirm changing a repo/folder invalidates old work signals, same-repo different-folder buildings remain distinct, and `work_report` expires or becomes inactive after restart. Removing a building must not call any external deletion API. Confirm the mobile friends toggle opens a usable drawer and reduced-motion disables work pulses.
 
 1. Open the command deck at a desktop width and a narrow phone width. Verify that crew, world, inspector and composer remain reachable.
-2. Confirm Codex, ChatGPT, Cursor Ultra and Grok Heavy each retain a separate label and endpoint.
+2. Confirm Codex, ChatGPT, Cursor Ultra, Grok Heavy, grok.com chat, and each Grok Bot pc (engineer, account-manager, chief-of-staff, police, stay-on-track) retain a separate label and endpoint.
 3. With no AI clients running, all AI seats should be offline even if their map characters wander.
 4. Send an addressed directive to Codex. A board refresh alone must not mark it Seen.
 5. Connect a client to /mcp/codex; call hub_sync. Verify Seen and the attention light.

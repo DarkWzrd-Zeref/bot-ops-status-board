@@ -1,6 +1,10 @@
 import * as THREE from "three";
 import { OrbitControls } from "three/addons/controls/OrbitControls.js";
 import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
+import { EffectComposer } from "three/addons/postprocessing/EffectComposer.js";
+import { RenderPass } from "three/addons/postprocessing/RenderPass.js";
+import { UnrealBloomPass } from "three/addons/postprocessing/UnrealBloomPass.js";
+import { OutputPass } from "three/addons/postprocessing/OutputPass.js";
 import { CSS2DObject, CSS2DRenderer } from "three/addons/renderers/CSS2DRenderer.js";
 import { AGENTS, HUBS, BASE_RADIUS, MAP_W, MAP_H, assignAgent, beginMove, buildingAt, buildingName, cancelMove, demolish, finishMove, hubById, placementOk, runtime, stationMapLabel, stepAgents, tryPlace, walkPlayerTo } from "../core/runtime.ts";
 import { bus } from "../core/events.ts";
@@ -14,17 +18,198 @@ import { packLabels, type LabelCandidate } from "./labelLayout.ts";
 import { disposeObject3D, enableGlbShadows, hubGlbPath, rejectLoadedGlb, seatGlbInFootprint } from "./stationModels.ts";
 import { fitCampusCamera, MapClickGesture } from "./campusCamera.ts";
 
-const colors = { attentive: 0x80f5b8, busy: 0x80c8ff, away: 0xe4b76a, offline: 0x536570 };
-/** Blue-hour campus: readable slate ground, cool sky, and warm station light. */
+/**
+ * Agent state lights. These are SEMANTICS, not palette: the HUD-chrome plate
+ * (55ff52c1) defines the set as "working green / idle blue / complete grey /
+ * failure red / stale fade", and they must stay legible as distinct states, so
+ * the one-accent rule does not reach them. They do have to be the SAME five as
+ * the CSS --led-* tokens, which they were not before this patch — the roster
+ * ran #80f5b8 while the map ran #7df4bb and the world ran a third green.
+ * `away` loses its amber here: one warm hue in the system, spent on Bank/GE.
+ */
+export const STATE_LEDS = {
+  attentive: 0x8fe0a0, busy: 0xa9c4ec, away: 0x7c8790, offline: 0x3a4048,
+  /**
+   * The fifth LED. The plate names a failure state and the app had no colour
+   * for one — every "this is wrong" signal in the tree picked its own red.
+   * Not an Attention value, so it is never reached by the roster lookup; it is
+   * here so the one red in the system has a name.
+   */
+  failure: 0xe88f8f,
+} as const;
+const colors = STATE_LEDS;
+/**
+ * Cyberpunk command-deck campus.
+ *
+ * The old header here specified the opposite rig — a measured hue budget off
+ * 25 Grok Imagine stills, amber-dominant against a pure black void, ambient
+ * "near zero". That direction shipped, was reviewed live and was rejected for
+ * being dark and flat. Nothing in this file follows it any more; the note is
+ * recorded rather than silently deleted so the next person does not rediscover
+ * the hue census and assume it is still the target.
+ */
+// A67-VISUAL-001. Source of record is Eng's Track B Blender pack, freeze
+// revision 61 (INDEX.md sha256 1c33fbb0…/4450ba99…/55ff52c1…/56814709…, camera
+// and material spec in CAMERA-NOTES.md). The prior slice ran four accent hues
+// at once — gold key, cyan rim, cyan practical, mint core — plus a six-colour
+// district palette. The plates retire that: "cyan hairline edge (#00e5ff
+// one-accent only)". One accent is the whole design decision here; everything
+// below is downstream of it.
+//
+// What the plates deliberately do NOT have, and this file therefore loses:
+// per-station glow pools, landing-pad rings, and a hazy bloom over every lit
+// surface. The Blender set reads buildings against the deck with hard shadow
+// and a single hairline, which is why it reads as an architectural plan rather
+// than fog. That is a removal of work shipped earlier today; it is the SoR.
 export const NIGHT_LOOK = {
-  background: 0x142938,
-  fog: 0x243f50,
-  hemiSky: 0xbbdeed,
-  hemiGround: 0x263b43,
-  key: 0xffe3bd,
-  rim: 0x71cbe8,
+  /** Void past the deck. The plates render it as true near-black, not navy. */
+  background: 0x0d0d13,
+  fog: 0x12111b,
+  hemiSky: 0x2a3442,
+  hemiGround: 0x0a0912,
+  /** Deck slab. CAMERA-NOTES "Materials / set": near-black #13111c. */
+  deck: 0x13111c,
+  /** THE accent. One hue, everywhere, no exceptions — the hairline cyan. */
+  accent: 0x00e5ff,
+  /**
+   * Material tint only, never a light: Bank and Grand Exchange glazing. The
+   * plates keep these two warm so "treasure" reads, and nothing else is warm.
+   */
+  gold: 0xffc873,
 } as const;
 const cx = CORE_X, cz = CORE_Y;
+/**
+ * How far the non-buildable outer world extends past the saved map, in map
+ * widths. At 4 the fade fell entirely outside the camera frame and the grid
+ * read as uniform graph paper; the horizon has to die inside the shot.
+ */
+const OUTER_WORLD = 2;
+/** Square span of the outer world/grid, in world units, centred on the map. */
+const GRID_SPAN = Math.max(MAP_W, MAP_H) * OUTER_WORLD;
+/**
+ * Grid pitch in world units. CAMERA-NOTES calls the ortho plate's floor a
+ * "cyan 8u grid", and 96x72 over 8 is the 12x9 ruling the plate actually
+ * shows. The previous 3u ruling put ~32 lines across the same frame, which is
+ * the moire the old comment was fighting with anisotropy instead of pitch.
+ */
+const GRID_STEP = 8;
+/**
+ * Radial falloff that holds full strength over the built campus and dies well
+ * before the outer ground's own edge. This is what removes the "slab in the
+ * abyss" read: the world does not stop, it fades, which also reads as room
+ * the campus can still grow into.
+ */
+function horizonGradient(ctx: CanvasRenderingContext2D, size: number) {
+  const g = ctx.createRadialGradient(size / 2, size / 2, 0, size / 2, size / 2, size / 2);
+  g.addColorStop(0, "rgba(255,255,255,1)");
+  g.addColorStop(.28, "rgba(255,255,255,1)");
+  g.addColorStop(.45, "rgba(255,255,255,.5)");
+  g.addColorStop(.66, "rgba(255,255,255,.1)");
+  g.addColorStop(1, "rgba(255,255,255,0)");
+  return g;
+}
+let horizonTexture: THREE.CanvasTexture | null = null;
+function horizonFade() {
+  if (horizonTexture) return horizonTexture;
+  const size = 512, canvas = document.createElement("canvas");
+  canvas.width = canvas.height = size;
+  const ctx = canvas.getContext("2d")!;
+  ctx.fillStyle = horizonGradient(ctx, size);
+  ctx.fillRect(0, 0, size, size);
+  horizonTexture = new THREE.CanvasTexture(canvas);
+  horizonTexture.colorSpace = THREE.SRGBColorSpace;
+  return horizonTexture;
+}
+/**
+ * The whole grid floor as one non-repeating texture with its horizon falloff
+ * already multiplied in.
+ *
+ * A small tiling texture plus an alphaMap looks like the obvious way to do
+ * this and does not work: the alpha map inherits the grid's repeat, so every
+ * cell gets its own copy of the gradient and the net result is a perfectly
+ * uniform sheet of graph paper to the edge of the screen. Baking the falloff
+ * into one big texture is the version that actually fades.
+ */
+let gridTexture: THREE.CanvasTexture | null = null;
+function gridFloorTexture() {
+  if (gridTexture) return gridTexture;
+  const size = 2048, canvas = document.createElement("canvas");
+  canvas.width = canvas.height = size;
+  const ctx = canvas.getContext("2d")!;
+  const cells = GRID_SPAN / GRID_STEP;
+  const step = size / cells;
+  // Hairline, per CAMERA-NOTES. At 8u pitch the line can be thin and still
+  // read; at 3u it had to be heavy to survive, which is what made the floor
+  // look like graph paper instead of a holo-table ruling.
+  ctx.strokeStyle = "rgba(255,255,255,.9)";
+  ctx.lineWidth = 1.1;
+  ctx.beginPath();
+  for (let i = 0; i <= cells; i++) {
+    const p = Math.round(i * step) + .5;
+    ctx.moveTo(p, 0); ctx.lineTo(p, size);
+    ctx.moveTo(0, p); ctx.lineTo(size, p);
+  }
+  ctx.stroke();
+  // Multiply the horizon falloff straight into the alpha channel.
+  ctx.globalCompositeOperation = "destination-in";
+  ctx.fillStyle = horizonGradient(ctx, size);
+  ctx.fillRect(0, 0, size, size);
+  gridTexture = new THREE.CanvasTexture(canvas);
+  gridTexture.colorSpace = THREE.SRGBColorSpace;
+  return gridTexture;
+}
+/**
+ * Stations the plates letter across the roof, verbatim from CAMERA-NOTES
+ * ("Labels (flat +Z)"). Ten, not twenty-six: in the ortho plate the lettered
+ * roofs are how you find the landmarks among the unlettered service blocks, so
+ * lettering everything would destroy the thing the list is for.
+ */
+export const ROOF_LABELS: Record<string, string> = {
+  well: "Well", "grand-exchange": "GE", bank: "Bank", discord: "Discord",
+  cursor: "Cursor", "project-site": "AREA 67", "war-table": "War Table",
+  "pending-work": "Pending", "vision-board": "Vision",
+  // CAMERA-NOTES calls this one "Bridge"; the hub id is efficiency-guide
+  // ("Boardwide Brain Bridge"). Keyed "bridge" on the first cut, which is a
+  // key no station has, so the label silently never rendered — the roof looked
+  // deliberately blank rather than broken. The test below pins every key to a
+  // real hub id for exactly that reason.
+  "efficiency-guide": "Bridge",
+};
+/**
+ * Roof lettering as a flat +Z decal, the way the Blender set does it, rather
+ * than another floating billboard. The CSS2D banners stay — they carry live
+ * status and a texture cannot — but they are chrome that turns to face you,
+ * and the plates get their plan-view legibility from type lying on the roof.
+ */
+const roofTextures = new Map<string, { texture: THREE.CanvasTexture; aspect: number }>();
+export function roofLabelTexture(text: string) {
+  const cached = roofTextures.get(text);
+  if (cached) return cached;
+  const font = "600 72px 'DM Sans', system-ui, sans-serif";
+  const canvas = document.createElement("canvas");
+  const ctx = canvas.getContext("2d")!;
+  // Measure before sizing: a fixed canvas would letterbox "GE" and crush
+  // "War Table", and the plane is sized from this aspect, so a wrong aspect
+  // is a stretched word on a roof.
+  ctx.font = font;
+  const height = 128, pad = 34;
+  canvas.width = Math.max(64, Math.ceil(ctx.measureText(text).width) + pad * 2);
+  canvas.height = height;
+  // Resizing the canvas resets the 2D context, so every draw setting is
+  // applied after the resize, not before.
+  ctx.font = font;
+  ctx.textAlign = "center"; ctx.textBaseline = "middle";
+  // The plate letters carry a soft contact shadow, which is what keeps them
+  // readable on the lighter roofs (Bank, War Table) as well as the dark ones.
+  ctx.shadowColor = "rgba(0,0,0,.55)"; ctx.shadowBlur = 10; ctx.shadowOffsetY = 3;
+  ctx.fillStyle = "#ffffff";
+  ctx.fillText(text, canvas.width / 2, height / 2 + 2);
+  const texture = new THREE.CanvasTexture(canvas);
+  texture.colorSpace = THREE.SRGBColorSpace;
+  const entry = { texture, aspect: canvas.width / height };
+  roofTextures.set(text, entry);
+  return entry;
+}
 type Actor = { group: THREE.Group; body: THREE.Group; light: THREE.Mesh<THREE.SphereGeometry, THREE.MeshBasicMaterial>; ring: THREE.Mesh; label: HTMLElement; signal: HTMLElement; action: HTMLElement };
 const typing = () => !!document.activeElement?.closest("input, textarea, select, dialog");
 
@@ -57,16 +242,46 @@ export class World3D {
   private walk: WalkView;
   private walkTarget: string | null = null;
   private gltf = new GLTFLoader();
+  private composer!: EffectComposer;
+  private renderPass!: RenderPass;
+  private bloom!: UnrealBloomPass;
 
   constructor(parent: HTMLElement) {
     this.renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true, powerPreference: "high-performance" });
     this.renderer.setPixelRatio(Math.min(devicePixelRatio, matchMedia("(pointer: coarse)").matches ? 1.5 : 2));
     this.renderer.shadowMap.enabled = true;
-    this.renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+    // Hard contact shadow, not a soft one. Every building in the plates sits
+    // on a crisp offset shadow; that shadow is what seats geometry on the deck
+    // now that the glow pools which used to do that job are gone.
+    this.renderer.shadowMap.type = THREE.PCFShadowMap;
     this.renderer.outputColorSpace = THREE.SRGBColorSpace;
     this.renderer.toneMapping = THREE.ACESFilmicToneMapping;
-    this.renderer.toneMappingExposure = 1.12;
+    // Set by measurement, not by eye. The ortho plate's deck samples (53,52,64)
+    // and its void (13,13,19); this exposure is what puts the same #13111c
+    // material at the same screen value under this rig. Changing the lights
+    // means re-measuring against the plate, not nudging this until it looks
+    // nice — "looks nice" is how the last two slices got rejected.
+    this.renderer.toneMappingExposure = 1.5;
     parent.append(this.renderer.domElement);
+    this.composer = new EffectComposer(this.renderer);
+    this.renderPass = new RenderPass(this.scene, this.camera);
+    this.composer.addPass(this.renderPass);
+    // The plates carry NO bloom — EEVEE_NEXT with the pass off, every surface
+    // matte. Read literally this line deletes. It does not, and this is the
+    // one deliberate deviation from the SoR in this patch, flagged for Eng to
+    // overrule in one word: CAMERA-NOTES also specifies "Well mint/cyan
+    // emission accent", and an emissive material with zero bloom is just a
+    // brighter flat polygon. .12/.9 leaves the Well and the glazing a visible
+    // halo and leaves everything else — deck, stone, roofs — matte, which is
+    // what the plates actually look like. Set to 0 to match them exactly.
+    this.bloom = new UnrealBloomPass(new THREE.Vector2(1, 1), .12, .6, .9);
+    this.composer.addPass(this.bloom);
+    this.composer.addPass(new OutputPass());
+    // Bloom is the one genuinely per-pixel cost added here (measured ~12% of
+    // frame time). On phones it runs at 1x while the scene still renders at
+    // the device ratio — a blur is the last thing that needs the extra pixels,
+    // and this is a PWA people open on an iPhone.
+    if (matchMedia("(pointer: coarse)").matches) this.composer.setPixelRatio(1);
     this.renderer.domElement.setAttribute("aria-label", "Interactive 3D AREA 67 base. Use crew and station controls for keyboard access.");
     this.labels.domElement.style.cssText = "position:absolute;inset:0;pointer-events:none;overflow:hidden";
     parent.append(this.labels.domElement);
@@ -83,33 +298,52 @@ export class World3D {
     this.controls.mouseButtons = { LEFT: THREE.MOUSE.PAN, MIDDLE: THREE.MOUSE.PAN, RIGHT: THREE.MOUSE.ROTATE };
     this.controls.touches = { ONE: THREE.TOUCH.PAN, TWO: THREE.TOUCH.DOLLY_ROTATE };
     this.resetCamera();
-    // A cover backdrop works with both orthographic and perspective cameras.
-    // It stays out of lighting/materials, and missing art retains the blue fallback.
-    parent.style.background = "#142938 url('/environments/area67-bluehour-panorama.png') center / cover no-repeat";
+    // Holographic command-deck backdrop: near-black navy, not a photographic
+    // sky (still fights the art direction) and not the violet or black-void
+    // fields the earlier slices shipped.
+    parent.style.background = "#0d0d13";
     this.scene.background = null;
     this.renderer.setClearColor(NIGHT_LOOK.background, 0);
-    this.scene.fog = new THREE.FogExp2(NIGHT_LOOK.fog, .0035);
-    this.scene.add(new THREE.HemisphereLight(NIGHT_LOOK.hemiSky, NIGHT_LOOK.hemiGround, 2.1));
-    const key = new THREE.DirectionalLight(NIGHT_LOOK.key, 2.3);
+    this.scene.fog = new THREE.FogExp2(NIGHT_LOOK.fog, .0014);
+    // Ambient does real work here — the whole deck is meant to look lit, not
+    // just the pools — but it's cyan-tinted, so it reads as hologram fill
+    // rather than daylight.
+    // CAMERA-NOTES rigs three lights and no more: "Sun_Key + Cyan_Rim area +
+    // Fill_Soft". Fill_Soft drops from 2.2 to 0.9 because the old value was
+    // carrying the whole scene — with ambient that high nothing casts, which
+    // is why the deck read as evenly lit haze instead of lit geometry.
+    this.scene.add(new THREE.HemisphereLight(NIGHT_LOOK.hemiSky, NIGHT_LOOK.hemiGround, 1.6));
+    // Sun_Key is NEUTRAL, and near-white rather than warm-white: at 0xfff4e8
+    // the whole deck rendered brown-grey instead of the plates' cool slate.
+    // The plates show every station at its true catalog
+    // diffuse — the pinks stay pink, the olive stays olive — which a gold key
+    // cannot do. Gold survives in this scene only as Bank/GE material tint.
+    const key = new THREE.DirectionalLight(0xfdfbff, 2.1);
     key.position.set(cx - 14, 28, cz - 8); key.target.position.set(cx, 0, cz);
     key.castShadow = true;
     key.shadow.mapSize.set(2048, 2048);
     Object.assign(key.shadow.camera, { left: -75, right: 75, top: 75, bottom: -75, far: 150 });
-    key.shadow.normalBias = .12;
+    key.shadow.normalBias = .04;
     key.shadow.bias = -.00015;
     this.scene.add(key, key.target);
-    const rim = new THREE.DirectionalLight(NIGHT_LOOK.rim, 1.65);
+    const rim = new THREE.DirectionalLight(NIGHT_LOOK.accent, .85);
     rim.position.set(cx + 20, 15, cz + 18); this.scene.add(rim);
-    const wellLamp = new THREE.PointLight(NIGHT_LOOK.key, 3.2, 16, 1.8);
-    wellLamp.position.set(cx, 3.1, cz);
-    this.scene.add(wellLamp);
+    // The Well keeps its emission — CAMERA-NOTES: "Well mint/cyan emission
+    // accent" — but on the one accent hue, and as one ring rather than the
+    // three stacked rings plus two point lights the mint slice had stacked up.
+    const wellRing = new THREE.Group(); wellRing.position.set(cx, 0, cz);
+    this.glowRing(3.4, NIGHT_LOOK.accent, 1.35, wellRing, .9);
+    this.glowRing(3.5, NIGHT_LOOK.accent, .32, wellRing, .5);
+    this.scene.add(wellRing);
+    const wellGlow = new THREE.PointLight(NIGHT_LOOK.accent, 3.4, 14, 1.8);
+    wellGlow.position.set(cx, 1.5, cz); this.scene.add(wellGlow);
     this.createTerrain();
     this.createDistrictGrounds();
     this.syncStations();
     const comms = runtime.buildings.find(b => hubById(b.hubId).kind === "comms");
     if (comms) {
       const h = hubById(comms.hubId);
-      const teal = new THREE.PointLight(NIGHT_LOOK.rim, 2.4, 14, 1.8);
+      const teal = new THREE.PointLight(NIGHT_LOOK.accent, 1.4, 14, 1.8);
       teal.position.set(comms.tx + h.w / 2, 3.4, comms.ty + h.h / 2);
       this.scene.add(teal);
     }
@@ -125,6 +359,7 @@ export class World3D {
       this.camera.updateProjectionMatrix();
       this.walk.resize(w, h);
       this.renderer.setSize(w, h);
+      this.composer.setSize(w, h);
       this.labels.setSize(w, h);
       if (this.fittedView) this.fitCampus();
     };
@@ -174,21 +409,65 @@ export class World3D {
     const m = new THREE.Mesh(new THREE.RingGeometry(radius - .035, radius, 96), new THREE.MeshBasicMaterial({ color, transparent: true, opacity, side: THREE.DoubleSide }));
     m.rotation.x = -Math.PI / 2; m.position.y = y; parent.add(m); return m;
   }
+  /**
+   * Lay a station's name flat across its roof, the way the Blender plates do.
+   *
+   * The roof height is read from the kit's real bounds rather than assumed,
+   * because the kit is procedural and a GLB may replace it later; the decal
+   * then lands on whatever roof is actually there. Width is clamped to the
+   * frozen footprint on both axes, so lettering can never overhang a plot —
+   * rev61 footprints are untouched by this patch and must stay that way.
+   */
+  private roofLabel(group: THREE.Group, kit: THREE.Object3D, h: { id: string; w: number; h: number }) {
+    const text = ROOF_LABELS[h.id];
+    if (!text) return;
+    group.updateMatrixWorld(true);
+    const bounds = new THREE.Box3().setFromObject(kit);
+    if (!Number.isFinite(bounds.max.y)) return;
+    const { texture, aspect } = roofLabelTexture(text);
+    // Fit inside the footprint with a margin, honouring whichever axis binds.
+    const margin = .82;
+    const width = Math.min(h.w * margin, h.h * margin * aspect);
+    const plane = new THREE.Mesh(
+      new THREE.PlaneGeometry(width, width / aspect),
+      // Not full strength. In Top-down the floating status chip projects onto
+      // the same screen point as the roof, and two copies of "Discord" stacked
+      // on each other reads as a rendering fault rather than signage. At .6 the
+      // roof type sits under the chip as paint, and in the 3/4 views — where
+      // the chip floats clear of the roof — it still carries the plates' read.
+      new THREE.MeshBasicMaterial({ map: texture, transparent: true, opacity: .6, depthWrite: false }),
+    );
+    plane.name = "roof-label";
+    plane.rotation.x = -Math.PI / 2;
+    // Local, not world: the group already carries the station's position.
+    plane.position.y = bounds.max.y - group.position.y + .05;
+    plane.renderOrder = 2;
+    group.add(plane);
+  }
   private createTerrain() {
     const platform = new THREE.Group(); platform.position.set(MAP_W / 2, -.44, MAP_H / 2);
-    const foundation = this.box(MAP_W + .6, .85, MAP_H + .6, 0x172b38, 0, 0, 0, platform);
+    const foundation = this.box(MAP_W + .6, .85, MAP_H + .6, 0x040309, 0, 0, 0, platform);
     foundation.castShadow = false;
     // The previous deck top and tile top both sat at y=.14: coplanarity made
     // the whole map stripe/z-fight. Keep the structural deck below tile bottoms.
-    const deck = this.box(MAP_W, .12, MAP_H, 0x253d48, 0, .45, 0, platform);
+    const deck = this.box(MAP_W, .12, MAP_H, NIGHT_LOOK.deck, 0, .45, 0, platform);
     deck.castShadow = false;
     this.scene.add(platform);
     const tileGeo = new THREE.BoxGeometry(1, .04, 1);
+    // First pass at this band was still 8 points wide and the roads read as pale
+    // ribbons across the whole campus — the plates have no visible roads at all.
+    // The plates read the deck as ONE slab: at campus zoom you see a single
+    // near-black surface, a cyan ruling and a frame, and nothing else. These
+    // eight kinds still exist because they carry meaning up close (water is
+    // not path, blocked is not plaza) but they now sit in a band tight enough
+    // around #13111c that the ortho read is a slab, not a patchwork.
+    // Roughness rises across the board: the old low-roughness metal was tuned
+    // to catch the glow pools as specular streaks, and the pools are gone.
     const tileMats: Record<string, THREE.MeshStandardMaterial> = {
-      sand: this.material(0x344d56, .08, .9), sand2: this.material(0x324b53, .08, .9),
-      plaza: this.material(0x43616b, .12, .82), pad: this.material(0x526f79, .16, .76),
-      path: this.material(0x71878c, .12, .78), water: this.material(0x174a64, .32, .25),
-      fence: this.material(0x2b444b, .1, .84), blocked: this.material(0x304650, .05, .92),
+      sand: this.material(0x13111c, .10, .74), sand2: this.material(0x120f1a, .10, .76),
+      plaza: this.material(0x16131f, .10, .72), pad: this.material(0x171420, .10, .70),
+      path: this.material(0x181521, .10, .70), water: this.material(0x0c0a14, .40, .26),
+      fence: this.material(0x110f19, .10, .78), blocked: this.material(0x100d17, .08, .80),
     };
     // Instancing keeps the raised tile deck light enough for laptop GPUs.
     for (const [kind, material] of Object.entries(tileMats)) {
@@ -203,6 +482,55 @@ export class World3D {
       tiles.forEach(([x, y], i) => batch.setMatrixAt(i, matrix.makeTranslation(x + .5, .14, y + .5)));
       batch.castShadow = false; batch.receiveShadow = true; this.scene.add(batch);
     }
+    // The buildable plate used to end in a hard edge with pure black past it,
+    // which read as a slab floating in an abyss. The world now continues well
+    // past the build limit as unlit outer ground and fades out, so the campus
+    // is a lit district inside something larger. None of this is buildable or
+    // walkable — no saved coordinate, footprint or path is touched.
+    // The falloff rides in the texture's own alpha channel (used as `map`, not
+    // `alphaMap`) so the ground dissolves into the background instead of
+    // ending on a square edge.
+    const outerGround = new THREE.Mesh(
+      new THREE.PlaneGeometry(GRID_SPAN, GRID_SPAN),
+      new THREE.MeshBasicMaterial({
+        color: 0x12111b, map: horizonFade(), transparent: true, depthWrite: false,
+      }),
+    );
+    outerGround.rotation.x = -Math.PI / 2;
+    outerGround.position.set(MAP_W / 2, .05, MAP_H / 2);
+    outerGround.renderOrder = -3;
+    this.scene.add(outerGround);
+    // Holographic grid seams, carried across the outer ground too: the grid
+    // running off into the fade is what says "there is room to expand here"
+    // instead of "this is all there is".
+    const gridOverlay = new THREE.Mesh(
+      new THREE.PlaneGeometry(GRID_SPAN, GRID_SPAN),
+      new THREE.MeshBasicMaterial({
+        color: NIGHT_LOOK.accent, map: gridFloorTexture(),
+        transparent: true, blending: THREE.AdditiveBlending, depthWrite: false, opacity: .22,
+      }),
+    );
+    gridOverlay.rotation.x = -Math.PI / 2;
+    gridOverlay.position.set(MAP_W / 2, .17, MAP_H / 2);
+    // One line every 3 tiles, not every tile: at full-campus zoom a
+    // once-per-tile grid aliases into a moire under bloom.
+    (gridOverlay.material.map as THREE.Texture).anisotropy = this.renderer.capabilities.getMaxAnisotropy();
+    gridOverlay.renderOrder = -2;
+    this.scene.add(gridOverlay);
+    // The map frame. Both campus plates put a bright cyan rectangle on exactly
+    // the saved MAP_W x MAP_H extent, and it is doing more work than it looks:
+    // it is the difference between "a slab floating in an abyss" (the thing
+    // Zeref rejected) and a holo-table plan, which is a slab someone drew a
+    // frame around on purpose. Read-only — it renders the freeze, it is not a
+    // build limit and it moves nothing.
+    const frame = [
+      new THREE.Vector3(0, .22, 0), new THREE.Vector3(MAP_W, .22, 0),
+      new THREE.Vector3(MAP_W, .22, MAP_H), new THREE.Vector3(0, .22, MAP_H),
+    ];
+    this.scene.add(new THREE.LineLoop(
+      new THREE.BufferGeometry().setFromPoints(frame),
+      new THREE.LineBasicMaterial({ color: NIGHT_LOOK.accent, transparent: true, opacity: .85 }),
+    ));
     // Clip the build-limit arc to the map; outer terrain remains explorable.
     const boundary: THREE.Vector3[] = [];
     for (let i = 0; i < 360; i++) {
@@ -210,15 +538,17 @@ export class World3D {
       const a = point(i * Math.PI / 180), b = point((i + 1) * Math.PI / 180);
       if ([a, b].every(p => p.x >= 0 && p.z >= 0 && p.x <= MAP_W && p.z <= MAP_H)) boundary.push(a, b);
     }
-    this.scene.add(new THREE.LineSegments(new THREE.BufferGeometry().setFromPoints(boundary), new THREE.LineBasicMaterial({ color: 0x80f5cd, transparent: true, opacity: .45 })));
+    // Dimmed from .9: under bloom the build-limit arc blew out into a stray
+    // white stroke across the shot. It is a boundary hint, not a light source.
+    this.scene.add(new THREE.LineSegments(new THREE.BufferGeometry().setFromPoints(boundary), new THREE.LineBasicMaterial({ color: NIGHT_LOOK.accent, transparent: true, opacity: .1 })));
     for (let i = 0; i < 32; i++) {
       const angle = i / 32 * Math.PI * 2;
       if (i % 8 === 0) continue;
       const x = cx + Math.cos(angle) * BASE_RADIUS, z = cz + Math.sin(angle) * BASE_RADIUS;
       if (x < 0 || z < 0 || x > MAP_W || z > MAP_H) continue;
-      this.box(.18, .8, .18, 0x293f47, x, .4, z, this.scene);
-      const lamp = this.mesh(new THREE.SphereGeometry(.08, 8, 6), 0x80f5cd, x, .86, z, this.scene);
-      (lamp.material as THREE.MeshStandardMaterial).emissive.setHex(0x80f5cd);
+      this.box(.18, .8, .18, 0x14191d, x, .4, z, this.scene);
+      const lamp = this.mesh(new THREE.SphereGeometry(.17, 10, 8), NIGHT_LOOK.accent, x, .92, z, this.scene);
+      (lamp.material as THREE.MeshStandardMaterial).emissive.setHex(NIGHT_LOOK.accent);
     }
   }
   private label(text: string, cls: string, y: number, parent: THREE.Object3D) {
@@ -226,19 +556,21 @@ export class World3D {
     const obj = new CSS2DObject(el); obj.position.y = y; parent.add(obj); return el;
   }
   private createDistrictGrounds() {
-    const palette = [0x82dfcc, 0x94baff, 0xe7ba79, 0x8cccb7, 0xb4a3e8, 0xceadc9];
+    // Six near-cyan hues was still six hues. One accent means one: districts
+    // now separate by ring opacity alone, which is the only variation the
+    // plates permit and is enough for wayfinding at campus zoom.
     // Flush, non-colliding navigation inlays; no saved plot or road is moved.
     DISTRICTS.forEach((d, i) => {
       const group = new THREE.Group(); group.position.set(d.x, .18, d.y);
-      this.glowRing(6.6, palette[i], .01, group, .2);
+      this.glowRing(6.6, NIGHT_LOOK.accent, .01, group, .04 + (i % 3) * .015);
       this.scene.add(group);
     });
     // Water banks gain readable elevation; pathways remain flush and walkable.
     const strips = new THREE.Group();
     for (let x = 1; x < 63; x += 2) {
       if ([27, 29, 59, 61].includes(x)) continue;
-      this.box(1.4, .09, .12, 0x8ca2ae, x, .22, 45.94, strips);
-      this.box(1.4, .09, .12, 0x8ca2ae, x, .22, 48.04, strips);
+      this.box(1.4, .09, .12, 0x39434a, x, .22,45.94, strips);
+      this.box(1.4, .09, .12, 0x39434a, x, .22,48.04, strips);
     }
     this.scene.add(strips);
   }
@@ -273,6 +605,18 @@ export class World3D {
     const architecture = createArchitecture(h, !!b.project);
     architecture.name = "kit";
     group.add(architecture);
+    // The glow pool, both landing-pad rings and the Spector/Altar mint ring
+    // that used to sit here are gone. Not a regression — the SoR. Neither
+    // campus plate has a pool, a pad ring or any ground decal: every building
+    // sits on the bare deck with a hard offset shadow, which is what the
+    // shadow-map change upstream now provides. Twenty-six additive quads also
+    // leave with them, so this is cheaper on the phones the PWA targets.
+    //
+    // Roof lettering instead, flat +Z, for the ten stations CAMERA-NOTES
+    // names. Sized from the kit's own bounds rather than the footprint so it
+    // sits on the roof that is actually there, and clamped inside w/h so a
+    // frozen footprint is never overhung.
+    this.roofLabel(group, architecture, h);
     void this.trySeatGlb(group, h);
     const banner = this.label("", "map-station-label station-banner", b.project ? 3.5 : 3.3, group);
     const chip = document.createElement("span"); chip.className = "station-chip";
@@ -303,7 +647,10 @@ export class World3D {
     banner.addEventListener("focus", () => { banner.classList.remove("preview-dismissed"); window.addEventListener("keydown", dismissPreview); });
     banner.addEventListener("blur", () => { banner.classList.add("preview-dismissed"); window.removeEventListener("keydown", dismissPreview); });
     group.userData.disposeLabel = () => window.removeEventListener("keydown", dismissPreview);
-    const beacon = this.glowRing(Math.max(h.w, h.h) * .62, 0x82c9ff, .3, group, .9);
+    // Shown only while a station has live work, so this is the "working" state
+    // light, not decoration — and it now uses the same green as every other
+    // working indicator instead of a fourth blue nobody could name.
+    const beacon = this.glowRing(Math.max(h.w, h.h) * .62, STATE_LEDS.attentive, .3, group, .9);
     beacon.name = "work-beacon"; beacon.visible = false;
     group.userData.banner = banner; group.userData.signal = signal; group.userData.chipName = name;
     this.scene.add(group); this.stations.set(uid, group);
@@ -556,7 +903,9 @@ export class World3D {
       const m = new THREE.Mesh(new THREE.BoxGeometry(h.w, .4, h.h), new THREE.MeshBasicMaterial({ transparent: true, opacity: .4, depthWrite: false }));
       this.ghost.add(m); this.ghost.userData.id = id;
     }
-    ((this.ghost.children[0] as THREE.Mesh).material as THREE.MeshBasicMaterial).color.setHex(placementOk(id, t.x, t.y) ? 0x75ffc4 : 0xff7369);
+    // Placement validity is a pass/fail signal, so it uses the pass/fail LEDs
+    // rather than a fifth green and a second red invented at this call site.
+    ((this.ghost.children[0] as THREE.Mesh).material as THREE.MeshBasicMaterial).color.setHex(placementOk(id, t.x, t.y) ? STATE_LEDS.attentive : STATE_LEDS.failure);
     this.ghost.position.set(t.x + h.w / 2, .4, t.y + h.h / 2);
   }
   private frame() {
@@ -612,10 +961,15 @@ export class World3D {
     else this.controls.update();
     const target = this.controls.target;
     // Camera breathing room is independent of saved-grid/build limits. Edge plots
-    // must be movable into the center of the screen without hitting a camera wall.
-    if (target.x < -24 || target.x > MAP_W + 24 || target.z < -24 || target.z > MAP_H + 24) this.focus(THREE.MathUtils.clamp(target.x, -24, MAP_W + 24), THREE.MathUtils.clamp(target.z, -24, MAP_H + 24));
+    // must be movable into the center of the screen without hitting a camera wall,
+    // and now that real ground exists past the build limit the leash reaches it —
+    // a wall 24 units out made a large world feel like a box.
+    const roam = 90;
+    if (target.x < -roam || target.x > MAP_W + roam || target.z < -roam || target.z > MAP_H + roam) this.focus(THREE.MathUtils.clamp(target.x, -roam, MAP_W + roam), THREE.MathUtils.clamp(target.z, -roam, MAP_H + roam));
     const view = this.walk.active ? this.walk.camera : this.camera;
     if (!this.walk.active) this.layoutLabels();
-    this.renderer.render(this.scene, view); this.labels.render(this.scene, view);
+    this.renderPass.camera = view;
+    this.composer.render();
+    this.labels.render(this.scene, view);
   }
 }

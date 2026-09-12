@@ -1,0 +1,28 @@
+{
+  "schema": "area67.discovery.v1",
+  "name": "AREA 67 (the hub)",
+  "privacy": {
+    "classification": "public_capability_metadata_only",
+    "operational_packets_published": false,
+    "warning": "Never send secrets or private task content to these static endpoints."
+  },
+  "hub": "https://status-board-production-806b.up.railway.app",
+  "endpoints": {
+    "health": "/health",
+    "connect": "/connect",
+    "mcp": "/mcp",
+    "sources": "/sources.json",
+    "efficiency_guide": "/area-67/efficiency-guide.json",
+    "roadmap": "/area-67/roadmap.json"
+  },
+  "capabilities": {
+    "campus": "live",
+    "seat_mcp": "live",
+    "efficiency_guide_station": "live",
+    "shared_mcp_job_store": "walled",
+    "authenticated_writeback": "walled",
+    "provider_quota_telemetry": "walled",
+    "private_cross_device_sync": "walled"
+  },
+  "walled_reason": "Private shared operations need a production identity boundary, D1 or equivalent storage, and owner approval."
+}
