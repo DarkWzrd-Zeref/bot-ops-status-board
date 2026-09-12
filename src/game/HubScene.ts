@@ -70,7 +70,7 @@ export class HubScene extends Phaser.Scene {
     this.cameras.main.setBounds(0, 0, MAP_W * TILE, MAP_H * TILE);
     this.cameras.main.startFollow(this.player, true, 0.12, 0.12);
     this.cameras.main.setZoom(0.78);
-    this.cameras.main.setBackgroundColor("#0b100c");
+    this.cameras.main.setBackgroundColor("#0d0d13");
     const district = (event: Event) => {
       const id = (event as CustomEvent<string>).detail;
       const camera = this.cameras.main;

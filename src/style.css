@@ -124,7 +124,7 @@ small, .microcopy { font-size: 12px; line-height: 1.6; color: var(--muted); }
 .detail-actions { display: flex; flex-wrap: wrap; gap: 8px; margin: 12px 0; }
 .field-label { display: block; font-size: 12px; color: var(--muted); margin: 12px 0; }
 .field-label select { display: block; width: min(100%, 370px); margin-top: 7px; padding: 9px; }
-.primary { background: var(--mint); border-color: var(--mint); color: #0d2a22; font-weight: 700; }
+.primary { background: var(--mint); border-color: var(--mint); color: #04222c; font-weight: 700; }
 .primary:hover { background: #b1ffdf; border-color: #b1ffdf; }
 .danger { color: #fba8a8; }
 details { border-top: 1px solid var(--line); padding: 12px 0; font-size: 12px; }
