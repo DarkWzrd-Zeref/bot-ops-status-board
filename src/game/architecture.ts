@@ -2,21 +2,43 @@ import * as THREE from "three";
 import { mergeGeometries } from "three/addons/utils/BufferGeometryUtils.js";
 
 interface StationShape { id: string; kind: string; w: number; h: number; color: string }
-// Cyberpunk stone: buildings are dark violet-black masonry with a cyan-tinted
-// glass edge, reading by highlight and reflection rather than flat color.
-// Warm amber glazing still does the interior-light color work. Geometry and
-// footprints are untouched — materials only.
-const shell = 0x131b28, edge = 0x2a4a5a, dark = 0x080c12, glass = 0x123544;
-/** Cyan interior glazing: the hologram color every building reads by, except
- * the two "treasure" buildings (Bank, Grand Exchange) which stay gold — the
- * one deliberate warm accent in the reference, not a rule for every window. */
-const cyanLit = 0x2be8ff, goldLit = 0xffc873;
+// A67-VISUAL-001, off Eng's Track B plates. CAMERA-NOTES: "Buildings: catalog
+// diffuse; Bank + Grand Exchange slight gold tint". Every station in both
+// campus plates reads as its own catalog colour — the pinks are pink, the
+// olive is olive — which the previous fixed navy `shell` could not do: it
+// painted the structural mass of all 26 the same blue and let only the trim
+// carry identity. The shell is now derived per station from that station's
+// own catalog colour, so identity survives at the ortho zoom the plates use.
+// Geometry and footprints are untouched — materials only.
+const edgeTint = 0x2a4a5a, dark = 0x0a0812, glass = 0x141226;
+/**
+ * Deck colour, duplicated rather than imported: World3D imports this module,
+ * so importing NIGHT_LOOK back would close a cycle. The reskin test pins both
+ * to the same literal, which is what stops them drifting apart.
+ */
+const DECK = 0x13111c;
+/** Mix two packed RGB colours, `t` of the way from `a` to `b`. */
+function mix(a: number, b: number, t: number) {
+  const ch = (shift: number) => {
+    const v = Math.round((a >> shift & 255) * (1 - t) + (b >> shift & 255) * t);
+    return Math.min(255, Math.max(0, v)) << shift;
+  };
+  return ch(16) | ch(8) | ch(0);
+}
+/** The single accent. One hue for every lit surface except the two gold
+ * "treasure" buildings, which CAMERA-NOTES keeps warm on purpose. */
+const cyanLit = 0x00e5ff, goldLit = 0xffc873;
 
 /** Native 3D architectural kit. All geometry stays within the station's saved footprint. */
 export function createArchitecture(h: StationShape, project = false) {
   const root = new THREE.Group();
   const lit = h.id === "bank" || h.id === "grand-exchange" ? goldLit : cyanLit;
   const ink = parseInt(h.color.slice(1), 16);
+  // Structural mass: the catalog colour pulled most of the way to the deck, so
+  // it stays clearly dark under a real key light but still says which station
+  // this is. Edge/trim keeps a touch more of the colour so silhouettes read.
+  const shell = mix(ink, DECK, .62);
+  const edge = mix(ink, edgeTint, .55);
   const mats = new Map<string, THREE.MeshStandardMaterial>();
   const mat = (color: number, glow = false) => {
     const key = color + ":" + glow;

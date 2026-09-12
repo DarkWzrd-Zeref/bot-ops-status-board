@@ -1,5 +1,5 @@
 /* The canvas is the workspace; UI occupies predictable edges, never the center. */
-:root { --header: 64px; --mint: #2be8ff; --line: #1c3a44; }
+:root { --header: 64px; --mint: #00e5ff; --line: #1c3a44; }
 .app-header { background: #070d14; gap: 16px; padding: 0 18px; }
 .brand { min-width: 165px; font-size: 24px; }
 .brand-mark { border-radius: 9px; transform: none; font-size: 20px; padding: 5px 7px; }
@@ -31,9 +31,9 @@
 #quick-chat { width: min(560px, calc(100vw - 116px)); right: auto; left: 50%; transform: translateX(-50%); border-radius: 14px; padding: 6px; background: #060d14f2; border: 1px solid #1c3a44; }
 #quick-chat input { min-height: 44px; font-size: 16px; background: transparent; }
 #quick-chat button { min-height: 44px; border-radius: 9px; }
-#chat-launcher { border-radius: 14px; background: #2be8ff; color: #04141a; min-width: 76px; }
+#chat-launcher { border-radius: 14px; background: #00e5ff; color: #04141a; min-width: 76px; }
 .station-banner { width: auto; max-width: 150px; padding: 0; margin: 0; text-transform: none; letter-spacing: 0; background: none; border: 0; box-shadow: none; }
-.station-chip { justify-content: center; min-height: 27px; border: 1px solid #1c3a4480; border-radius: 8px; background: #0a1620d9; padding: 3px 8px; box-shadow: 0 4px 12px #0003; }
+.station-chip { justify-content: center; min-height: 27px; border: 1px solid #2c2a3a80; border-left: 3px solid #00e5ff; border-radius: 8px; background: #14121fd9; padding: 3px 8px; box-shadow: 0 4px 12px #0004; }
 .station-chip strong { font-size: 12px; font-weight: 500; }
 .station-banner.selected .station-chip { background: #bdf0ff; }
 .station-banner.selected .station-chip strong { color: #04222c; }
@@ -46,7 +46,7 @@
 .world-controls button { border: 0; background: transparent; }
 .view-switch { position: absolute; top: calc(var(--header) + 12px); left: 50%; transform: translateX(-50%); display: flex; padding: 4px; gap: 2px; border: 1px solid #1c3a44; background: #060d14f2; border-radius: 14px; pointer-events: auto; z-index: 6; box-shadow: 0 8px 24px #0004; }
 .view-switch button { min-height: 44px; padding: 8px 14px; border: 0; background: transparent; font-size: 14px; border-radius: 9px; }
-.view-switch button[aria-pressed=true] { background: #2be8ff; color: #04141a; }
+.view-switch button[aria-pressed=true] { background: #00e5ff; color: #04141a; }
 .view-switch button:disabled { opacity: .45; cursor: not-allowed; }
 .walk-controls { position: absolute; inset: var(--header) 0 0; pointer-events: none; z-index: 5; }
 .walk-reticle { position: absolute; left: 50%; top: 50%; width: 7px; height: 7px; transform: translate(-50%, -50%); border: 1px solid white; border-radius: 50%; box-shadow: 0 0 0 3px #0d222880; }

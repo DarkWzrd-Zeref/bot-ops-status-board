@@ -47,5 +47,5 @@ test("experience keeps touch-size controls, mobile sizing and reduced-motion sup
   assert.match(css, /max-width: 760px/);
   assert.match(css, /prefers-reduced-motion: reduce/);
   assert.match(css, /#hud \.operations-panel[^}]+right: 16px/s);
-  assert.match(css, /--mint: #83f1d2/);
+  assert.match(css, /--mint: #00e5ff/);
 });
