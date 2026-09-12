@@ -269,8 +269,7 @@ function showProjectForm(uid?: string) {
 }
 function scopeName(uid: string) { const b = runtime.buildings.find(b => b.uid === uid); return b ? buildingName(b) : "Removed station · history"; }
 function openChat(projectUid?: string) {
-  closeOperations();
-  if (innerWidth < 1000) friendsOpen = false;
+  if (innerWidth < 1000) { friendsOpen = false; closeOperations(); }
   if (chatProject !== projectUid) replyTo = undefined;
   chatProject = projectUid; chatOpen = true; channel = "team"; onlyDirectives = false;
   host.querySelector<HTMLInputElement>("#directives-only")!.checked = false;
@@ -301,10 +300,18 @@ function bind() {
     closeOperations(); friendsOpen = false; chatOpen = false; render();
   });
   window.addEventListener("keydown", event => {
-    if (event.key !== "Escape" || document.activeElement?.closest("input, textarea, select, dialog")) return;
+    if (event.key !== "Escape" || document.querySelector("dialog[open]") || event.defaultPrevented) return;
+    const composer = document.activeElement?.closest("input, textarea, select, [contenteditable=true]");
+    if (composer instanceof HTMLElement) {
+      composer.blur();
+      event.preventDefault();
+      return;
+    }
+    const hadOverlay = operationsOpen || chatOpen || friendsOpen || Array.from(host.querySelectorAll<HTMLDetailsElement>(".district-nav")).some(d => d.open);
     closeOperations(); friendsOpen = false; chatOpen = false;
     host.querySelectorAll<HTMLDetailsElement>(".district-nav").forEach(d => { d.open = false; });
     render(); bus.emit({ type: "changed" });
+    if (hadOverlay) event.preventDefault();
   });
   host.addEventListener("click", event => {
     const b = (event.target as HTMLElement).closest<HTMLButtonElement>("button");
@@ -320,9 +327,9 @@ function bind() {
     if (b.dataset.ping) void pingSeats([b.dataset.ping as Speaker | "all"], chatProject);
     if (b.dataset.pingProject) void pingSeats(SEATS.filter(s => runtime.agents.find(a => a.id === s.palId)?.buildingUid === b.dataset.pingProject).map(s => s.id), b.dataset.pingProject);
     if (b.id === "friends-toggle" || b.id === "agents-launcher") { friendsOpen = !friendsOpen; if (friendsOpen && innerWidth < 1000) { chatOpen = false; closeOperations(); } }
-    if (b.id === "tools-launcher" || b.id === "placement-tools") { if (operationsOpen) closeOperations(); else { operationsOpen = true; chatOpen = false; if (innerWidth < 1000) friendsOpen = false; } }
+    if (b.id === "tools-launcher" || b.id === "placement-tools") { if (operationsOpen) closeOperations(); else { operationsOpen = true; if (innerWidth < 1000) { friendsOpen = false; chatOpen = false; } } }
     if (b.id === "operations-close" || b.id === "placement-cancel") { closeOperations(); host.querySelector<HTMLButtonElement>("#tools-launcher")!.focus(); }
-    if (b.id === "chat-launcher" || b.id === "chat-minimize") { chatOpen = !chatOpen; if (chatOpen) { unread[channel] = 0; closeOperations(); if (innerWidth < 1000) friendsOpen = false; } }
+    if (b.id === "chat-launcher" || b.id === "chat-minimize") { chatOpen = !chatOpen; if (chatOpen) { unread[channel] = 0; if (innerWidth < 1000) { friendsOpen = false; closeOperations(); } } }
     if (b.dataset.agent) { runtime.selectedAgent = b.dataset.agent; runtime.selectedBuilding = null; if (innerWidth < 1000) chatOpen = false; if (innerWidth <= 700) friendsOpen = false; }
     if (b.hasAttribute("data-clear")) closeOperations();
     if (b.dataset.focus) bus.emit({ type: "focus-agent", agentId: b.dataset.focus });

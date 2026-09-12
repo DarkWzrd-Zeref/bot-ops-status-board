@@ -1,6 +1,31 @@
 /** Local spectator movement only. Never writes a base, assignment or work report. */
 export interface WalkPosition { x: number; z: number }
 export interface WalkGrid { walkable(x: number, y: number): boolean }
+export interface WalkEscapeState {
+  dialogOpen?: boolean;
+  overlayOpen?: boolean;
+  composerFocused?: boolean;
+  alreadyHandled?: boolean;
+}
+export interface WalkLookPointer { x: number; y: number; originX: number; originY: number; armed: boolean }
+
+/** First Escape closes dialogs/overlays/composer. A consumed Escape never also leaves POV. */
+export function walkEscapeAction(state: WalkEscapeState): "leave" | "defer" {
+  return state.alreadyHandled || state.dialogOpen || state.overlayOpen || state.composerFocused ? "defer" : "leave";
+}
+
+/** WASD/look yield to composer, dialogs, and an open inspector. Unfocused chat may stay visible. */
+export function walkMovementBlocked(state: { composerFocused?: boolean; dialogOpen?: boolean; inspectorOpen?: boolean }): boolean {
+  return !!(state.composerFocused || state.dialogOpen || state.inspectorOpen);
+}
+
+/** Ignore tap noise; arm from pointerdown origin so slow drags still rotate. */
+export function walkLookStep(prev: WalkLookPointer, x: number, y: number, slop = 6): WalkLookPointer & { yaw: number; pitch: number } {
+  const originX = prev.originX, originY = prev.originY;
+  const armed = prev.armed || Math.hypot(x - originX, y - originY) >= slop;
+  const dx = x - prev.x, dy = y - prev.y;
+  return { x, y, originX, originY, armed, yaw: armed ? -dx * .004 : 0, pitch: armed ? -dy * .004 : 0 };
+}
 export function canStand(grid: WalkGrid, x: number, z: number, radius = .22): boolean {
   if (!Number.isFinite(x) || !Number.isFinite(z)) return false;
   return [-radius, radius].every(dx => [-radius, radius].every(dz => grid.walkable(Math.floor(x + dx), Math.floor(z + dz))));
