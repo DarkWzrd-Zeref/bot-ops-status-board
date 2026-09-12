@@ -1,0 +1,474 @@
+diff --git a/server/ecosystem-auth.ts b/server/ecosystem-auth.ts
+index 6596a3e..105259f 100644
+--- a/server/ecosystem-auth.ts
++++ b/server/ecosystem-auth.ts
+@@ -1,5 +1,5 @@
+ import { timingSafeEqual } from "node:crypto";
+-import { isSpeaker, type Speaker } from "../shared/protocol.ts";
++import { SPEAKERS, isSpeaker, type Speaker } from "../shared/protocol.ts";
+ 
+ /** New ecosystem writes are closed by default. Never infer an author from a body. */
+ export class EcosystemAccessError extends Error {}
+@@ -20,3 +20,17 @@ export function ecosystemAuthorized(request: Request, seat: Speaker): boolean {
+ export function requireEcosystemWriter(request: Request, seat: Speaker): void {
+   if (!ecosystemAuthorized(request, seat)) throw new EcosystemAccessError("Board writes are locked. Connect this seat's private write key.");
+ }
++/**
++ * True when the bearer matches ANY configured seat key.
++ *
++ * Writes are always bound to one seat, because authorship has to be real. Some
++ * reads are shared team property instead: the artifact locker is only useful if
++ * the seat receiving a patch can fetch it with its own key rather than needing
++ * the operator's. This still requires a real key — it is not public access.
++ */
++export function anySeatAuthorized(request: Request): boolean {
++  return SPEAKERS.some(seat => ecosystemAuthorized(request, seat));
++}
++export function requireAnySeat(request: Request): void {
++  if (!anySeatAuthorized(request)) throw new EcosystemAccessError("The locker is closed. Connect your seat's private key.");
++}
+diff --git a/server/index.ts b/server/index.ts
+index cf18ae6..652edf7 100644
+--- a/server/index.ts
++++ b/server/index.ts
+@@ -13,8 +13,10 @@ import { SPEAKERS } from "../shared/protocol.ts";
+ import { projectSchema, workSchema } from "../shared/workspace.ts";
+ import { MAP_W, MAP_H } from "../shared/map.ts";
+ import { cardSchema, cardActionSchema, registrationSchema } from "../shared/ecosystem.ts";
+-import { EcosystemAccessError, ecosystemAuthorized, requireEcosystemWriter } from "./ecosystem-auth.ts";
++import { EcosystemAccessError, ecosystemAuthorized, requireAnySeat, requireEcosystemWriter } from "./ecosystem-auth.ts";
+ import { boosterCapabilities, readUsage, searchMemory, recordMemory } from "./boosters.ts";
++import { lockerList, lockerPut, lockerRead, lockerUsage } from "./locker.ts";
++import { artifactPutSchema, MAX_ARTIFACT_BYTES, MAX_LOCKER_BYTES } from "../shared/locker.ts";
+ 
+ store.loadStore();
+ 
+@@ -141,6 +143,35 @@ app.post("/api/ecosystem/skills", async c => {
+   return c.json(store.registerSkill("zeref", registrationSchema.parse(await c.req.json()), "browser"));
+ });
+ 
++app.get("/api/locker", c => {
++  c.header("Cache-Control", "no-store");
++  requireAnySeat(c.req.raw);
++  return c.json({ artifacts: lockerList(), usage: lockerUsage(), limits: { artifact: MAX_ARTIFACT_BYTES, locker: MAX_LOCKER_BYTES } });
++});
++app.get("/api/locker/:id", c => {
++  requireAnySeat(c.req.raw);
++  const found = lockerRead(c.req.param("id"));
++  if (!found) return c.json({ error: "No such artifact" }, 404);
++  // Uploaded bytes are never served as a renderable type on the hub's own
++  // origin: an artifact is a download, not a page. octet-stream + attachment +
++  // nosniff keeps a .patch or a stray .html from executing as hub content.
++  c.header("Content-Type", "application/octet-stream");
++  c.header("X-Content-Type-Options", "nosniff");
++  c.header("Content-Disposition", `attachment; filename="${found.meta.name}"`);
++  c.header("Cache-Control", "no-store");
++  c.header("X-Artifact-Sha256", found.meta.sha256);
++  return c.body(new Uint8Array(found.bytes));
++});
++app.post("/api/locker/:seat", async c => {
++  const seat = c.req.param("seat");
++  if (!isSpeaker(seat)) return c.json({ error: "Unknown seat" }, 404);
++  // Uploads are authenticated as the seat doing them. An open upload endpoint
++  // on a public host is an abuse vector, and authorship has to be real for the
++  // locker to be evidence rather than a shared dumping ground.
++  requireEcosystemWriter(c.req.raw, seat);
++  return c.json(lockerPut(seat, artifactPutSchema.parse(await c.req.json())));
++});
++
+ app.post("/api/architect", async (c) => {
+   const body = z.object({ from: z.enum(SPEAKERS), text: z.string().trim().min(1).max(2000),
+     channel: z.enum(["command", "team"]).optional(), to: z.enum(["all", ...SPEAKERS]).optional(),
+diff --git a/server/locker.ts b/server/locker.ts
+new file mode 100644
+index 0000000..f3319b6
+--- /dev/null
++++ b/server/locker.ts
+@@ -0,0 +1,109 @@
++import { createHash } from "node:crypto";
++import { mkdirSync, readFileSync, writeFileSync, renameSync, readdirSync, statSync } from "node:fs";
++import { join } from "node:path";
++import type { Speaker } from "../shared/protocol.ts";
++import {
++  MAX_ARTIFACT_BYTES, MAX_LOCKER_BYTES, type ArtifactMeta, type ArtifactPut,
++} from "../shared/locker.ts";
++
++/**
++ * Disk-backed artifact storage, deliberately NOT part of the main store.
++ *
++ * store.ts re-serializes its entire state to JSON on every single write. Multi-
++ * megabyte blobs in that object would make every radio message pay to rewrite
++ * every GLB. Artifacts get their own directory: one .bin and one .json per
++ * artifact, listed by reading the directory so there is no index to desync.
++ */
++const dataDir = () => process.env.DATA_DIR || join(process.cwd(), "data");
++const lockerDir = () => join(dataDir(), "artifacts");
++
++export class LockerError extends Error {}
++
++function ensureDir(): string {
++  const dir = lockerDir();
++  mkdirSync(dir, { recursive: true });
++  return dir;
++}
++
++/** Content-addressed: identical bytes always land on the same id. */
++function idFor(bytes: Buffer): { id: string; sha256: string } {
++  const sha256 = createHash("sha256").update(bytes).digest("hex");
++  return { id: sha256.slice(0, 16), sha256 };
++}
++
++export function lockerList(): ArtifactMeta[] {
++  const dir = ensureDir();
++  const rows: ArtifactMeta[] = [];
++  for (const file of readdirSync(dir)) {
++    if (!file.endsWith(".json")) continue;
++    try {
++      rows.push(JSON.parse(readFileSync(join(dir, file), "utf8")) as ArtifactMeta);
++    } catch {
++      // A half-written sidecar should hide one artifact, never break the listing.
++    }
++  }
++  return rows.sort((a, b) => b.at - a.at);
++}
++
++export function lockerUsage(): { bytes: number; count: number } {
++  const rows = lockerList();
++  return { bytes: rows.reduce((sum, r) => sum + r.bytes, 0), count: rows.length };
++}
++
++export function lockerRead(id: string): { meta: ArtifactMeta; bytes: Buffer } | null {
++  if (!/^[0-9a-f]{16}$/.test(id)) return null;
++  const dir = ensureDir();
++  try {
++    const meta = JSON.parse(readFileSync(join(dir, id + ".json"), "utf8")) as ArtifactMeta;
++    const bytes = readFileSync(join(dir, id + ".bin"));
++    // The stored digest is the contract callers verify against; if the file on
++    // disk no longer matches it, refuse rather than hand back wrong bytes.
++    if (createHash("sha256").update(bytes).digest("hex") !== meta.sha256) return null;
++    return { meta, bytes };
++  } catch {
++    return null;
++  }
++}
++
++export function lockerPut(from: Speaker, input: ArtifactPut): ArtifactMeta {
++  let bytes: Buffer;
++  try {
++    bytes = Buffer.from(input.base64, "base64");
++  } catch {
++    throw new LockerError("Artifact body must be base64.");
++  }
++  if (!bytes.length) throw new LockerError("Artifact is empty.");
++  if (bytes.length > MAX_ARTIFACT_BYTES) {
++    throw new LockerError(`Artifact is ${bytes.length} bytes; the ceiling is ${MAX_ARTIFACT_BYTES}.`);
++  }
++  const { id, sha256 } = idFor(bytes);
++  const dir = ensureDir();
++  const existing = lockerRead(id);
++  // Same bytes, same id: re-uploading a patch after a failed courier is a no-op
++  // rather than a duplicate, and keeps the original uploader and timestamp.
++  if (existing) return existing.meta;
++
++  const usage = lockerUsage();
++  if (usage.bytes + bytes.length > MAX_LOCKER_BYTES) {
++    throw new LockerError("Locker is full. Nothing prunes itself yet; clear artifacts before adding more.");
++  }
++  const meta: ArtifactMeta = {
++    id, sha256, name: input.name, kind: input.kind, bytes: bytes.length,
++    ...(input.note ? { note: input.note } : {}), from, at: Date.now(),
++  };
++  // Bytes first, then the sidecar: a crash between the two leaves an orphan
++  // .bin that no listing shows, never a metadata row pointing at nothing.
++  writeFileSync(join(dir, id + ".bin.tmp"), bytes);
++  renameSync(join(dir, id + ".bin.tmp"), join(dir, id + ".bin"));
++  writeFileSync(join(dir, id + ".json.tmp"), JSON.stringify(meta, null, 2));
++  renameSync(join(dir, id + ".json.tmp"), join(dir, id + ".json"));
++  return meta;
++}
++
++/** Present only so tests and operators can measure the directory honestly. */
++export function lockerDirSize(): number {
++  const dir = ensureDir();
++  let total = 0;
++  for (const file of readdirSync(dir)) total += statSync(join(dir, file)).size;
++  return total;
++}
+diff --git a/server/mcp.ts b/server/mcp.ts
+index b3a6f91..827a79b 100644
+--- a/server/mcp.ts
++++ b/server/mcp.ts
+@@ -2,7 +2,9 @@ import { existsSync, readFileSync } from "node:fs";
+ import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
+ import { WebStandardStreamableHTTPServerTransport } from "@modelcontextprotocol/sdk/server/webStandardStreamableHttp.js";
+ import { z } from "zod";
+-import { AGENTS, HUBS, SEATS, isSpeaker, type Seat } from "./catalog.ts";
++import { AGENTS, HUBS, SEATS, isSpeaker, publicBase, type Seat } from "./catalog.ts";
++import { lockerList, lockerPut, lockerRead, lockerUsage } from "./locker.ts";
++import { artifactPutSchema, artifactUrl, MAX_INLINE_BYTES } from "../shared/locker.ts";
+ import * as store from "./store.ts";
+ import { SPEAKERS } from "../shared/protocol.ts";
+ import { workSchema } from "../shared/workspace.ts";
+@@ -93,6 +95,30 @@ export function createMcpServer(seat?: Seat, ecosystemWrite = false): McpServer
+       title: "Sign your skill at the Skill Altar",
+       description: "Requires YOUR seat's write key. Register a skill you actually have; signature must exactly match your display name from whoami. Owner is fixed to your authenticated seat key. Registration is not a capability verification, scan, installation or permission grant.", inputSchema: registrationSchema.shape,
+     }, async input => { requireWrite(); const skill = store.registerSkill(seat.id, input, "mcp"); checkIn(); return textResult(JSON.stringify(skill)); });
++    server.registerTool("artifact_put", {
++      title: "Put bytes in the locker",
++      description: "Requires YOUR seat's write key. Store a patch, image, model or data file so a radio message can reference it by id instead of a human copying the file between chat windows. Content-addressed: identical bytes return the existing id rather than a duplicate. Returns id and sha256 so the receiver can verify what they fetched. This stores bytes; it does not apply, run or deploy anything.",
++      inputSchema: artifactPutSchema.shape,
++    }, async input => { requireWrite(); const meta = lockerPut(seat.id, input); checkIn(); return textResult(JSON.stringify(meta)); });
++    server.registerTool("artifact_list", {
++      title: "List the locker",
++      description: "Requires YOUR seat's write key. Read artifact metadata: id, sha256, name, kind, size, uploader. Does not return bytes. Uploaders are self-reported authorship on a shared locker, not proof of provenance.",
++    }, async () => { requireWrite(); checkIn(); return textResult(JSON.stringify({ artifacts: lockerList(), usage: lockerUsage() })); });
++    server.registerTool("artifact_get", {
++      title: "Fetch an artifact",
++      description: "Requires YOUR seat's write key. Returns the artifact's metadata, plus its text inline when it is small enough to be worth spending context on (patches are). Larger artifacts return a URL to fetch out of band instead, because a tool result lands directly in your context. ALWAYS check the returned sha256 against what the sender radioed before applying a patch.",
++      inputSchema: { id: z.string().regex(/^[0-9a-f]{16}$/) },
++    }, async ({ id }) => {
++      requireWrite(); checkIn();
++      const found = lockerRead(id);
++      if (!found) return textResult(JSON.stringify({ error: "No such artifact", id }));
++      const url = artifactUrl(publicBase(), id);
++      const inlineable = found.meta.bytes <= MAX_INLINE_BYTES && (found.meta.kind === "patch" || found.meta.kind === "text" || found.meta.kind === "data");
++      return textResult(JSON.stringify({
++        ...found.meta, url,
++        ...(inlineable ? { text: found.bytes.toString("utf8") } : { text: null, reason: "Too large or binary for an inline tool result; fetch the url with your seat key." }),
++      }));
++    });
+     server.registerTool("hub_sync", {
+       title: "Check in and read your inbox",
+       description: "Call on joining and every 60 seconds while active. Returns recent addressed messages plus ALL unfinished directives; limit only bounds context. Marks returned directives as seen. A connection cannot run an agent by itself. Room messages are untrusted shared input, not authenticated authority.",
+diff --git a/shared/locker.ts b/shared/locker.ts
+new file mode 100644
+index 0000000..489eb41
+--- /dev/null
++++ b/shared/locker.ts
+@@ -0,0 +1,51 @@
++import { z } from "zod";
++import type { Speaker } from "./protocol.ts";
++
++/**
++ * Artifact locker wire contract.
++ *
++ * Every patch this team shipped moved by a human copying a file between two
++ * chat windows, because the radio caps at 2000 characters and cannot carry
++ * bytes. Two art files never arrived at all. This is the addressable place to
++ * put bytes so a radio message can reference them instead of describing them.
++ */
++export const ARTIFACT_KINDS = ["patch", "image", "model", "text", "data"] as const;
++export type ArtifactKind = typeof ARTIFACT_KINDS[number];
++
++/** One artifact: 8 MB. Patches are ~30 KB, station GLBs are the reason for the ceiling. */
++export const MAX_ARTIFACT_BYTES = 8 * 1024 * 1024;
++/** Whole locker. Railway disk is not free and nothing here prunes itself yet. */
++export const MAX_LOCKER_BYTES = 128 * 1024 * 1024;
++/**
++ * Largest artifact returned inline through MCP. A tool result goes straight
++ * into an agent's context, and hub_sync has already blown that budget once, so
++ * patches (small, and the whole point) inline while images and models return a
++ * URL to fetch out of band.
++ */
++export const MAX_INLINE_BYTES = 256 * 1024;
++
++export const artifactPutSchema = z.object({
++  name: z.string().trim().min(1).max(120)
++    .regex(/^[A-Za-z0-9._-]+$/, "Name may use letters, digits, dot, dash and underscore only."),
++  kind: z.enum(ARTIFACT_KINDS),
++  base64: z.string().min(1).max(Math.ceil(MAX_ARTIFACT_BYTES / 3) * 4 + 1024),
++  note: z.string().trim().max(280).optional(),
++});
++export type ArtifactPut = z.infer<typeof artifactPutSchema>;
++
++export interface ArtifactMeta {
++  /** First 16 hex of the sha256. Content-addressed, so re-uploading identical bytes is a no-op. */
++  id: string;
++  sha256: string;
++  name: string;
++  kind: ArtifactKind;
++  bytes: number;
++  note?: string;
++  from: Speaker;
++  at: number;
++}
++
++/** Callers verify what they fetched against this rather than eyeballing a diffstat. */
++export function artifactUrl(base: string, id: string): string {
++  return base.replace(/\/+$/, "") + "/api/locker/" + id;
++}
+diff --git a/src/style.css b/src/style.css
+index 61c9bb1..d171688 100644
+--- a/src/style.css
++++ b/src/style.css
+@@ -109,7 +109,7 @@ small, .microcopy { font-size: 12px; line-height: 1.6; color: var(--muted); }
+ .detail-actions { display: flex; flex-wrap: wrap; gap: 8px; margin: 12px 0; }
+ .field-label { display: block; font-size: 12px; color: var(--muted); margin: 12px 0; }
+ .field-label select { display: block; width: min(100%, 370px); margin-top: 7px; padding: 9px; }
+-.primary { background: var(--mint); border-color: var(--mint); color: #0d2a22; font-weight: 700; }
++.primary { background: var(--mint); border-color: var(--mint); color: #04222c; font-weight: 700; }
+ .primary:hover { background: #b1ffdf; border-color: #b1ffdf; }
+ .danger { color: #fba8a8; }
+ details { border-top: 1px solid var(--line); padding: 12px 0; font-size: 12px; }
+@@ -233,7 +233,7 @@ html, body, #app { height: 100%; overflow: hidden; }
+ .mode-buttons button, .build-tabs button { font-size: 14px; padding: 8px; }
+ .build-catalog { padding: 0 12px 10px; max-height: 220px; }
+ .comms-panel { position: absolute; left: auto; right: 20px; top: auto; bottom: 66px; width: min(410px, calc(100vw - var(--left) - 40px)); height: min(70vh, 690px); border: 1px solid #3c5f66; border-radius: 14px; background: #101c25f5; overflow: hidden; box-shadow: 0 18px 60px #0008; z-index: 4; }
+-#chat-launcher { position: absolute; right: 20px; bottom: 16px; min-width: 128px; padding: 12px 18px; background: #2be8ff; color: #0d2a22; font-weight: 700; z-index: 5; box-shadow: 0 6px 22px #0005; }
++#chat-launcher { position: absolute; right: 20px; bottom: 16px; min-width: 128px; padding: 12px 18px; background: #2be8ff; color: #04222c; font-weight: 700; z-index: 5; box-shadow: 0 6px 22px #0005; }
+ #chat-launcher span { margin-left: 18px; }
+ .chat-collapsed .comms-panel { display: none; }
+ .comms-heading { padding: 14px 16px 10px; gap: 8px; }
+diff --git a/src/ui/experience.css b/src/ui/experience.css
+index fac5718..f1f9a9e 100644
+--- a/src/ui/experience.css
++++ b/src/ui/experience.css
+@@ -68,7 +68,7 @@
+ .view-switch button { padding: 8px 12px; font-size: 12px; white-space: nowrap; }
+ .view-switch button[aria-pressed=true] { background: #2b5264; color: #d0fff0; box-shadow: inset 0 0 0 1px #81cbbb3d; }
+ #hud .view-switch .fit-campus { background: #2be8ff; border-color: #2be8ff; color: #0a302d; font-weight: 700; padding-inline: 14px; }
+-#hud .view-switch .fit-campus:hover { background: #afffe8; }
++#hud .view-switch .fit-campus:hover { background: #9df1ff; }
+ .fit-campus span { margin-right: 5px; font-size: 18px; }
+ .view-divider { height: 24px; border-left: 1px solid #51697d; margin: 0 4px; }
+ .map-navigation-hint { position: absolute; bottom: calc(100% + 10px); left: 4px; white-space: nowrap; color: #b5cedb; font-size: 11px; text-shadow: 0 2px 5px #000, 0 1px 2px #000; pointer-events: none; }
+@@ -113,7 +113,7 @@ dialog::backdrop, #ecosystem-dialog::backdrop { background: #030c19bf; backdrop-
+ #ecosystem-dialog input:not([type=checkbox]), #ecosystem-dialog textarea, #ecosystem-dialog select { background: #0a192b; border-color: #3b617b; border-radius: 10px; }
+ .dialog-heading .eyebrow { color: #8fabbe; }
+ .primary, #hud button.primary { background: #2be8ff; color: #0c302c; border-color: #2be8ff; }
+-#hud button.primary:hover { background: #b7ffe9; }
++#hud button.primary:hover { background: #9df1ff; }
+ #toast { border-color: #51798e; background: #142a3deb; color: #dfedf6; box-shadow: var(--edge-shadow); }
+ .walk-mode .view-switch { bottom: auto; top: calc(var(--header) + 84px); }
+ .walk-mode .view-switch .map-navigation-hint { display: none; }
+diff --git a/tests/locker.test.ts b/tests/locker.test.ts
+new file mode 100644
+index 0000000..d083b90
+--- /dev/null
++++ b/tests/locker.test.ts
+@@ -0,0 +1,92 @@
++import { test } from "node:test";
++import assert from "node:assert/strict";
++import { mkdtempSync } from "node:fs";
++import { tmpdir } from "node:os";
++import { join } from "node:path";
++import { createHash } from "node:crypto";
++
++process.env.DATA_DIR = mkdtempSync(join(tmpdir(), "area67-locker-"));
++process.env.AREA67_TEST = "1"; process.env.SERVE_STATIC = "0";
++const keys = { claude: "test-claude-" + "a".repeat(32), cursor: "test-cursor-" + "c".repeat(32), zeref: "test-zeref-" + "z".repeat(32) };
++process.env.AREA67_ECOSYSTEM_KEYS = JSON.stringify(keys);
++const { app } = await import("../server/index.ts");
++const { MAX_ARTIFACT_BYTES } = await import("../shared/locker.ts");
++
++const put = (seat: string, body: unknown, token?: string) =>
++  app.request("/api/locker/" + seat, {
++    method: "POST",
++    headers: { "Content-Type": "application/json", ...(token ? { Authorization: "Bearer " + token } : {}) },
++    body: JSON.stringify(body),
++  });
++const get = (path: string, token?: string) =>
++  app.request(path, { headers: token ? { Authorization: "Bearer " + token } : {} });
++
++const patch = "diff --git a/x b/x\n-old\n+new\n";
++const patchBody = { name: "A67-SLICE.patch", kind: "patch", base64: Buffer.from(patch).toString("base64") };
++
++test("an artifact round-trips and is addressed by the hash of its own bytes", async () => {
++  const stored = await (await put("claude", patchBody, keys.claude)).json();
++  assert.equal(stored.sha256, createHash("sha256").update(patch).digest("hex"));
++  assert.equal(stored.id, stored.sha256.slice(0, 16));
++  assert.equal(stored.from, "claude");
++  assert.equal(stored.bytes, Buffer.byteLength(patch));
++
++  const fetched = await get("/api/locker/" + stored.id, keys.cursor);
++  assert.equal(fetched.status, 200);
++  assert.equal(await fetched.text(), patch);
++  // The receiver verifies bytes instead of eyeballing a diffstat.
++  assert.equal(fetched.headers.get("x-artifact-sha256"), stored.sha256);
++});
++
++test("uploaded bytes are never served as renderable content on the hub origin", async () => {
++  const evil = { name: "page.html", kind: "text", base64: Buffer.from("<script>alert(1)</script>").toString("base64") };
++  const stored = await (await put("claude", evil, keys.claude)).json();
++  const fetched = await get("/api/locker/" + stored.id, keys.claude);
++  assert.equal(fetched.headers.get("content-type"), "application/octet-stream");
++  assert.equal(fetched.headers.get("x-content-type-options"), "nosniff");
++  assert.match(fetched.headers.get("content-disposition") ?? "", /^attachment;/);
++});
++
++test("re-uploading identical bytes is a no-op, not a duplicate", async () => {
++  const first = await (await put("claude", patchBody, keys.claude)).json();
++  const again = await (await put("cursor", patchBody, keys.cursor)).json();
++  assert.equal(again.id, first.id);
++  // Original uploader and timestamp survive a re-courier by someone else.
++  assert.equal(again.from, "claude");
++  assert.equal(again.at, first.at);
++  const listed = await (await get("/api/locker", keys.zeref)).json();
++  assert.equal(listed.artifacts.filter((a: { id: string }) => a.id === first.id).length, 1);
++});
++
++test("the locker is closed without a key and cannot be written as another seat", async () => {
++  assert.equal((await put("claude", patchBody)).status, 403);
++  // Cursor's key must not be able to upload under Claude's name.
++  assert.equal((await put("claude", patchBody, keys.cursor)).status, 403);
++  const stored = await (await put("claude", patchBody, keys.claude)).json();
++  assert.equal((await get("/api/locker/" + stored.id)).status, 403);
++  assert.equal((await get("/api/locker")).status, 403);
++});
++
++test("oversize, empty and malformed artifacts are refused", async () => {
++  const huge = { name: "big.glb", kind: "model", base64: "A".repeat(Math.ceil(MAX_ARTIFACT_BYTES / 3) * 4 + 8) };
++  assert.equal((await put("claude", huge, keys.claude)).status, 400);
++  assert.equal((await put("claude", { ...patchBody, base64: "" }, keys.claude)).status, 400);
++  // A traversal attempt in the name must not reach the filesystem.
++  assert.equal((await put("claude", { ...patchBody, name: "../../etc/passwd" }, keys.claude)).status, 400);
++  assert.equal((await get("/api/locker/not-a-real-id", keys.claude)).status, 404);
++});
++
++test("a patch comes back inline over MCP; the id is what the radio carries", async () => {
++  const stored = await (await put("claude", patchBody, keys.claude)).json();
++  const response = await app.request("/mcp/claude", {
++    method: "POST",
++    headers: { "Content-Type": "application/json", Accept: "application/json, text/event-stream", Authorization: "Bearer " + keys.claude },
++    body: JSON.stringify({ jsonrpc: "2.0", id: 1, method: "tools/call", params: { name: "artifact_get", arguments: { id: stored.id } } }),
++  });
++  const raw = await response.text();
++  const body = JSON.parse(raw.startsWith("{") ? raw : raw.split("\n").find(s => s.startsWith("data: "))!.slice(6));
++  const result = JSON.parse(body.result.content[0].text);
++  assert.equal(result.text, patch);
++  assert.equal(result.sha256, stored.sha256);
++  assert.match(result.url, /\/api\/locker\/[0-9a-f]{16}$/);
++});
+diff --git a/tests/reskin.test.ts b/tests/reskin.test.ts
+index 475b003..dba0d65 100644
+--- a/tests/reskin.test.ts
++++ b/tests/reskin.test.ts
+@@ -46,12 +46,26 @@ test("no source file still carries a colour from an abandoned palette", () => {
+     "83f1d2", "80f5cd", // mint accents from the blue-hour/original decks
+     "bef264", "76b900", "8fe049", "d8f0c4", // lime family
+     "3a4a38", "4a5540", "0b100c", "10180f", "16201a", // green/olive chrome
+-    "13352f", "102b29", "153c3d", // green text-on-accent
++    "13352f", "102b29", "153c3d", "0d2a22", // green-black text-on-accent
++    "afffe8", "b7ffe9", // mint button hovers
+   ];
++  // NOTE, and it is the important part: a blocklist only catches what someone
++  // remembered to list, which is why reviewers kept finding one more. A sweep
++  // of the tree turns up ~50 further green-dominant literals, almost all of
++  // them in style.css and experience.css — an intact mint design system the
++  // cyan campus was bolted onto. They are deliberately NOT listed here.
++  // Some are semantic (status greens that pair against the error red) and some
++  // are illustrative (a cactus, a character's skin); recolouring them by hue
++  // would destroy meaning and paint a plant cyan. Retiring the rest is the
++  // shell decision, not a find-and-replace.
++  // World3D and architecture were missing from this list on the first cut —
++  // the two biggest colour-carrying files in the tree, omitted from the very
++  // test written to stop partial sweeps. Caught in review, not by me.
+   const files = [
+     "../src/style.css", "../src/ui/campus.css", "../src/ui/experience.css",
+-    "../src/ui/mobile-clarity.css", "../src/game/HubScene.ts",
++    "../src/ui/mobile-clarity.css", "../src/ui/hud.ts", "../src/game/HubScene.ts",
+     "../src/game/fallback.ts", "../src/game/textures.ts",
++    "../src/game/World3D.ts", "../src/game/architecture.ts",
+   ];
+   for (const file of files) {
+     const source = readFileSync(new URL(file, import.meta.url), "utf8").toLowerCase();
