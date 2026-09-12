@@ -34,7 +34,7 @@ function withTimeout(task: Promise<unknown>, ms: number): Promise<void> {
 
 export async function makeFallback(parent: HTMLElement) {
   await withTimeout(hydrateStationArt(), 1500);
-  return new Phaser.Game({ type: Phaser.CANVAS, parent, backgroundColor: "#0b100c", pixelArt: false, roundPixels: true,
+  return new Phaser.Game({ type: Phaser.CANVAS, parent, backgroundColor: "#070d14", pixelArt: false, roundPixels: true,
     loader: { timeout: 2500, maxParallelDownloads: 12 },
     scale: { mode: Phaser.Scale.RESIZE, autoCenter: Phaser.Scale.CENTER_BOTH, width: 960, height: 640 }, scene: [BootScene, HubScene] });
 }

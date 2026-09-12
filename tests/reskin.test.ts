@@ -36,9 +36,39 @@ test("the palette holds its cyberpunk hue budget: cyan dominant, gold rare, mint
   assert.ok(accent >= 150 && accent <= 175, `accent hue ${accent.toFixed(0)} must sit in the mint-teal band 150-175`);
 });
 
-test("HUD cyberpunk tokens retint colors only; layout anchors stay", () => {
+test("no source file still carries a colour from an abandoned palette", () => {
+  // Written after shipping the same partial sweep three times: campus.css was
+  // retinted while style.css, experience.css, mobile-clarity.css and two Phaser
+  // canvases kept the old greens, and a SELECTED station chip stayed lime on a
+  // cyan campus. Reviewers caught each round; a grep would have caught all of
+  // them at once. Add any retired literal here when a palette changes.
+  const retired = [
+    "83f1d2", "80f5cd", // mint accents from the blue-hour/original decks
+    "bef264", "76b900", "8fe049", "d8f0c4", // lime family
+    "3a4a38", "4a5540", "0b100c", "10180f", "16201a", // green/olive chrome
+    "13352f", "102b29", "153c3d", // green text-on-accent
+  ];
+  const files = [
+    "../src/style.css", "../src/ui/campus.css", "../src/ui/experience.css",
+    "../src/ui/mobile-clarity.css", "../src/game/HubScene.ts",
+    "../src/game/fallback.ts", "../src/game/textures.ts",
+  ];
+  for (const file of files) {
+    const source = readFileSync(new URL(file, import.meta.url), "utf8").toLowerCase();
+    for (const dead of retired) {
+      assert.ok(!source.includes(dead), `${file} still carries retired colour #${dead}`);
+    }
+  }
+});
+
+test("every stylesheet resolves the same accent; layout anchors stay", () => {
+  // Three files each declared their own --mint and the cascade picked a winner,
+  // which is how a lime chip survived on a cyan campus.
+  for (const sheet of ["../src/style.css", "../src/ui/campus.css", "../src/ui/experience.css"]) {
+    const source = readFileSync(new URL(sheet, import.meta.url), "utf8");
+    assert.match(source, /--mint: #2be8ff/, `${sheet} must resolve the shared cyan accent`);
+  }
   const css = readFileSync(new URL("../src/ui/campus.css", import.meta.url), "utf8");
-  assert.match(css, /--mint: #2be8ff/);
   assert.match(css, /--line: #1c3a44/);
   assert.match(css, /--header: 64px/);
   assert.match(css, /#quick-chat \{[^}]*left: 50%/s);

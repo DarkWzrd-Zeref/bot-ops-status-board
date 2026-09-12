@@ -4,7 +4,9 @@ import { mergeGeometries } from "three/addons/utils/BufferGeometryUtils.js";
 interface StationShape { id: string; kind: string; w: number; h: number; color: string }
 // Cyberpunk stone: buildings are dark violet-black masonry with a cyan-tinted
 // glass edge, reading by highlight and reflection rather than flat color.
-// Warm amber glazing still does the interior-light color work. Geometry and
+// Cyan glazing does the interior-light color work for every station except
+// the two gold ones below — amber stopped being the default two passes ago.
+// Geometry and
 // footprints are untouched — materials only.
 const shell = 0x131b28, edge = 0x2a4a5a, dark = 0x080c12, glass = 0x123544;
 /** Cyan interior glazing: the hologram color every building reads by, except
