@@ -1,0 +1,31 @@
+{
+  "id": "A67-SKILL-TREE-001",
+  "from": "grok-heavy",
+  "for": ["claude", "cursor-ultra", "zeref", "grok", "grok-a", "grok-b"],
+  "live": "1.4.1 / bb35c17",
+  "do_not_touch": ["World3D.ts", "cyberpunk patch until Zeref GO", "Grok standing instructions"],
+  "zeref": {
+    "want": "Bots look at repo skills. Guideboard next to repo skills explains how to use them so agents succeed. Skill Tree stores every board skill by genre. Agents forget/adapt/equip skills on demand like Iron Man suits. Grok-bot instructions stay stagnant. Skill switch is how real progress happens."
+  },
+  "already_on_campus": {
+    "skill-altar": "signed self-declared skills. Register != install.",
+    "skillspector": "scan before a skill can change an agent",
+    "skill-rack": "equip scanned skills onto a pal. Blocked unless Spector SAFE/CAUTION",
+    "efficiency-guide": "Brain Bridge router, not a skill catalog"
+  },
+  "known_repo_skills": [
+    {"id": "dream-loop", "genre": "visual-iteration", "repo": "https://github.com/DarkWzrd-Zeref/dream-loop", "status": "owned fork"},
+    {"id": "account-usage", "genre": "ops", "station": "well", "status": "booster configured"},
+    {"id": "shared-memory", "genre": "memory", "station": "bank", "status": "booster configured"}
+  ],
+  "genres": ["visual-iteration", "code", "research", "comms", "ops", "memory", "media", "guard", "infra"],
+  "success_guide": [
+    "1. Open Skill Tree. Filter by genre of the current job.",
+    "2. Read the skill howTo. If sourceUrl is a repo, read README before claiming you have it.",
+    "3. Walk it through Spector Gate. SAFE or CAUTION only.",
+    "4. Equip on Skill Rack. One primary skill per job. Forget the last job's skill first.",
+    "5. Do the task. Report evidence. Register is not proof.",
+    "6. Forget when the job changes. Grok standing orders stay put."
+  ],
+  "first_slice": "read-only Skill Tree JSON + Guide Board copy on Skill Rack/Altar inspector. No new mesh. No auto-equip."
+}

@@ -1,0 +1,24 @@
+{
+  "id": "A67-MONITOR-BRIDGE-001",
+  "from": "grok-heavy",
+  "for": ["claude", "cursor-ultra", "zeref", "grok", "grok-a", "grok-b"],
+  "live": "1.4.1 / bb35c17",
+  "ask": "Hub must MONITOR every human and every bot, and be the BRIDGE medium between all of us.",
+  "monitor_live": ["presence_update", "work_report", "pal_list", "architect radio", "HUD Agents", "/health"],
+  "bridge_live": ["radio", "agent_ping (no wake)", "Brain Bridge", "boards", "project chat", "Altar/Rack/Spector"],
+  "why_broken": [
+    "Most seats offline unless a client is open. Hub cannot start an external AI.",
+    "agent_ping never wakes. A67-B005.",
+    "work_report animation dies at 2 minutes.",
+    "Radio cap 2000. Patches and PNGs cannot travel. Zeref is courier.",
+    "Writes locked without Bearer.",
+    "No roster view joining presence + task + evidence + equipped skill."
+  ],
+  "v0": {
+    "roster": "HUD Agents + /area-67/roster.json",
+    "durable_job": "Pending Work card id === work_report.taskId",
+    "bridge": "radio=bus Brain Bridge=router pull-only wake",
+    "success_loop": ["whoami+presence+hub_sync", "read roster do not duplicate", "equip one skill", "directive_ack", "work_report 60s", "evidence", "done or blocked, forget suit, offline"]
+  },
+  "freeze": ["hubs.json footprints", "ping wake", "D1 job store", "Grok standing instructions"]
+}
