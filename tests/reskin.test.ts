@@ -6,17 +6,19 @@ import { createArchitecture } from "../src/game/architecture.ts";
 import { NIGHT_LOOK } from "../src/game/World3D.ts";
 import hubs from "../src/content/hubs.json";
 
-test("classified-night look is a black void, warm key and a restrained cool rim", () => {
-  // Values measured from the 25-still Grok Imagine set on 2026-09-11.
-  assert.equal(NIGHT_LOOK.background, 0x000000);
-  assert.equal(NIGHT_LOOK.fog, 0x04060a);
-  assert.equal(NIGHT_LOOK.key, 0xffc98a);
-  assert.equal(NIGHT_LOOK.rim, 0x4a86a8);
-  assert.equal(NIGHT_LOOK.practical, 0xffb163);
-  assert.equal(NIGHT_LOOK.accent, 0x8fe049);
+test("cyberpunk look is a lit navy field, cyan-dominant, gold as a rare accent, mint-teal energy core", () => {
+  // Slice 1-2 chased the Grok Imagine stills into a black-then-violet void;
+  // Zeref rejected both and handed a reference: a teal/cyan holographic
+  // command deck with gold reserved for Bank/GE and a mint-teal Well core.
+  assert.equal(NIGHT_LOOK.background, 0x05080f);
+  assert.equal(NIGHT_LOOK.fog, 0x0a1620);
+  assert.equal(NIGHT_LOOK.key, 0xffc873);
+  assert.equal(NIGHT_LOOK.rim, 0x33e8ff);
+  assert.equal(NIGHT_LOOK.practical, 0x2be8ff);
+  assert.equal(NIGHT_LOOK.accent, 0x39ffd4);
 });
 
-test("the palette holds its measured hue budget: warm key and practical, cool rim, lime accent", () => {
+test("the palette holds its cyberpunk hue budget: cyan dominant, gold rare, mint-teal core", () => {
   const hue = (c: number) => {
     const r = (c >> 16 & 255) / 255, g = (c >> 8 & 255) / 255, b = (c & 255) / 255;
     const mx = Math.max(r, g, b), d = mx - Math.min(r, g, b);
@@ -24,20 +26,20 @@ test("the palette holds its measured hue budget: warm key and practical, cool ri
     const h = mx === r ? (g - b) / d % 6 : mx === g ? (b - r) / d + 2 : (r - g) / d + 4;
     return (h * 60 + 360) % 360;
   };
-  for (const warm of [NIGHT_LOOK.key, NIGHT_LOOK.practical]) {
-    const h = hue(warm);
-    assert.ok(h >= 15 && h <= 45, `warm light hue ${h.toFixed(0)} must sit in the amber band 15-45`);
+  const key = hue(NIGHT_LOOK.key);
+  assert.ok(key >= 15 && key <= 45, `key hue ${key.toFixed(0)} must sit in the rare-gold amber band 15-45`);
+  for (const cool of [NIGHT_LOOK.rim, NIGHT_LOOK.practical]) {
+    const h = hue(cool);
+    assert.ok(h >= 175 && h <= 200, `dominant light hue ${h.toFixed(0)} must sit in the electric-cyan band 175-200`);
   }
-  const rim = hue(NIGHT_LOOK.rim);
-  assert.ok(rim >= 195 && rim <= 255, `rim hue ${rim.toFixed(0)} must sit in the cool band 195-255`);
   const accent = hue(NIGHT_LOOK.accent);
-  assert.ok(accent >= 75 && accent <= 165, `accent hue ${accent.toFixed(0)} must sit in the lime band 75-165`);
+  assert.ok(accent >= 150 && accent <= 175, `accent hue ${accent.toFixed(0)} must sit in the mint-teal band 150-175`);
 });
 
-test("HUD night tokens retint colors only; layout anchors stay", () => {
+test("HUD cyberpunk tokens retint colors only; layout anchors stay", () => {
   const css = readFileSync(new URL("../src/ui/campus.css", import.meta.url), "utf8");
-  assert.match(css, /--mint: #bef264/);
-  assert.match(css, /--line: #3a4a38/);
+  assert.match(css, /--mint: #2be8ff/);
+  assert.match(css, /--line: #1c3a44/);
   assert.match(css, /--header: 64px/);
   assert.match(css, /#quick-chat \{[^}]*left: 50%/s);
   assert.doesNotMatch(css, /hud\.ts/);

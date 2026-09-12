@@ -1,6 +1,10 @@
 import * as THREE from "three";
 import { OrbitControls } from "three/addons/controls/OrbitControls.js";
 import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
+import { EffectComposer } from "three/addons/postprocessing/EffectComposer.js";
+import { RenderPass } from "three/addons/postprocessing/RenderPass.js";
+import { UnrealBloomPass } from "three/addons/postprocessing/UnrealBloomPass.js";
+import { OutputPass } from "three/addons/postprocessing/OutputPass.js";
 import { CSS2DObject, CSS2DRenderer } from "three/addons/renderers/CSS2DRenderer.js";
 import { AGENTS, HUBS, BASE_RADIUS, MAP_W, MAP_H, assignAgent, beginMove, buildingAt, buildingName, cancelMove, demolish, finishMove, hubById, placementOk, runtime, stationMapLabel, stepAgents, tryPlace, walkPlayerTo } from "../core/runtime.ts";
 import { bus } from "../core/events.ts";
@@ -22,19 +26,36 @@ const colors = { attentive: 0x80f5b8, busy: 0x80c8ff, away: 0xe4b76a, offline: 0
  * cool blue 195-255deg ~17%, lime 75-165deg ~3.5%. The campus is lit by warm
  * practicals against black, not by ambient fill — keep hemisphere near zero.
  */
+// Slice 1-2 chased Grok Imagine's measured stills into a black-void-plus-dim-pools
+// look. Zeref saw it live, hated it, then handed a reference: a teal/cyan
+// holographic sci-fi command deck — dark grid floor, glowing ring pads under
+// each station, cyan-dominant light, gold reserved for a couple of "treasure"
+// buildings (Bank, Grand Exchange), a mint-teal energy core at the Well. This
+// is that reversal: near-black-navy void instead of violet, electric cyan as
+// the dominant color instead of amber, gold demoted to a rare accent.
 export const NIGHT_LOOK = {
-  background: 0x000000,
-  fog: 0x04060a,
-  hemiSky: 0x323b47,
-  hemiGround: 0x16130f,
-  key: 0xffc98a,
-  rim: 0x4a86a8,
-  /** Warm practical seated at every station: the source of the amber majority. */
-  practical: 0xffb163,
-  /** Lime stays an accent only — Well ring, boundary lamps, Altar runes. */
-  accent: 0x8fe049,
+  background: 0x05080f,
+  fog: 0x0a1620,
+  hemiSky: 0x1c4a55,
+  hemiGround: 0x040a10,
+  /** Gold — rare now: the key light's subtle warm fill, and the Bank/GE glazing. */
+  key: 0xffc873,
+  /** Electric cyan: the dominant rim/fill light. */
+  rim: 0x33e8ff,
+  /** Cyan ground-pool decals under every station: the hologram's base color. */
+  practical: 0x2be8ff,
+  /** Mint-teal energy core — Well vortex, Spector/Altar ring trim. */
+  accent: 0x39ffd4,
 } as const;
 const cx = CORE_X, cz = CORE_Y;
+/**
+ * How far the non-buildable outer world extends past the saved map, in map
+ * widths. At 4 the fade fell entirely outside the camera frame and the grid
+ * read as uniform graph paper; the horizon has to die inside the shot.
+ */
+const OUTER_WORLD = 2;
+/** Square span of the outer world/grid, in world units, centred on the map. */
+const GRID_SPAN = Math.max(MAP_W, MAP_H) * OUTER_WORLD;
 /** One shared radial falloff for every station's light pool. Built on first use. */
 let poolTexture: THREE.CanvasTexture | null = null;
 function practicalPool() {
@@ -51,6 +72,68 @@ function practicalPool() {
   poolTexture = new THREE.CanvasTexture(canvas);
   poolTexture.colorSpace = THREE.SRGBColorSpace;
   return poolTexture;
+}
+/**
+ * Radial falloff that holds full strength over the built campus and dies well
+ * before the outer ground's own edge. This is what removes the "slab in the
+ * abyss" read: the world does not stop, it fades, which also reads as room
+ * the campus can still grow into.
+ */
+function horizonGradient(ctx: CanvasRenderingContext2D, size: number) {
+  const g = ctx.createRadialGradient(size / 2, size / 2, 0, size / 2, size / 2, size / 2);
+  g.addColorStop(0, "rgba(255,255,255,1)");
+  g.addColorStop(.28, "rgba(255,255,255,1)");
+  g.addColorStop(.45, "rgba(255,255,255,.5)");
+  g.addColorStop(.66, "rgba(255,255,255,.1)");
+  g.addColorStop(1, "rgba(255,255,255,0)");
+  return g;
+}
+let horizonTexture: THREE.CanvasTexture | null = null;
+function horizonFade() {
+  if (horizonTexture) return horizonTexture;
+  const size = 512, canvas = document.createElement("canvas");
+  canvas.width = canvas.height = size;
+  const ctx = canvas.getContext("2d")!;
+  ctx.fillStyle = horizonGradient(ctx, size);
+  ctx.fillRect(0, 0, size, size);
+  horizonTexture = new THREE.CanvasTexture(canvas);
+  horizonTexture.colorSpace = THREE.SRGBColorSpace;
+  return horizonTexture;
+}
+/**
+ * The whole grid floor as one non-repeating texture with its horizon falloff
+ * already multiplied in.
+ *
+ * A small tiling texture plus an alphaMap looks like the obvious way to do
+ * this and does not work: the alpha map inherits the grid's repeat, so every
+ * cell gets its own copy of the gradient and the net result is a perfectly
+ * uniform sheet of graph paper to the edge of the screen. Baking the falloff
+ * into one big texture is the version that actually fades.
+ */
+let gridTexture: THREE.CanvasTexture | null = null;
+function gridFloorTexture() {
+  if (gridTexture) return gridTexture;
+  const size = 2048, canvas = document.createElement("canvas");
+  canvas.width = canvas.height = size;
+  const ctx = canvas.getContext("2d")!;
+  const cells = GRID_SPAN / 3;
+  const step = size / cells;
+  ctx.strokeStyle = "rgba(255,255,255,.85)";
+  ctx.lineWidth = 1.6;
+  ctx.beginPath();
+  for (let i = 0; i <= cells; i++) {
+    const p = Math.round(i * step) + .5;
+    ctx.moveTo(p, 0); ctx.lineTo(p, size);
+    ctx.moveTo(0, p); ctx.lineTo(size, p);
+  }
+  ctx.stroke();
+  // Multiply the horizon falloff straight into the alpha channel.
+  ctx.globalCompositeOperation = "destination-in";
+  ctx.fillStyle = horizonGradient(ctx, size);
+  ctx.fillRect(0, 0, size, size);
+  gridTexture = new THREE.CanvasTexture(canvas);
+  gridTexture.colorSpace = THREE.SRGBColorSpace;
+  return gridTexture;
 }
 type Actor = { group: THREE.Group; body: THREE.Group; light: THREE.Mesh<THREE.SphereGeometry, THREE.MeshBasicMaterial>; ring: THREE.Mesh; label: HTMLElement; signal: HTMLElement; action: HTMLElement };
 const typing = () => !!document.activeElement?.closest("input, textarea, select, dialog");
@@ -84,6 +167,9 @@ export class World3D {
   private walk: WalkView;
   private walkTarget: string | null = null;
   private gltf = new GLTFLoader();
+  private composer!: EffectComposer;
+  private renderPass!: RenderPass;
+  private bloom!: UnrealBloomPass;
 
   constructor(parent: HTMLElement) {
     this.renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true, powerPreference: "high-performance" });
@@ -92,8 +178,26 @@ export class World3D {
     this.renderer.shadowMap.type = THREE.PCFSoftShadowMap;
     this.renderer.outputColorSpace = THREE.SRGBColorSpace;
     this.renderer.toneMapping = THREE.ACESFilmicToneMapping;
-    this.renderer.toneMappingExposure = 2.5;
+    this.renderer.toneMappingExposure = 1.65;
     parent.append(this.renderer.domElement);
+    // Holographic sci-fi read comes from bloom, not raw color: neon trim and
+    // window glow need to visibly haze/bleed the way a real glass emitter
+    // does, or the scene reads as flat lit geometry instead of a hologram.
+    this.composer = new EffectComposer(this.renderer);
+    this.renderPass = new RenderPass(this.scene, this.camera);
+    this.composer.addPass(this.renderPass);
+    // Strength .85 at threshold .32 blew every station into a white smear and
+    // buried the geometry. Bloom belongs on actual emitters — windows, pools,
+    // the Well — not on every lit surface, so the threshold sits above what
+    // tone-mapped stone returns and the strength only haloes, never floods.
+    this.bloom = new UnrealBloomPass(new THREE.Vector2(1, 1), .28, .7, .82);
+    this.composer.addPass(this.bloom);
+    this.composer.addPass(new OutputPass());
+    // Bloom is the one genuinely per-pixel cost added here (measured ~12% of
+    // frame time). On phones it runs at 1x while the scene still renders at
+    // the device ratio — a blur is the last thing that needs the extra pixels,
+    // and this is a PWA people open on an iPhone.
+    if (matchMedia("(pointer: coarse)").matches) this.composer.setPixelRatio(1);
     this.renderer.domElement.setAttribute("aria-label", "Interactive 3D AREA 67 base. Use crew and station controls for keyboard access.");
     this.labels.domElement.style.cssText = "position:absolute;inset:0;pointer-events:none;overflow:hidden";
     parent.append(this.labels.domElement);
@@ -110,16 +214,18 @@ export class World3D {
     this.controls.mouseButtons = { LEFT: THREE.MOUSE.PAN, MIDDLE: THREE.MOUSE.PAN, RIGHT: THREE.MOUSE.ROTATE };
     this.controls.touches = { ONE: THREE.TOUCH.PAN, TWO: THREE.TOUCH.DOLLY_ROTATE };
     this.resetCamera();
-    // The void is the backdrop. A photographic sky fights the black-field art
-    // direction and re-lights nothing, so the campus sits on pure black.
-    parent.style.background = "#000000";
+    // Holographic command-deck backdrop: near-black navy, not a photographic
+    // sky (still fights the art direction) and not the violet or black-void
+    // fields the earlier slices shipped.
+    parent.style.background = "#05080f";
     this.scene.background = null;
     this.renderer.setClearColor(NIGHT_LOOK.background, 0);
-    this.scene.fog = new THREE.FogExp2(NIGHT_LOOK.fog, .0029);
-    // Ambient is deliberately tiny. The previous 2.1 hemisphere flooded every
-    // surface evenly, which is why the campus read flat and had no pools of light.
-    this.scene.add(new THREE.HemisphereLight(NIGHT_LOOK.hemiSky, NIGHT_LOOK.hemiGround, 1.1));
-    const key = new THREE.DirectionalLight(NIGHT_LOOK.key, .34);
+    this.scene.fog = new THREE.FogExp2(NIGHT_LOOK.fog, .0018);
+    // Ambient does real work here — the whole deck is meant to look lit, not
+    // just the pools — but it's cyan-tinted, so it reads as hologram fill
+    // rather than daylight.
+    this.scene.add(new THREE.HemisphereLight(NIGHT_LOOK.hemiSky, NIGHT_LOOK.hemiGround, 2.2));
+    const key = new THREE.DirectionalLight(NIGHT_LOOK.key, .4);
     key.position.set(cx - 14, 28, cz - 8); key.target.position.set(cx, 0, cz);
     key.castShadow = true;
     key.shadow.mapSize.set(2048, 2048);
@@ -127,18 +233,18 @@ export class World3D {
     key.shadow.normalBias = .12;
     key.shadow.bias = -.00015;
     this.scene.add(key, key.target);
-    const rim = new THREE.DirectionalLight(NIGHT_LOOK.rim, 1.30);
+    const rim = new THREE.DirectionalLight(NIGHT_LOOK.rim, 1.9);
     rim.position.set(cx + 20, 15, cz + 18); this.scene.add(rim);
-    const wellLamp = new THREE.PointLight(NIGHT_LOOK.key, 2.6, 16, 1.8);
+    const wellLamp = new THREE.PointLight(NIGHT_LOOK.key, 1.8, 16, 1.8);
     wellLamp.position.set(cx, 3.1, cz);
     this.scene.add(wellLamp);
-    // Lime containment ring at the Well — the one place the accent runs bright.
+    // Mint-teal containment ring at the Well — the campus's one energy core.
     const wellRing = new THREE.Group(); wellRing.position.set(cx, 0, cz);
     this.glowRing(3.4, NIGHT_LOOK.accent, 1.35, wellRing, 1);
     this.glowRing(3.28, NIGHT_LOOK.accent, 1.35, wellRing, .7);
     this.glowRing(3.5, NIGHT_LOOK.accent, .32, wellRing, .75);
     this.scene.add(wellRing);
-    const wellGlow = new THREE.PointLight(NIGHT_LOOK.accent, 5.2, 14, 1.8);
+    const wellGlow = new THREE.PointLight(NIGHT_LOOK.accent, 6.5, 14, 1.8);
     wellGlow.position.set(cx, 1.5, cz); this.scene.add(wellGlow);
     this.createTerrain();
     this.createDistrictGrounds();
@@ -162,6 +268,7 @@ export class World3D {
       this.camera.updateProjectionMatrix();
       this.walk.resize(w, h);
       this.renderer.setSize(w, h);
+      this.composer.setSize(w, h);
       this.labels.setSize(w, h);
       if (this.fittedView) this.fitCampus();
     };
@@ -213,22 +320,22 @@ export class World3D {
   }
   private createTerrain() {
     const platform = new THREE.Group(); platform.position.set(MAP_W / 2, -.44, MAP_H / 2);
-    const foundation = this.box(MAP_W + .6, .85, MAP_H + .6, 0x040506, 0, 0, 0, platform);
+    const foundation = this.box(MAP_W + .6, .85, MAP_H + .6, 0x020304, 0, 0, 0, platform);
     foundation.castShadow = false;
     // The previous deck top and tile top both sat at y=.14: coplanarity made
     // the whole map stripe/z-fight. Keep the structural deck below tile bottoms.
-    const deck = this.box(MAP_W, .12, MAP_H, 0x101419, 0, .45, 0, platform);
+    const deck = this.box(MAP_W, .12, MAP_H, 0x070c14, 0, .45, 0, platform);
     deck.castShadow = false;
     this.scene.add(platform);
     const tileGeo = new THREE.BoxGeometry(1, .04, 1);
-    // Wet stone. Low roughness plus a little metalness is what turns each
-    // practical into the vertical specular streak the art set is built on;
-    // base colours sit in the measured #1c2328-#2d2e30 ground band.
+    // Dark tech-deck panels. Low roughness plus a little metalness is what
+    // turns each pool into the vertical specular streak the reference reads
+    // by; the grid overlay layered on top carries the actual "hologram" seams.
     const tileMats: Record<string, THREE.MeshStandardMaterial> = {
-      sand: this.material(0x1c2228, .30, .44), sand2: this.material(0x181d23, .30, .47),
-      plaza: this.material(0x232a31, .36, .33), pad: this.material(0x272f37, .36, .30),
-      path: this.material(0x2e373f, .40, .26), water: this.material(0x0a1822, .58, .11),
-      fence: this.material(0x161b20, .22, .60), blocked: this.material(0x121619, .18, .68),
+      sand: this.material(0x0c131c, .22, .55), sand2: this.material(0x0a0f17, .22, .58),
+      plaza: this.material(0x101924, .28, .42), pad: this.material(0x121b27, .28, .40),
+      path: this.material(0x15212f, .32, .36), water: this.material(0x060d16, .50, .15),
+      fence: this.material(0x090e16, .18, .68), blocked: this.material(0x070b11, .15, .72),
     };
     // Instancing keeps the raised tile deck light enough for laptop GPUs.
     for (const [kind, material] of Object.entries(tileMats)) {
@@ -243,6 +350,41 @@ export class World3D {
       tiles.forEach(([x, y], i) => batch.setMatrixAt(i, matrix.makeTranslation(x + .5, .14, y + .5)));
       batch.castShadow = false; batch.receiveShadow = true; this.scene.add(batch);
     }
+    // The buildable plate used to end in a hard edge with pure black past it,
+    // which read as a slab floating in an abyss. The world now continues well
+    // past the build limit as unlit outer ground and fades out, so the campus
+    // is a lit district inside something larger. None of this is buildable or
+    // walkable — no saved coordinate, footprint or path is touched.
+    // The falloff rides in the texture's own alpha channel (used as `map`, not
+    // `alphaMap`) so the ground dissolves into the background instead of
+    // ending on a square edge.
+    const outerGround = new THREE.Mesh(
+      new THREE.PlaneGeometry(GRID_SPAN, GRID_SPAN),
+      new THREE.MeshBasicMaterial({
+        color: 0x0a1018, map: horizonFade(), transparent: true, depthWrite: false,
+      }),
+    );
+    outerGround.rotation.x = -Math.PI / 2;
+    outerGround.position.set(MAP_W / 2, .05, MAP_H / 2);
+    outerGround.renderOrder = -3;
+    this.scene.add(outerGround);
+    // Holographic grid seams, carried across the outer ground too: the grid
+    // running off into the fade is what says "there is room to expand here"
+    // instead of "this is all there is".
+    const gridOverlay = new THREE.Mesh(
+      new THREE.PlaneGeometry(GRID_SPAN, GRID_SPAN),
+      new THREE.MeshBasicMaterial({
+        color: NIGHT_LOOK.rim, map: gridFloorTexture(),
+        transparent: true, blending: THREE.AdditiveBlending, depthWrite: false, opacity: .3,
+      }),
+    );
+    gridOverlay.rotation.x = -Math.PI / 2;
+    gridOverlay.position.set(MAP_W / 2, .17, MAP_H / 2);
+    // One line every 3 tiles, not every tile: at full-campus zoom a
+    // once-per-tile grid aliases into a moire under bloom.
+    (gridOverlay.material.map as THREE.Texture).anisotropy = this.renderer.capabilities.getMaxAnisotropy();
+    gridOverlay.renderOrder = -2;
+    this.scene.add(gridOverlay);
     // Clip the build-limit arc to the map; outer terrain remains explorable.
     const boundary: THREE.Vector3[] = [];
     for (let i = 0; i < 360; i++) {
@@ -250,7 +392,9 @@ export class World3D {
       const a = point(i * Math.PI / 180), b = point((i + 1) * Math.PI / 180);
       if ([a, b].every(p => p.x >= 0 && p.z >= 0 && p.x <= MAP_W && p.z <= MAP_H)) boundary.push(a, b);
     }
-    this.scene.add(new THREE.LineSegments(new THREE.BufferGeometry().setFromPoints(boundary), new THREE.LineBasicMaterial({ color: NIGHT_LOOK.accent, transparent: true, opacity: .9 })));
+    // Dimmed from .9: under bloom the build-limit arc blew out into a stray
+    // white stroke across the shot. It is a boundary hint, not a light source.
+    this.scene.add(new THREE.LineSegments(new THREE.BufferGeometry().setFromPoints(boundary), new THREE.LineBasicMaterial({ color: NIGHT_LOOK.rim, transparent: true, opacity: .14 })));
     for (let i = 0; i < 32; i++) {
       const angle = i / 32 * Math.PI * 2;
       if (i % 8 === 0) continue;
@@ -267,8 +411,11 @@ export class World3D {
   }
   private createDistrictGrounds() {
     // District inlays are wayfinding, not lighting: keep them dim so they do not
-    // compete with the practicals for the scene's colour budget.
-    const palette = [0x6f9c8e, 0x6d84ae, 0xc79a63, 0x709c8c, 0x8175a4, 0x96798f];
+    // compete with the practicals for the scene's colour budget. Bloom makes
+    // even a dim ring read as a saturated color, so these stay inside the
+    // cyan/teal family instead of the old muted-rainbow set — a red or gold
+    // wayfinding ring now fights the palette instead of blending into it.
+    const palette = [0x2be8ff, 0x39ffd4, 0x1c9fd6, 0x5ad1e0, 0x2680b8, 0x46e0c4];
     // Flush, non-colliding navigation inlays; no saved plot or road is moved.
     DISTRICTS.forEach((d, i) => {
       const group = new THREE.Group(); group.position.set(d.x, .18, d.y);
@@ -325,11 +472,14 @@ export class World3D {
     // decal buys the same wash for one transparent quad and no shading cost;
     // the few real lights that remain (key, rim, Well, comms) still carry the
     // specular and the shadows. Named so a seated GLB never takes it away.
+    // Sized 4.6x the footprint these read as fog banks, not light pools: a
+    // 4-unit building threw a 25-unit smear, and under bloom 26 of them merged
+    // into one white wash. A pool should sit close to the thing casting it.
     const pool = new THREE.Mesh(
-      new THREE.PlaneGeometry(Math.max(h.w, h.h) * 4.6 + 7, Math.max(h.w, h.h) * 4.6 + 7),
+      new THREE.PlaneGeometry(Math.max(h.w, h.h) * 2.2 + 3, Math.max(h.w, h.h) * 2.2 + 3),
       new THREE.MeshBasicMaterial({
         color: NIGHT_LOOK.practical, map: practicalPool(), transparent: true,
-        blending: THREE.AdditiveBlending, depthWrite: false, opacity: .55,
+        blending: THREE.AdditiveBlending, depthWrite: false, opacity: .45,
       }),
     );
     pool.name = "practical";
@@ -337,6 +487,18 @@ export class World3D {
     pool.position.y = -.02;
     pool.renderOrder = -1;
     group.add(pool);
+    // Every station stands on a landing-pad ring, the way each structure in
+    // the reference sits inside its own projected circle. Two thin concentric
+    // rings read as deliberate engineering; the soft pool alone read as haze.
+    const pad = Math.max(h.w, h.h);
+    this.glowRing(pad * .78, NIGHT_LOOK.practical, .035, group, .42);
+    this.glowRing(pad * .96, NIGHT_LOOK.practical, .035, group, .22);
+    // Mint-teal earns a seat only at the stations that read as "special" in
+    // the fiction (the Well already has its ring) — Spector's scan gate and
+    // the Altar's registry — not on every building, or it stops being an accent.
+    if (h.id === "skillspector" || h.id === "skill-altar") {
+      this.glowRing(pad * .55, NIGHT_LOOK.accent, .04, group, .6);
+    }
     void this.trySeatGlb(group, h);
     const banner = this.label("", "map-station-label station-banner", b.project ? 3.5 : 3.3, group);
     const chip = document.createElement("span"); chip.className = "station-chip";
@@ -676,10 +838,15 @@ export class World3D {
     else this.controls.update();
     const target = this.controls.target;
     // Camera breathing room is independent of saved-grid/build limits. Edge plots
-    // must be movable into the center of the screen without hitting a camera wall.
-    if (target.x < -24 || target.x > MAP_W + 24 || target.z < -24 || target.z > MAP_H + 24) this.focus(THREE.MathUtils.clamp(target.x, -24, MAP_W + 24), THREE.MathUtils.clamp(target.z, -24, MAP_H + 24));
+    // must be movable into the center of the screen without hitting a camera wall,
+    // and now that real ground exists past the build limit the leash reaches it —
+    // a wall 24 units out made a large world feel like a box.
+    const roam = 90;
+    if (target.x < -roam || target.x > MAP_W + roam || target.z < -roam || target.z > MAP_H + roam) this.focus(THREE.MathUtils.clamp(target.x, -roam, MAP_W + roam), THREE.MathUtils.clamp(target.z, -roam, MAP_H + roam));
     const view = this.walk.active ? this.walk.camera : this.camera;
     if (!this.walk.active) this.layoutLabels();
-    this.renderer.render(this.scene, view); this.labels.render(this.scene, view);
+    this.renderPass.camera = view;
+    this.composer.render();
+    this.labels.render(this.scene, view);
   }
 }
