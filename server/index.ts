@@ -13,8 +13,10 @@ import { SPEAKERS } from "../shared/protocol.ts";
 import { projectSchema, workSchema } from "../shared/workspace.ts";
 import { MAP_W, MAP_H } from "../shared/map.ts";
 import { cardSchema, cardActionSchema, registrationSchema } from "../shared/ecosystem.ts";
-import { EcosystemAccessError, ecosystemAuthorized, requireEcosystemWriter } from "./ecosystem-auth.ts";
+import { EcosystemAccessError, ecosystemAuthorized, requireAnySeat, requireEcosystemWriter } from "./ecosystem-auth.ts";
 import { boosterCapabilities, readUsage, searchMemory, recordMemory } from "./boosters.ts";
+import { lockerList, lockerPut, lockerRead, lockerUsage } from "./locker.ts";
+import { artifactPutSchema, MAX_ARTIFACT_BYTES, MAX_LOCKER_BYTES } from "../shared/locker.ts";
 
 store.loadStore();
 
@@ -139,6 +141,35 @@ app.post("/api/ecosystem/cards/action", async c => {
 app.post("/api/ecosystem/skills", async c => {
   requireEcosystemWriter(c.req.raw, "zeref");
   return c.json(store.registerSkill("zeref", registrationSchema.parse(await c.req.json()), "browser"));
+});
+
+app.get("/api/locker", c => {
+  c.header("Cache-Control", "no-store");
+  requireAnySeat(c.req.raw);
+  return c.json({ artifacts: lockerList(), usage: lockerUsage(), limits: { artifact: MAX_ARTIFACT_BYTES, locker: MAX_LOCKER_BYTES } });
+});
+app.get("/api/locker/:id", c => {
+  requireAnySeat(c.req.raw);
+  const found = lockerRead(c.req.param("id"));
+  if (!found) return c.json({ error: "No such artifact" }, 404);
+  // Uploaded bytes are never served as a renderable type on the hub's own
+  // origin: an artifact is a download, not a page. octet-stream + attachment +
+  // nosniff keeps a .patch or a stray .html from executing as hub content.
+  c.header("Content-Type", "application/octet-stream");
+  c.header("X-Content-Type-Options", "nosniff");
+  c.header("Content-Disposition", `attachment; filename="${found.meta.name}"`);
+  c.header("Cache-Control", "no-store");
+  c.header("X-Artifact-Sha256", found.meta.sha256);
+  return c.body(new Uint8Array(found.bytes));
+});
+app.post("/api/locker/:seat", async c => {
+  const seat = c.req.param("seat");
+  if (!isSpeaker(seat)) return c.json({ error: "Unknown seat" }, 404);
+  // Uploads are authenticated as the seat doing them. An open upload endpoint
+  // on a public host is an abuse vector, and authorship has to be real for the
+  // locker to be evidence rather than a shared dumping ground.
+  requireEcosystemWriter(c.req.raw, seat);
+  return c.json(lockerPut(seat, artifactPutSchema.parse(await c.req.json())));
 });
 
 app.post("/api/architect", async (c) => {
