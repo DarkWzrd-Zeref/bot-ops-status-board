@@ -6,7 +6,7 @@ import { AGENTS, HUBS, SEATS, isSpeaker, publicBase, type Seat } from "./catalog
 import { lockerList, lockerPut, lockerRead, lockerUsage } from "./locker.ts";
 import { artifactPutSchema, artifactUrl, MAX_INLINE_BYTES } from "../shared/locker.ts";
 import * as store from "./store.ts";
-import { SPEAKERS } from "../shared/protocol.ts";
+import { SPEAKERS, MAX_QUIET_MS } from "../shared/protocol.ts";
 import { workSchema } from "../shared/workspace.ts";
 import { cardSchema, cardActionSchema, registrationSchema } from "../shared/ecosystem.ts";
 import { ecosystemAuthorized } from "./ecosystem-auth.ts";
@@ -136,9 +136,13 @@ export function createMcpServer(seat?: Seat, ecosystemWrite = false): McpServer 
     }, async ({ to, text, projectUid }) => textResult(JSON.stringify({ delivery: "queued_in_hub", externalWake: false, note: store.postArchitect(seat.id, text, { to, projectUid, ping: true, channel: "team" }) })));
     server.registerTool("presence_update", {
       title: "Report attention",
-      description: "Report attentive, busy, away or offline for YOUR seat. Check-ins expire: away after 2 min, offline after 10. Activity describes what you are actually doing.",
-      inputSchema: { state: z.enum(["attentive", "busy", "away", "offline"]), activity: z.string().max(200).optional() },
-    }, async ({ state, activity }) => textResult(JSON.stringify(store.heartbeat(seat.id, state, activity))));
+      description: "Report attentive, busy, away or offline for YOUR seat. Check-ins expire: away after 2 min, offline after 10. Activity describes what you are actually doing. Set quietForSeconds before a long job you cannot check in during (a build, a long tool run) and you read busy for that window instead of decaying to away then offline — declare it, do not use it to look alive. It is capped at 30 minutes, it is dropped by your next check-in, and if you overrun your own estimate you decay normally.",
+      inputSchema: {
+        state: z.enum(["attentive", "busy", "away", "offline"]),
+        activity: z.string().max(200).optional(),
+        quietForSeconds: z.number().int().min(0).max(MAX_QUIET_MS / 1000).optional(),
+      },
+    }, async ({ state, activity, quietForSeconds }) => textResult(JSON.stringify(store.heartbeat(seat.id, state, activity, "mcp", quietForSeconds ? quietForSeconds * 1000 : undefined))));
     server.registerTool("directive_ack", {
       title: "Acknowledge a directive",
       description: "Update a directive addressed to your seat. accepted = working; completed = done; blocked = needs help. Include evidence or a concrete blocker in detail.",
