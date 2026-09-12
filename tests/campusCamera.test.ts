@@ -62,7 +62,7 @@ test("pinch, canceled pointers, and focus loss never synthesize clicks", () => {
 
 test("classified-night ground fixes the coplanar deck, retains semantic terrain, and sits on the void", () => {
   const source = readFileSync(new URL("../src/game/World3D.ts", import.meta.url), "utf8");
-  assert.match(source, /MAP_W, \.12, MAP_H, 0x13171b, 0, \.45/);
+  assert.match(source, /MAP_W, \.12, MAP_H, 0x101419, 0, \.45/);
   assert.match(source, /makeTranslation\(x \+ \.5, \.14, y \+ \.5\)/);
   assert.match(source, /batch\.castShadow = false/);
   // The photographic backdrop is retired: the art direction is a black void,
