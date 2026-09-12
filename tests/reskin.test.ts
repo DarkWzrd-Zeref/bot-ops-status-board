@@ -46,12 +46,26 @@ test("no source file still carries a colour from an abandoned palette", () => {
     "83f1d2", "80f5cd", // mint accents from the blue-hour/original decks
     "bef264", "76b900", "8fe049", "d8f0c4", // lime family
     "3a4a38", "4a5540", "0b100c", "10180f", "16201a", // green/olive chrome
-    "13352f", "102b29", "153c3d", // green text-on-accent
+    "13352f", "102b29", "153c3d", "0d2a22", // green-black text-on-accent
+    "afffe8", "b7ffe9", // mint button hovers
   ];
+  // NOTE, and it is the important part: a blocklist only catches what someone
+  // remembered to list, which is why reviewers kept finding one more. A sweep
+  // of the tree turns up ~50 further green-dominant literals, almost all of
+  // them in style.css and experience.css — an intact mint design system the
+  // cyan campus was bolted onto. They are deliberately NOT listed here.
+  // Some are semantic (status greens that pair against the error red) and some
+  // are illustrative (a cactus, a character's skin); recolouring them by hue
+  // would destroy meaning and paint a plant cyan. Retiring the rest is the
+  // shell decision, not a find-and-replace.
+  // World3D and architecture were missing from this list on the first cut —
+  // the two biggest colour-carrying files in the tree, omitted from the very
+  // test written to stop partial sweeps. Caught in review, not by me.
   const files = [
     "../src/style.css", "../src/ui/campus.css", "../src/ui/experience.css",
-    "../src/ui/mobile-clarity.css", "../src/game/HubScene.ts",
+    "../src/ui/mobile-clarity.css", "../src/ui/hud.ts", "../src/game/HubScene.ts",
     "../src/game/fallback.ts", "../src/game/textures.ts",
+    "../src/game/World3D.ts", "../src/game/architecture.ts",
   ];
   for (const file of files) {
     const source = readFileSync(new URL(file, import.meta.url), "utf8").toLowerCase();

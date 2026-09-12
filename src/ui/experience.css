@@ -68,7 +68,7 @@
 .view-switch button { padding: 8px 12px; font-size: 12px; white-space: nowrap; }
 .view-switch button[aria-pressed=true] { background: #2b5264; color: #d0fff0; box-shadow: inset 0 0 0 1px #81cbbb3d; }
 #hud .view-switch .fit-campus { background: #2be8ff; border-color: #2be8ff; color: #0a302d; font-weight: 700; padding-inline: 14px; }
-#hud .view-switch .fit-campus:hover { background: #afffe8; }
+#hud .view-switch .fit-campus:hover { background: #9df1ff; }
 .fit-campus span { margin-right: 5px; font-size: 18px; }
 .view-divider { height: 24px; border-left: 1px solid #51697d; margin: 0 4px; }
 .map-navigation-hint { position: absolute; bottom: calc(100% + 10px); left: 4px; white-space: nowrap; color: #b5cedb; font-size: 11px; text-shadow: 0 2px 5px #000, 0 1px 2px #000; pointer-events: none; }
@@ -113,7 +113,7 @@ dialog::backdrop, #ecosystem-dialog::backdrop { background: #030c19bf; backdrop-
 #ecosystem-dialog input:not([type=checkbox]), #ecosystem-dialog textarea, #ecosystem-dialog select { background: #0a192b; border-color: #3b617b; border-radius: 10px; }
 .dialog-heading .eyebrow { color: #8fabbe; }
 .primary, #hud button.primary { background: #2be8ff; color: #0c302c; border-color: #2be8ff; }
-#hud button.primary:hover { background: #b7ffe9; }
+#hud button.primary:hover { background: #9df1ff; }
 #toast { border-color: #51798e; background: #142a3deb; color: #dfedf6; box-shadow: var(--edge-shadow); }
 .walk-mode .view-switch { bottom: auto; top: calc(var(--header) + 84px); }
 .walk-mode .view-switch .map-navigation-hint { display: none; }
