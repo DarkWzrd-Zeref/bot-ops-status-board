@@ -60,36 +60,35 @@ test("pinch, canceled pointers, and focus loss never synthesize clicks", () => {
   pointer.down(1, 10, 10, 0); assert.equal(pointer.up(1, 10, 10, 0), true);
 });
 
-test("classified-night ground fixes the coplanar deck, retains semantic terrain, and sits on the void", () => {
+test("cyberpunk ground fixes the coplanar deck, retains semantic terrain, and sits on a lit navy field", () => {
   const source = readFileSync(new URL("../src/game/World3D.ts", import.meta.url), "utf8");
-  assert.match(source, /MAP_W, \.12, MAP_H, 0x101419, 0, \.45/);
+  assert.match(source, /MAP_W, \.12, MAP_H, 0x070c14, 0, \.45/);
   assert.match(source, /makeTranslation\(x \+ \.5, \.14, y \+ \.5\)/);
   assert.match(source, /batch\.castShadow = false/);
-  // The photographic backdrop is retired: the art direction is a black void,
-  // and a sky image both fights it and lights nothing.
+  // The photographic backdrop is retired: it fights the art direction and
+  // lights nothing, whatever color the field behind it is.
   assert.doesNotMatch(source, /area67-bluehour-panorama\.png/);
-  assert.match(source, /parent\.style\.background = "#000000"/);
+  assert.match(source, /parent\.style\.background = "#05080f"/);
   assert.match(source, /this\.scene\.background = null/);
   assert.match(source, /setClearColor\(NIGHT_LOOK\.background, 0\)/);
   assert.match(source, /LEFT: THREE\.MOUSE\.PAN/);
   assert.doesNotMatch(source, /Math\.min\(\.28/);
 });
 
-test("the night rig is practical-led, not ambient-led", () => {
+test("the cyberpunk rig is ambient-lit, with practicals still carrying real punch", () => {
   const source = readFileSync(new URL("../src/game/World3D.ts", import.meta.url), "utf8");
   const hemi = source.match(/HemisphereLight\(NIGHT_LOOK\.hemiSky, NIGHT_LOOK\.hemiGround, ([\d.]+)\)/);
   assert.ok(hemi, "hemisphere light should be built from NIGHT_LOOK");
   const ambient = parseFloat(hemi![1]);
-  // 2.1 was the flooding value that made the campus read flat and shadowless.
-  // Ambient may light the floor, but it must stay well under that.
-  assert.ok(ambient < 1.2, `ambient ${ambient} is back in flooding territory`);
-  // The real invariant is which light shapes the scene. Each station's own
-  // practical has to out-punch the global fill, or the pools of light vanish
-  // and we are back to a uniformly lit field.
+  // Slice 1-2's invariant was "ambient must stay low." That produced the void
+  // look Zeref rejected. The reversal: ambient is meant to light the campus,
+  // so this only guards against going pitch dark again, not against flooding.
+  assert.ok(ambient >= 1.5, `ambient ${ambient} is too low for a lit cyberpunk field`);
+  // Practicals still need to read as neon pools/windows, not just tint the fill.
   const practical = source.match(/opacity: \.(\d+),/);
-  assert.ok(practical, "each station should carry a warm practical pool");
+  assert.ok(practical, "each station should carry a practical pool");
   assert.match(source, /blending: THREE\.AdditiveBlending/);
-  assert.match(source, /background: 0x000000/);
+  assert.match(source, /background: 0x05080f/);
   // Named so a seated GLB swapping the "kit" child never takes the light with it.
   assert.match(source, /pool\.name = "practical"/);
 });

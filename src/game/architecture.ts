@@ -2,16 +2,20 @@ import * as THREE from "three";
 import { mergeGeometries } from "three/addons/utils/BufferGeometryUtils.js";
 
 interface StationShape { id: string; kind: string; w: number; h: number; color: string }
-// Classified-night stone. Measured from the Grok Imagine set: buildings are
-// dark wet masonry that reads by highlight, with warm lit glazing doing the
-// colour work. Geometry and footprints are untouched — materials only.
-const shell = 0x1b2027, edge = 0x3d4750, dark = 0x090b0e, glass = 0x1f2b33;
-/** Warm interior glazing: the amber the art set reads by. */
-const lit = 0xffb163;
+// Cyberpunk stone: buildings are dark violet-black masonry with a cyan-tinted
+// glass edge, reading by highlight and reflection rather than flat color.
+// Warm amber glazing still does the interior-light color work. Geometry and
+// footprints are untouched — materials only.
+const shell = 0x131b28, edge = 0x2a4a5a, dark = 0x080c12, glass = 0x123544;
+/** Cyan interior glazing: the hologram color every building reads by, except
+ * the two "treasure" buildings (Bank, Grand Exchange) which stay gold — the
+ * one deliberate warm accent in the reference, not a rule for every window. */
+const cyanLit = 0x2be8ff, goldLit = 0xffc873;
 
 /** Native 3D architectural kit. All geometry stays within the station's saved footprint. */
 export function createArchitecture(h: StationShape, project = false) {
   const root = new THREE.Group();
+  const lit = h.id === "bank" || h.id === "grand-exchange" ? goldLit : cyanLit;
   const ink = parseInt(h.color.slice(1), 16);
   const mats = new Map<string, THREE.MeshStandardMaterial>();
   const mat = (color: number, glow = false) => {

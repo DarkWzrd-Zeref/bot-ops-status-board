@@ -7,19 +7,19 @@ function hex(n: string): number {
 }
 
 /**
- * Classified-night ground for the 2D fallback. Same texture keys, no data change.
+ * Cyberpunk ground for the 2D fallback. Same texture keys, no data change.
  *
  * These base tones are kept in step with the tile materials in World3D so the
  * 2D and 3D campuses cannot drift into different palettes again — that drift is
  * what left three disagreeing night specs in the tree.
  */
 export function cookTextures(scene: Phaser.Scene): void {
-  paintTile(scene, "tile-sand", 0x212429, 0x15171b, 0x343941);
-  paintTile(scene, "tile-sand2", 0x1c1f24, 0x121418, 0x2e333b);
-  paintTile(scene, "tile-path", 0x393d42, 0x24272b, 0x5a6068);
-  paintTile(scene, "tile-pad", 0x30343a, 0x1e2126, 0x4c535c);
-  paintTile(scene, "tile-plaza", 0x2a2e33, 0x1a1d21, 0x434a53);
-  paintTile(scene, "tile-water", 0x0c1a22, 0x050e14, 0x1a3f4e);
+  paintTile(scene, "tile-sand", 0x0c131c, 0x070b11, 0x1c2c3a);
+  paintTile(scene, "tile-sand2", 0x0a0f17, 0x05080d, 0x18242f);
+  paintTile(scene, "tile-path", 0x15212f, 0x0d151f, 0x2e4658);
+  paintTile(scene, "tile-pad", 0x121b27, 0x0a1119, 0x274050);
+  paintTile(scene, "tile-plaza", 0x101924, 0x080d13, 0x223846);
+  paintTile(scene, "tile-water", 0x060d16, 0x03070c, 0x123340);
   paintFence(scene);
   paintCactus(scene);
   paintWell(scene);
@@ -52,10 +52,10 @@ function paintTile(scene: Phaser.Scene, key: string, a: number, b: number, grit:
     g.fillStyle(grit, 0.22);
     g.fillRect(1, 1, TILE - 5, 1);
     g.fillRect(1, 1, 1, TILE - 5);
-    g.fillStyle(0x76b900, 0.1);
+    g.fillStyle(0x2be8ff, 0.1);
     g.fillRect(5, 7, 2, 2);
     g.fillRect(19, 15, 2, 2);
-    g.fillStyle(0xc9a15b, 0.12);
+    g.fillStyle(0x39ffd4, 0.12);
     g.fillRect(11, 4, 2, 1);
     g.fillRect(22, 22, 2, 1);
   });
@@ -67,7 +67,7 @@ function paintFence(scene: Phaser.Scene): void {
     g.fillRect(0, 0, TILE, TILE);
     g.fillStyle(0x343941, 1);
     g.fillRect(14, 4, 4, 24);
-    g.fillStyle(0x76b900, 0.75);
+    g.fillStyle(0x2be8ff, 0.75);
     g.fillRect(2, 10, 28, 2);
     g.fillRect(2, 18, 28, 2);
   });
@@ -81,7 +81,7 @@ function paintCactus(scene: Phaser.Scene): void {
     g.fillRect(13, 10, 6, 18);
     g.fillRect(8, 14, 6, 4);
     g.fillRect(18, 16, 6, 4);
-    g.fillStyle(0x76b900, 0.5);
+    g.fillStyle(0x2be8ff, 0.5);
     g.fillRect(14, 8, 4, 3);
   });
 }
@@ -92,12 +92,12 @@ function paintWell(scene: Phaser.Scene): void {
     g.fillCircle(32, 40, 24);
     g.fillStyle(0x08090b, 1);
     g.fillCircle(32, 36, 16);
-    g.fillStyle(0x76b900, 0.9);
+    g.fillStyle(0x2be8ff, 0.9);
     g.fillRect(30, 4, 4, 28);
     g.fillCircle(32, 8, 7);
-    g.fillStyle(0xbef264, 1);
+    g.fillStyle(0x8ff5ff, 1);
     g.fillCircle(32, 8, 3);
-    g.fillStyle(0xc9a15b, 0.35);
+    g.fillStyle(0x39ffd4, 0.35);
     g.fillCircle(32, 40, 20);
   });
 }
@@ -114,15 +114,15 @@ function paintBuilding(scene: Phaser.Scene, id: string, tw: number, th: number, 
     g.fillRect(2, 14, w - 8, h - 16);
     g.fillStyle(0x071018, 1);
     g.fillRect(Math.floor(w / 2) - 7, h - 16, 14, 14);
-    g.fillStyle(0x76b900, 0.85);
+    g.fillStyle(0x2be8ff, 0.85);
     g.fillRect(8, 20, 8, 6);
     g.fillRect(w - 20, 20, 8, 6);
-    g.fillStyle(0xbef264, 1);
+    g.fillStyle(0x8ff5ff, 1);
     g.fillRect(w - 10, 8, 4, 4);
-    g.fillStyle(0xc9a15b, 0.35);
+    g.fillStyle(0x39ffd4, 0.35);
     g.fillRect(2, 14, w - 8, 2);
     if (id === "skillspector") {
-      g.fillStyle(0x76b900, 1);
+      g.fillStyle(0x2be8ff, 1);
       g.fillCircle(w / 2, 22, 7);
     }
   });
@@ -141,16 +141,16 @@ function paintChibi(scene: Phaser.Scene, key: string, color: number): void {
     g.fillCircle(15, 12, 1.6);
     g.fillStyle(color, 1);
     g.fillEllipse(12, 6, 14, 8);
-    g.fillStyle(0x76b900, 0.9);
+    g.fillStyle(0x2be8ff, 0.9);
     g.fillRect(8, 22, 8, 2);
   });
 }
 
 function paintGhost(scene: Phaser.Scene): void {
   g2t(scene, "ghost", TILE, TILE, (g) => {
-    g.fillStyle(0x76b900, 0.32);
+    g.fillStyle(0x2be8ff, 0.32);
     g.fillRect(1, 1, TILE - 2, TILE - 2);
-    g.lineStyle(2, 0xbef264, 1);
+    g.lineStyle(2, 0x8ff5ff, 1);
     g.strokeRect(1, 1, TILE - 2, TILE - 2);
   });
 }
