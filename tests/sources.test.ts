@@ -27,4 +27,8 @@ test("connect.html does not embed private repo names or Drive file URLs", () => 
   assert.doesNotMatch(connect, /drive\.google\.com/);
   assert.doesNotMatch(connect, /hub-quota|reserve-os|HARD-DRIVE|atlas-apex/);
   assert.match(connect, /fetch\("\/sources\.json"\)/);
+  assert.match(connect, /fetch\("\/api\/seats"\)/);
+  assert.match(connect, /\/mcp\/engineer/);
+  assert.match(connect, /grok\.com chat uses <code>\/mcp\/grok<\/code>/);
+  assert.doesNotMatch(connect, /EIGHT IDENTITIES/);
 });

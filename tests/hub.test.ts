@@ -3,7 +3,7 @@ import assert from "node:assert/strict";
 import { mkdtempSync, readFileSync, writeFileSync, renameSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { effectiveAttention, SEATS, type Presence } from "../shared/protocol.ts";
+import { effectiveAttention, SEATS, SPEAKERS, isSpeaker, type Presence } from "../shared/protocol.ts";
 import type { BusEvent } from "../server/store.ts";
 import { workIsLive } from "../shared/workspace.ts";
 
@@ -62,7 +62,7 @@ await test("queued directive is seen only by its addressed inbox and tracks actu
   await post(`/api/directives/${note.id}/ack`, { seat: "codex", state: "completed", detail: "Tests passed" });
   assert.equal((await post(`/api/directives/${note.id}/ack`, { seat: "codex", state: "accepted" })).status, 400);
 });
-await test("broadcast directives snapshot all eight seats and preserve per-seat receipts", async () => {
+await test("broadcast directives snapshot all seats and preserve per-seat receipts", async () => {
   const n = store.postArchitect("zeref", "Everyone check in", { directive: true });
   assert.deepEqual(n.recipients, SEATS.map(s => s.id));
   store.inbox("codex");
@@ -272,6 +272,70 @@ await test("editing workspace scope invalidates reports and project replies reta
   const reply = store.postArchitect("codex", "Reply from all chat", { replyTo: parent.id, channel: "team" });
   assert.equal(reply.projectUid, "project-b");
   assert.throws(() => store.postArchitect("codex", "Wrong scope", { replyTo: parent.id, projectUid: "core" }), /different project/);
+});
+
+await test("wave 1 Grok Bot seats are identity-locked and distinct from grok.com chat", async () => {
+  const wave1 = [
+    { id: "engineer", palId: "engineer", label: "Engineer Bot pc", model: "Grok Bot · Engineer" },
+    { id: "account-manager", palId: "account-manager", label: "Account Manager pc", model: "Grok Bot · AM" },
+    { id: "chief-of-staff", palId: "chief-of-staff", label: "Chief of Staff pc", model: "Grok Bot · CoS" },
+    { id: "police", palId: "police", label: "Police pc", model: "Grok Bot · Police" },
+    { id: "stay-on-track", palId: "stay-on-track", label: "Stay on Track pc", model: "Grok Bot · SOT" },
+  ];
+  const product = [
+    { id: "codex", slug: "codex", palId: "codex" },
+    { id: "claude", slug: "claude", palId: "claude" },
+    { id: "grok-heavy", slug: "grok-heavy", palId: "director" },
+    { id: "grok-a", slug: "grok-a", palId: "grok-am-a" },
+    { id: "grok-b", slug: "grok-b", palId: "grok-am-b" },
+    { id: "grok", slug: "grok", palId: "grok" },
+    { id: "chatgpt", slug: "chatgpt", palId: "researcher" },
+    { id: "cursor", slug: "cursor", palId: "cursor-ultra" },
+  ];
+  assert.equal(SEATS.length, 13);
+  assert.deepEqual(SPEAKERS.slice(-6), ["engineer", "account-manager", "chief-of-staff", "police", "stay-on-track", "zeref"]);
+  for (const row of product) {
+    const seat = SEATS.find(s => s.id === row.id);
+    assert.ok(seat);
+    assert.equal(seat.slug, row.slug);
+    assert.equal(seat.palId, row.palId);
+  }
+  const grok = SEATS.find(s => s.id === "grok")!;
+  assert.match(grok.youAre, /grok\.com chat/);
+  assert.match(grok.youAre, /Not Engineer Bot pc/);
+  assert.ok(!/Head of Ops/.test(grok.youAre));
+  for (const row of wave1) {
+    assert.equal(isSpeaker(row.id), true);
+    const seat = SEATS.find(s => s.id === row.id);
+    assert.ok(seat);
+    assert.equal(seat.slug, row.id);
+    assert.equal(seat.palId, row.palId);
+    assert.equal(seat.label, row.label);
+    assert.equal(seat.model, row.model);
+    const pal = store.palList().find(p => p.id === row.palId);
+    assert.ok(pal);
+    assert.equal(pal.name, row.label);
+    const identity = await call(row.id, "whoami");
+    assert.match(identity.content[0].text, new RegExp("Seat: " + row.label.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")));
+    assert.match(identity.content[0].text, new RegExp("MCP: /mcp/" + row.id));
+    assert.match(identity.content[0].text, /Zeref directs/);
+  }
+  const health = await (await app.request("/health")).json();
+  assert.deepEqual(health.seats.map((s: { id: string }) => s.id), SEATS.map(s => s.id));
+  assert.deepEqual(health.seats.find((s: { id: string }) => s.id === "engineer"), {
+    id: "engineer",
+    url: "https://status-board-production-806b.up.railway.app/mcp/engineer",
+    pal: "engineer",
+  });
+  assert.equal(health.seats.find((s: { id: string; url: string }) => s.id === "grok").url.endsWith("/mcp/grok"), true);
+  assert.equal(health.seats.find((s: { id: string; url: string }) => s.id === "cursor").url.endsWith("/mcp/cursor"), true);
+  const directory = await (await app.request("/api/seats")).json();
+  assert.equal(directory.seats.length, 13);
+  assert.equal(directory.seats.find((s: { id: string }) => s.id === "engineer").mcp.endsWith("/mcp/engineer"), true);
+  assert.equal((await app.request("/mcp/not-a-seat")).status, 404);
+  const posted = await (await post("/api/architect", { from: "engineer", text: "Wave 1 boarding" })).json();
+  assert.equal(posted.from, "engineer");
+  assert.equal(posted.palId, "engineer");
 });
 
 after(() => { console.log("Isolated test data: " + testDir); });
