@@ -1,5 +1,5 @@
 import { timingSafeEqual } from "node:crypto";
-import { isSpeaker, type Speaker } from "../shared/protocol.ts";
+import { SPEAKERS, isSpeaker, type Speaker } from "../shared/protocol.ts";
 
 /** New ecosystem writes are closed by default. Never infer an author from a body. */
 export class EcosystemAccessError extends Error {}
@@ -19,4 +19,18 @@ export function ecosystemAuthorized(request: Request, seat: Speaker): boolean {
 }
 export function requireEcosystemWriter(request: Request, seat: Speaker): void {
   if (!ecosystemAuthorized(request, seat)) throw new EcosystemAccessError("Board writes are locked. Connect this seat's private write key.");
+}
+/**
+ * True when the bearer matches ANY configured seat key.
+ *
+ * Writes are always bound to one seat, because authorship has to be real. Some
+ * reads are shared team property instead: the artifact locker is only useful if
+ * the seat receiving a patch can fetch it with its own key rather than needing
+ * the operator's. This still requires a real key — it is not public access.
+ */
+export function anySeatAuthorized(request: Request): boolean {
+  return SPEAKERS.some(seat => ecosystemAuthorized(request, seat));
+}
+export function requireAnySeat(request: Request): void {
+  if (!anySeatAuthorized(request)) throw new EcosystemAccessError("The locker is closed. Connect your seat's private key.");
 }
