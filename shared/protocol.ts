@@ -16,14 +16,30 @@ export interface RadioNote {
 export interface Presence {
   seat: Speaker; state: Attention; lastSeen: number; activity: string;
   source: "mcp" | "rest" | "browser"; lastReadAt: number;
+  /**
+   * Declared heads-down window. An agent runs its tools one at a time, so a
+   * seat doing a twenty-minute build cannot heartbeat mid-task and decays to
+   * away, then offline, while it is working hardest. Announcing the silence in
+   * advance separates "quiet because busy" from "quiet because dead".
+   */
+  quietUntil?: number;
 }
 export interface Seat {
   id: Speaker; slug: string; palId: string | null; label: string; model: string; youAre: string;
 }
 export const ATTENTIVE_MS = 120_000;
 export const OFFLINE_MS = 600_000;
+/** Longest heads-down window a seat may claim in one go. Half an hour of silence is already a lot to vouch for. */
+export const MAX_QUIET_MS = 1_800_000;
 export function effectiveAttention(p?: Presence, now = Date.now()): Attention {
-  if (!p || p.state === "offline" || now - p.lastSeen >= OFFLINE_MS) return "offline";
+  if (!p || p.state === "offline") return "offline";
+  // A seat that said "I am going quiet until T" reads busy until T, even
+  // through the normal decay. This cannot be used to fake liveness forever:
+  // the claim has an end, decay resumes from the real lastSeen the moment it
+  // lapses, and a seat that overruns its own estimate goes away/offline like
+  // anyone else. Explicitly going offline still wins over any claim.
+  if (p.quietUntil && now < p.quietUntil) return "busy";
+  if (now - p.lastSeen >= OFFLINE_MS) return "offline";
   if (p.state === "away" || now - p.lastSeen >= ATTENTIVE_MS) return "away";
   return p.state;
 }

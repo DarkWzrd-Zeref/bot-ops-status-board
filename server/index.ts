@@ -9,7 +9,7 @@ import { SEATS, isSpeaker, publicBase, seatBySlug, seatUrl } from "./catalog.ts"
 import { handleMcp } from "./mcp.ts";
 import * as store from "./store.ts";
 import { z } from "zod";
-import { SPEAKERS } from "../shared/protocol.ts";
+import { SPEAKERS, MAX_QUIET_MS } from "../shared/protocol.ts";
 import { projectSchema, workSchema } from "../shared/workspace.ts";
 import { MAP_W, MAP_H } from "../shared/map.ts";
 import { cardSchema, cardActionSchema, registrationSchema } from "../shared/ecosystem.ts";
@@ -184,8 +184,9 @@ app.get("/api/presence", c => c.json(store.presence()));
 app.post("/api/presence/:seat", async c => {
   const seat = c.req.param("seat");
   if (!isSpeaker(seat)) return c.json({ error: "Unknown seat" }, 404);
-  const data = z.object({ state: z.enum(["attentive", "busy", "away", "offline"]), activity: z.string().max(200).optional() }).parse(await c.req.json());
-  return c.json(store.heartbeat(seat, data.state, data.activity, seat === "zeref" ? "browser" : "rest"));
+  const data = z.object({ state: z.enum(["attentive", "busy", "away", "offline"]), activity: z.string().max(200).optional(),
+    quietForSeconds: z.number().int().min(0).max(MAX_QUIET_MS / 1000).optional() }).parse(await c.req.json());
+  return c.json(store.heartbeat(seat, data.state, data.activity, seat === "zeref" ? "browser" : "rest", data.quietForSeconds ? data.quietForSeconds * 1000 : undefined));
 });
 app.get("/api/inbox/:seat", c => {
   const seat = c.req.param("seat");
