@@ -62,33 +62,37 @@ test("pinch, canceled pointers, and focus loss never synthesize clicks", () => {
 
 test("cyberpunk ground fixes the coplanar deck, retains semantic terrain, and sits on a lit navy field", () => {
   const source = readFileSync(new URL("../src/game/World3D.ts", import.meta.url), "utf8");
-  assert.match(source, /MAP_W, \.12, MAP_H, 0x070c14, 0, \.45/);
+  assert.match(source, /MAP_W, \.12, MAP_H, NIGHT_LOOK\.deck, 0, \.45/);
   assert.match(source, /makeTranslation\(x \+ \.5, \.14, y \+ \.5\)/);
   assert.match(source, /batch\.castShadow = false/);
   // The photographic backdrop is retired: it fights the art direction and
   // lights nothing, whatever color the field behind it is.
   assert.doesNotMatch(source, /area67-bluehour-panorama\.png/);
-  assert.match(source, /parent\.style\.background = "#05080f"/);
+  assert.match(source, /parent\.style\.background = "#0d0d13"/);
   assert.match(source, /this\.scene\.background = null/);
   assert.match(source, /setClearColor\(NIGHT_LOOK\.background, 0\)/);
   assert.match(source, /LEFT: THREE\.MOUSE\.PAN/);
   assert.doesNotMatch(source, /Math\.min\(\.28/);
 });
 
-test("the cyberpunk rig is ambient-lit, with practicals still carrying real punch", () => {
+test("the rig is key-lit with a shadow, not flooded with ambient", () => {
   const source = readFileSync(new URL("../src/game/World3D.ts", import.meta.url), "utf8");
   const hemi = source.match(/HemisphereLight\(NIGHT_LOOK\.hemiSky, NIGHT_LOOK\.hemiGround, ([\d.]+)\)/);
   assert.ok(hemi, "hemisphere light should be built from NIGHT_LOOK");
   const ambient = parseFloat(hemi![1]);
-  // Slice 1-2's invariant was "ambient must stay low." That produced the void
-  // look Zeref rejected. The reversal: ambient is meant to light the campus,
-  // so this only guards against going pitch dark again, not against flooding.
-  assert.ok(ambient >= 1.5, `ambient ${ambient} is too low for a lit cyberpunk field`);
-  // Practicals still need to read as neon pools/windows, not just tint the fill.
-  const practical = source.match(/opacity: \.(\d+),/);
-  assert.ok(practical, "each station should carry a practical pool");
-  assert.match(source, /blending: THREE\.AdditiveBlending/);
-  assert.match(source, /background: 0x05080f/);
-  // Named so a seated GLB swapping the "kit" child never takes the light with it.
-  assert.match(source, /pool\.name = "practical"/);
+  // This invariant has now been inverted twice, so here is the reasoning
+  // rather than just the number. Slice 1-2 demanded ambient stay near zero and
+  // produced the void Zeref rejected; the fix over-corrected to 2.2, where
+  // ambient lit the entire campus and nothing cast a shadow — flat, which is
+  // the "very mids" complaint. CAMERA-NOTES rigs "Sun_Key + Cyan_Rim area +
+  // Fill_Soft": fill is FILL. It has to stay under the key or the hard contact
+  // shadows every building sits on in the plates cannot exist.
+  assert.ok(ambient > 0, "fill must not go back to the pitch-dark void");
+  const key = source.match(/new THREE\.DirectionalLight\(0xfdfbff, ([\d.]+)\)/);
+  assert.ok(key, "a neutral Sun_Key should carry the scene");
+  assert.ok(parseFloat(key![1]) > ambient, "the key must out-punch the fill");
+  assert.match(source, /key\.castShadow = true/);
+  // The plates' shadows are hard-edged; soft PCF was tuned for the glow pools.
+  assert.match(source, /shadowMap\.type = THREE\.PCFShadowMap/);
+  assert.match(source, /background: 0x0d0d13/);
 });

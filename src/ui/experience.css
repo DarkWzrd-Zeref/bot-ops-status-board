@@ -1,7 +1,7 @@
 /* Blue-hour command canvas. Historical reskin tokens stay in campus.css;
    this deliberately replaces the presentation, not the map or saved state. */
 :root {
-  --header: 64px; --mint: #83f1d2; --line: #344c61; --muted: #adc0d0;
+  --header: 64px; --mint: #00e5ff; --line: #344c61; --muted: #adc0d0;
   --panel: #101f30; --surface: #102034f5; --surface-raised: #172d42;
   --edge-shadow: 0 16px 44px #020b1780, inset 0 1px #d6f1ff0c;
   color-scheme: dark; color: #e7f2fb; background: #091523;
@@ -65,8 +65,8 @@
 .view-switch { left: 16px; top: auto; bottom: 84px; transform: none; gap: 3px; padding: 5px; border-radius: 15px; align-items: center; max-width: calc(100vw - 192px); }
 .view-switch button { padding: 8px 12px; font-size: 12px; white-space: nowrap; }
 .view-switch button[aria-pressed=true] { background: #2b5264; color: #d0fff0; box-shadow: inset 0 0 0 1px #81cbbb3d; }
-#hud .view-switch .fit-campus { background: #83f1d2; border-color: #83f1d2; color: #0a302d; font-weight: 700; padding-inline: 14px; }
-#hud .view-switch .fit-campus:hover { background: #afffe8; }
+#hud .view-switch .fit-campus { background: #00e5ff; border-color: #00e5ff; color: #0a302d; font-weight: 700; padding-inline: 14px; }
+#hud .view-switch .fit-campus:hover { background: #9df1ff; }
 .fit-campus span { margin-right: 5px; font-size: 18px; }
 .view-divider { height: 24px; border-left: 1px solid #51697d; margin: 0 4px; }
 .map-navigation-hint { position: absolute; bottom: calc(100% + 10px); left: 4px; white-space: nowrap; color: #b5cedb; font-size: 11px; text-shadow: 0 2px 5px #000, 0 1px 2px #000; pointer-events: none; }
@@ -91,7 +91,7 @@
 .detail-actions .danger { margin-left: auto; color: #ffb8b2; background: #542c383d; border-color: #99656c70; }
 .agent-search input { background: #0b1c2e; border-color: #3b5e75; }
 #hud .seat-row { padding: 8px; min-height: 62px; border-radius: 12px; }
-#hud .seat-row.selected { background: #204657; border-color: #56958f; box-shadow: inset 2px 0 #83f1d2; }
+#hud .seat-row.selected { background: #204657; border-color: #56958f; box-shadow: inset 2px 0 #00e5ff; }
 .crew-footer, .channel-description, .filter-toggle { color: #a0b7c8; }
 #quick-chat { bottom: max(16px, env(safe-area-inset-bottom)); width: min(600px, calc(100vw - 132px)); padding: 5px; border-radius: 15px; }
 #quick-chat input { padding-inline: 13px; color: #e0eff9; }
@@ -110,8 +110,8 @@ dialog, #ecosystem-dialog { background: #101f31; border-color: #4b758e; box-shad
 dialog::backdrop, #ecosystem-dialog::backdrop { background: #030c19bf; backdrop-filter: blur(8px); }
 #ecosystem-dialog input:not([type=checkbox]), #ecosystem-dialog textarea, #ecosystem-dialog select { background: #0a192b; border-color: #3b617b; border-radius: 10px; }
 .dialog-heading .eyebrow { color: #8fabbe; }
-.primary, #hud button.primary { background: #83f1d2; color: #0c302c; border-color: #83f1d2; }
-#hud button.primary:hover { background: #b7ffe9; }
+.primary, #hud button.primary { background: #00e5ff; color: #0c302c; border-color: #00e5ff; }
+#hud button.primary:hover { background: #9df1ff; }
 #toast { border-color: #51798e; background: #142a3deb; color: #dfedf6; box-shadow: var(--edge-shadow); }
 .walk-mode .view-switch { bottom: auto; top: calc(var(--header) + 84px); }
 .walk-mode .view-switch .map-navigation-hint { display: none; }

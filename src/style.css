@@ -1,8 +1,16 @@
 @import url('https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600;700&family=DM+Sans:wght@400;450;500;600;700&display=swap');
 :root {
   font-family: "DM Sans", system-ui, sans-serif; color: #e9eff0; background: #090e13;
-  font-size: 14px; --muted: #92a4ad; --line: #26333b; --panel: #101820; --mint: #80f5cd;
+  font-size: 14px; --muted: #92a4ad; --line: #26333b; --panel: #101820; --mint: #00e5ff;
   --amber: #edc477; --left: 250px; --right: 392px; --header: 76px; --lower: 266px;
+  /* A67-VISUAL-001 LED semantics, from the HUD-chrome plate (55ff52c1) and
+     CAMERA-NOTES: "working green / idle blue / complete grey / failure red /
+     stale fade". Five states, named once, so the roster, the map labels and
+     the station chip cannot drift apart again — before this they each carried
+     their own near-miss greens and blues inline. Sampled off the plate and
+     then lifted just enough to clear AA contrast on the #090e13 ground. */
+  --led-working: #8fe0a0; --led-idle: #a9c4ec; --led-complete: #7c8790;
+  --led-failure: #e88f8f; --led-stale: #3a4048;
 }
 * { box-sizing: border-box; }
 body { margin: 0; }
@@ -31,7 +39,7 @@ small, .microcopy { font-size: 12px; line-height: 1.6; color: var(--muted); }
 .brand { text-decoration: none; color: #f2f5f3; display: flex; gap: 11px; align-items: center; font-family: "Barlow Condensed", sans-serif; font-size: 23px; letter-spacing: .1em; min-width: 200px; }
 .brand b { color: var(--mint); }
 .brand small { display: block; font-family: "DM Sans", sans-serif; font-size: 9px; line-height: 1.2; letter-spacing: .17em; }
-.brand-mark { border: 1px solid var(--mint); border-radius: 12px 4px 12px 4px; color: var(--mint); font-size: 21px; padding: 8px; background: #80f5cd0b; transform: rotate(-4deg); }
+.brand-mark { border: 1px solid var(--mint); border-radius: 12px 4px 12px 4px; color: var(--mint); font-size: 21px; padding: 8px; background: #00e5ff0b; transform: rotate(-4deg); }
 .header-center { display: flex; gap: 16px; color: #677d89; font-size: 13px; }
 .header-center strong { font-weight: 500; color: #d6e1e6; }
 .header-actions { margin-left: auto; display: flex; align-items: center; gap: 16px; }
@@ -58,10 +66,17 @@ small, .microcopy { font-size: 12px; line-height: 1.6; color: var(--muted); }
 .seat-row.offline .portrait { opacity: .75; filter: grayscale(.2); }
 .seat-row.away .portrait { opacity: .65; }
 .seat-state { display: flex; align-items: center; gap: 6px; font-size: 11px; color: #adc0c6; }
-.status-light { display: inline-block; width: 7px; height: 7px; border-radius: 50%; flex-shrink: 0; background: #566672; }
-.status-light.attentive { background: #7df4bb; box-shadow: 0 0 8px #7df4bb60; }
-.status-light.busy { background: #7fc8ff; box-shadow: 0 0 8px #7fc8ff50; }
-.status-light.away { background: #e2b96f; }
+.status-light { display: inline-block; width: 7px; height: 7px; border-radius: 50%; flex-shrink: 0; background: var(--led-stale); }
+.status-light.attentive { background: var(--led-working); box-shadow: 0 0 8px #8fe0a060; }
+.status-light.busy { background: var(--led-idle); box-shadow: 0 0 8px #a9c4ec50; }
+/* Away is no longer amber. The plates run one warm hue in the whole system and
+   it is spent on Bank/GE; an amber LED here was a second warm accent. */
+.status-light.away { background: var(--led-complete); }
+.status-light.offline { background: var(--led-stale); }
+/* Failure has never had a light. The plate defines one, and a roster that can
+   show "working" but not "failed" is the gap that made blocked seats read as
+   merely quiet. */
+.status-light.blocked { background: var(--led-failure); box-shadow: 0 0 8px #e88f8f55; }
 .count-badge { border: 1px solid #796340; color: var(--amber); background: #342d22; font-size: 10px; padding: 2px 5px; border-radius: 5px; }
 .seat-extra { margin: 0 8px 12px 67px; color: var(--muted); font-size: 11px; line-height: 1.7; }
 .presence-legend { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; border-top: 1px solid var(--line); margin: 20px 8px 0; padding-top: 18px; color: #9db0b8; font-size: 11px; }
@@ -87,7 +102,7 @@ small, .microcopy { font-size: 12px; line-height: 1.6; color: var(--muted); }
 .build-toolbar { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 11px 20px; }
 .mode-buttons, .build-tabs, .station-options { display: flex; gap: 5px; flex-wrap: wrap; }
 .mode-buttons button, .build-tabs button { padding: 7px 10px; border-color: transparent; background: transparent; font-size: 12px; color: #93aab3; }
-.mode-buttons button.active, .build-tabs button.active { color: var(--mint); background: #80f5cd12; border-color: #80f5cd2a; }
+.mode-buttons button.active, .build-tabs button.active { color: var(--mint); background: #00e5ff12; border-color: #00e5ff2a; }
 .build-catalog { padding: 0 20px 13px; max-height: 155px; overflow: auto; }
 .station-options { margin: 8px 0; }
 .station-options button { display: flex; align-items: center; gap: 7px; font-size: 12px; }
@@ -151,7 +166,7 @@ input[type=checkbox] { accent-color: var(--mint); }
 .receipt-detail { font-size: 11px; color: #b3c7cd; border-top: 1px solid var(--line); padding: 8px 0; }
 .reply-button { background: none; border: 0; font-size: 11px; color: #8da9b6; padding: 5px 0; }
 .empty-thread { text-align: center; padding: 40px 22px; margin: auto; color: #a7b7bf; }
-.empty-symbol { display: block; font-size: 60px; color: #80f5cd80; font-weight: 400; }
+.empty-symbol { display: block; font-size: 60px; color: #00e5ff80; font-weight: 400; }
 .empty-thread h3 { color: #d6e8e5; font-size: 16px; margin: 12px 0; }
 .empty-thread p { font-size: 13px; }
 #radio-form { border-top: 1px solid var(--line); padding: 16px; background: #101820; }
@@ -212,9 +227,10 @@ html, body, #app { height: 100%; overflow: hidden; }
 .friends-collapsed .friends-heading > div, .friends-collapsed .seat-copy, .friends-collapsed .crew-footer, .friends-collapsed #project-list, .friends-collapsed .count-badge { display: none; }
 .friends-collapsed .seat-row { justify-content: center; }
 .friends-collapsed .seat-row::after { content: ''; position: absolute; right: 6px; bottom: 8px; width: 8px; height: 8px; border-radius: 50%; background: #536570; border: 2px solid #0e171f; }
-.friends-collapsed .seat-row.attentive::after { background: #80f5b8; }
-.friends-collapsed .seat-row.busy::after { background: #80c8ff; }
-.friends-collapsed .seat-row.away::after { background: #e4b76a; }
+.friends-collapsed .seat-row.attentive::after { background: var(--led-working); }
+.friends-collapsed .seat-row.busy::after { background: var(--led-idle); }
+.friends-collapsed .seat-row.away::after { background: var(--led-complete); }
+.friends-collapsed .seat-row.blocked::after { background: var(--led-failure); }
 .world-heading { top: 22px; left: 24px; }
 .world-heading h1 { font-size: 34px; }
 .world-heading > span:last-child { display: none; }
@@ -233,7 +249,7 @@ html, body, #app { height: 100%; overflow: hidden; }
 .mode-buttons button, .build-tabs button { font-size: 14px; padding: 8px; }
 .build-catalog { padding: 0 12px 10px; max-height: 220px; }
 .comms-panel { position: absolute; left: auto; right: 20px; top: auto; bottom: 66px; width: min(410px, calc(100vw - var(--left) - 40px)); height: min(70vh, 690px); border: 1px solid #3c5f66; border-radius: 14px; background: #101c25f5; overflow: hidden; box-shadow: 0 18px 60px #0008; z-index: 4; }
-#chat-launcher { position: absolute; right: 20px; bottom: 16px; min-width: 128px; padding: 12px 18px; background: #80f5cd; color: #0d2a22; font-weight: 700; z-index: 5; box-shadow: 0 6px 22px #0005; }
+#chat-launcher { position: absolute; right: 20px; bottom: 16px; min-width: 128px; padding: 12px 18px; background: #00e5ff; color: #04222c; font-weight: 700; z-index: 5; box-shadow: 0 6px 22px #0005; }
 #chat-launcher span { margin-left: 18px; }
 .chat-collapsed .comms-panel { display: none; }
 .comms-heading { padding: 14px 16px 10px; gap: 8px; }
@@ -293,19 +309,24 @@ html, body, #app { height: 100%; overflow: hidden; }
 .message-project { display: inline-block; color: #a8c7f0; font-size: 12px; margin: 7px 6px 0 0; }
 .ping-label { color: #a8cbff; }
 .station-banner { pointer-events: auto; cursor: pointer; width: 112px; white-space: normal; margin-top: 0; padding: 0; border: 0; background: transparent; box-shadow: none; text-transform: none; letter-spacing: 0; text-align: left; outline: none; }
-.station-chip { display: flex; align-items: center; gap: 5px; min-height: 28px; padding: 4px 7px; border: 1px solid #426073; border-left: 3px solid var(--station-color, #80f5cd); border-radius: 5px; background: #0b1824e8; box-shadow: 0 2px 7px #0005; }
+/* Station-chip plate (56814709): flat dark card, one bright cyan rule down the
+   left edge, no glow. The rule was per-station (--station-color) — 26 hues on
+   26 chips, which is the thing the one-accent rule exists to stop. */
+.station-chip { display: flex; align-items: center; gap: 5px; min-height: 28px; padding: 4px 7px; border: 1px solid #2c2a3a; border-left: 3px solid #00e5ff; border-radius: 5px; background: #14121fe8; box-shadow: 0 2px 7px #0006; }
 .station-chip strong { min-width: 0; font-size: 12px; line-height: 18px; font-weight: 600; color: #dfebf4; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .station-details { display: none; position: absolute; bottom: 100%; left: 50%; transform: translateX(-50%); width: 220px; padding-bottom: 8px; cursor: default; }
-.station-detail-card { display: block; padding: 12px; background: #0b1824; border: 1px solid #426073; border-top: 2px solid var(--station-color, #80f5cd); border-radius: 8px; box-shadow: 0 6px 20px #0008; }
+.station-detail-card { display: block; padding: 12px; background: #0b1824; border: 1px solid #426073; border-top: 2px solid var(--station-color, #00e5ff); border-radius: 8px; box-shadow: 0 6px 20px #0008; }
 .station-detail-card strong { display: block; font-size: 16px; line-height: 1.3; color: #e8f2ff; overflow-wrap: anywhere; }
 .station-detail-card > span { display: block; font-size: 12px; line-height: 1.5; overflow-wrap: anywhere; }
 .station-scope { color: #9ebbd0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; margin-top: 3px; }
 .station-contents { color: #a2b6c7; margin: 8px 0; max-height: 90px; overflow: auto; }
 .station-signal { color: #a8c2d5; border-top: 1px solid #29424f; padding-top: 6px; max-height: 72px; overflow: auto; }
 .station-hint { margin-top: 8px; color: var(--mint); }
-.station-banner.working .station-chip { border-color: #7bcfff; }
-.station-banner.working .station-chip::after { content: ''; flex: 0 0 5px; height: 5px; border-radius: 50%; background: #9cdbff; animation: signal-breathe 1.6s ease-in-out infinite; }
-.station-banner.working .station-signal { color: #9cdbff; }
+/* "working" is a state in the plate's five-LED set, so it uses that green
+   rather than the third distinct blue it used to mix in here. */
+.station-banner.working .station-chip { border-color: #3d5a48; }
+.station-banner.working .station-chip::after { content: ''; flex: 0 0 5px; height: 5px; border-radius: 50%; background: var(--led-working); animation: signal-breathe 1.6s ease-in-out infinite; }
+.station-banner.working .station-signal { color: var(--led-working); }
 .station-banner.selected .station-chip, .station-banner:focus-visible .station-chip { outline: 2px solid #d4edff; outline-offset: 2px; }
 /* CSS2D owns the outer transform and inline z-index; elevate only the active preview. */
 .station-banner:focus-visible:not(.preview-dismissed) { z-index: 10000 !important; }
@@ -355,9 +376,10 @@ html, body, #app { height: 100%; overflow: hidden; }
 .seat-copy .seat-state { font-size: 12px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; display: block; }
 .map-agent-label { font-size: 14px; }
 .map-agent-label::before { content: ''; display: inline-block; width: 7px; height: 7px; margin-right: 5px; border-radius: 50%; background: #536570; }
-.map-agent-label[data-attention=attentive]::before { background: #80f5b8; }
-.map-agent-label[data-attention=busy]::before { background: #80c8ff; }
-.map-agent-label[data-attention=away]::before { background: #e4b76a; }
+.map-agent-label[data-attention=attentive]::before { background: var(--led-working); }
+.map-agent-label[data-attention=busy]::before { background: var(--led-idle); }
+.map-agent-label[data-attention=away]::before { background: var(--led-complete); }
+.map-agent-label[data-attention=offline]::before { background: var(--led-stale); }
 .ecosystem-nav { display: flex; gap: 6px; flex-wrap: wrap; }
 .ecosystem-nav button { font-size: 14px; padding: 8px 10px; background: #142631; border-color: #335469; }
 .ecosystem-nav button[data-ecosystem=vision-board] { color: #d3a3ff; }
@@ -377,7 +399,7 @@ html, body, #app { height: 100%; overflow: hidden; }
 .crew-footer .ecosystem-nav button { width: 100%; text-align: left; }
 #quick-chat { position: absolute; display: flex; gap: 8px; left: calc(var(--left) + 20px); right: 166px; bottom: 14px; padding: 7px; background: #10212bf5; border: 1px solid #477583; border-radius: 10px; pointer-events: auto; z-index: 5; box-shadow: 0 6px 24px #0005; }
 #quick-text { width: 100%; min-width: 0; border: 0; background: transparent; font-size: 16px; color: #e8f4f7; padding: 5px 8px; }
-#quick-chat button { font-size: 14px; padding: 8px 14px; color: #072a20; background: #80f5cd; }
+#quick-chat button { font-size: 14px; padding: 8px 14px; color: #072a20; background: #00e5ff; }
 .world-caption { bottom: 80px; }
 .operations-panel { bottom: 112px; }
 .world-controls { bottom: 125px; }
