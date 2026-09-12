@@ -44,8 +44,8 @@ function practicalPool() {
   const ctx = canvas.getContext("2d")!;
   const g = ctx.createRadialGradient(size / 2, size / 2, 0, size / 2, size / 2, size / 2);
   g.addColorStop(0, "rgba(255,255,255,.85)");
-  g.addColorStop(.3, "rgba(255,255,255,.30)");
-  g.addColorStop(.62, "rgba(255,255,255,.08)");
+  g.addColorStop(.26, "rgba(255,255,255,.34)");
+  g.addColorStop(.58, "rgba(255,255,255,.07)");
   g.addColorStop(1, "rgba(255,255,255,0)");
   ctx.fillStyle = g; ctx.fillRect(0, 0, size, size);
   poolTexture = new THREE.CanvasTexture(canvas);
@@ -92,7 +92,7 @@ export class World3D {
     this.renderer.shadowMap.type = THREE.PCFSoftShadowMap;
     this.renderer.outputColorSpace = THREE.SRGBColorSpace;
     this.renderer.toneMapping = THREE.ACESFilmicToneMapping;
-    this.renderer.toneMappingExposure = 1.9;
+    this.renderer.toneMappingExposure = 2.5;
     parent.append(this.renderer.domElement);
     this.renderer.domElement.setAttribute("aria-label", "Interactive 3D AREA 67 base. Use crew and station controls for keyboard access.");
     this.labels.domElement.style.cssText = "position:absolute;inset:0;pointer-events:none;overflow:hidden";
@@ -115,11 +115,11 @@ export class World3D {
     parent.style.background = "#000000";
     this.scene.background = null;
     this.renderer.setClearColor(NIGHT_LOOK.background, 0);
-    this.scene.fog = new THREE.FogExp2(NIGHT_LOOK.fog, .0038);
+    this.scene.fog = new THREE.FogExp2(NIGHT_LOOK.fog, .0029);
     // Ambient is deliberately tiny. The previous 2.1 hemisphere flooded every
     // surface evenly, which is why the campus read flat and had no pools of light.
-    this.scene.add(new THREE.HemisphereLight(NIGHT_LOOK.hemiSky, NIGHT_LOOK.hemiGround, .95));
-    const key = new THREE.DirectionalLight(NIGHT_LOOK.key, .62);
+    this.scene.add(new THREE.HemisphereLight(NIGHT_LOOK.hemiSky, NIGHT_LOOK.hemiGround, 1.1));
+    const key = new THREE.DirectionalLight(NIGHT_LOOK.key, .34);
     key.position.set(cx - 14, 28, cz - 8); key.target.position.set(cx, 0, cz);
     key.castShadow = true;
     key.shadow.mapSize.set(2048, 2048);
@@ -127,17 +127,18 @@ export class World3D {
     key.shadow.normalBias = .12;
     key.shadow.bias = -.00015;
     this.scene.add(key, key.target);
-    const rim = new THREE.DirectionalLight(NIGHT_LOOK.rim, .95);
+    const rim = new THREE.DirectionalLight(NIGHT_LOOK.rim, 1.30);
     rim.position.set(cx + 20, 15, cz + 18); this.scene.add(rim);
-    const wellLamp = new THREE.PointLight(NIGHT_LOOK.key, 5.4, 20, 1.7);
+    const wellLamp = new THREE.PointLight(NIGHT_LOOK.key, 2.6, 16, 1.8);
     wellLamp.position.set(cx, 3.1, cz);
     this.scene.add(wellLamp);
     // Lime containment ring at the Well — the one place the accent runs bright.
     const wellRing = new THREE.Group(); wellRing.position.set(cx, 0, cz);
-    this.glowRing(2.3, NIGHT_LOOK.accent, 1.35, wellRing, 1);
-    this.glowRing(2.62, NIGHT_LOOK.accent, .32, wellRing, .4);
+    this.glowRing(3.4, NIGHT_LOOK.accent, 1.35, wellRing, 1);
+    this.glowRing(3.28, NIGHT_LOOK.accent, 1.35, wellRing, .7);
+    this.glowRing(3.5, NIGHT_LOOK.accent, .32, wellRing, .75);
     this.scene.add(wellRing);
-    const wellGlow = new THREE.PointLight(NIGHT_LOOK.accent, 3.6, 11, 1.9);
+    const wellGlow = new THREE.PointLight(NIGHT_LOOK.accent, 5.2, 14, 1.8);
     wellGlow.position.set(cx, 1.5, cz); this.scene.add(wellGlow);
     this.createTerrain();
     this.createDistrictGrounds();
@@ -212,11 +213,11 @@ export class World3D {
   }
   private createTerrain() {
     const platform = new THREE.Group(); platform.position.set(MAP_W / 2, -.44, MAP_H / 2);
-    const foundation = this.box(MAP_W + .6, .85, MAP_H + .6, 0x090c0f, 0, 0, 0, platform);
+    const foundation = this.box(MAP_W + .6, .85, MAP_H + .6, 0x040506, 0, 0, 0, platform);
     foundation.castShadow = false;
     // The previous deck top and tile top both sat at y=.14: coplanarity made
     // the whole map stripe/z-fight. Keep the structural deck below tile bottoms.
-    const deck = this.box(MAP_W, .12, MAP_H, 0x13171b, 0, .45, 0, platform);
+    const deck = this.box(MAP_W, .12, MAP_H, 0x101419, 0, .45, 0, platform);
     deck.castShadow = false;
     this.scene.add(platform);
     const tileGeo = new THREE.BoxGeometry(1, .04, 1);
@@ -224,10 +225,10 @@ export class World3D {
     // practical into the vertical specular streak the art set is built on;
     // base colours sit in the measured #1c2328-#2d2e30 ground band.
     const tileMats: Record<string, THREE.MeshStandardMaterial> = {
-      sand: this.material(0x212429, .30, .44), sand2: this.material(0x1c1f24, .30, .47),
-      plaza: this.material(0x2a2e33, .36, .33), pad: this.material(0x30343a, .36, .30),
-      path: this.material(0x393d42, .40, .26), water: this.material(0x0c1a22, .58, .11),
-      fence: this.material(0x191c1f, .22, .60), blocked: this.material(0x15171a, .18, .68),
+      sand: this.material(0x1c2228, .30, .44), sand2: this.material(0x181d23, .30, .47),
+      plaza: this.material(0x232a31, .36, .33), pad: this.material(0x272f37, .36, .30),
+      path: this.material(0x2e373f, .40, .26), water: this.material(0x0a1822, .58, .11),
+      fence: this.material(0x161b20, .22, .60), blocked: this.material(0x121619, .18, .68),
     };
     // Instancing keeps the raised tile deck light enough for laptop GPUs.
     for (const [kind, material] of Object.entries(tileMats)) {
@@ -249,14 +250,14 @@ export class World3D {
       const a = point(i * Math.PI / 180), b = point((i + 1) * Math.PI / 180);
       if ([a, b].every(p => p.x >= 0 && p.z >= 0 && p.x <= MAP_W && p.z <= MAP_H)) boundary.push(a, b);
     }
-    this.scene.add(new THREE.LineSegments(new THREE.BufferGeometry().setFromPoints(boundary), new THREE.LineBasicMaterial({ color: NIGHT_LOOK.accent, transparent: true, opacity: .5 })));
+    this.scene.add(new THREE.LineSegments(new THREE.BufferGeometry().setFromPoints(boundary), new THREE.LineBasicMaterial({ color: NIGHT_LOOK.accent, transparent: true, opacity: .9 })));
     for (let i = 0; i < 32; i++) {
       const angle = i / 32 * Math.PI * 2;
       if (i % 8 === 0) continue;
       const x = cx + Math.cos(angle) * BASE_RADIUS, z = cz + Math.sin(angle) * BASE_RADIUS;
       if (x < 0 || z < 0 || x > MAP_W || z > MAP_H) continue;
       this.box(.18, .8, .18, 0x14191d, x, .4, z, this.scene);
-      const lamp = this.mesh(new THREE.SphereGeometry(.08, 8, 6), NIGHT_LOOK.accent, x, .86, z, this.scene);
+      const lamp = this.mesh(new THREE.SphereGeometry(.17, 10, 8), NIGHT_LOOK.accent, x, .92, z, this.scene);
       (lamp.material as THREE.MeshStandardMaterial).emissive.setHex(NIGHT_LOOK.accent);
     }
   }
@@ -325,10 +326,10 @@ export class World3D {
     // the few real lights that remain (key, rim, Well, comms) still carry the
     // specular and the shadows. Named so a seated GLB never takes it away.
     const pool = new THREE.Mesh(
-      new THREE.PlaneGeometry(Math.max(h.w, h.h) * 4.4 + 6, Math.max(h.w, h.h) * 4.4 + 6),
+      new THREE.PlaneGeometry(Math.max(h.w, h.h) * 4.6 + 7, Math.max(h.w, h.h) * 4.6 + 7),
       new THREE.MeshBasicMaterial({
         color: NIGHT_LOOK.practical, map: practicalPool(), transparent: true,
-        blending: THREE.AdditiveBlending, depthWrite: false, opacity: .23,
+        blending: THREE.AdditiveBlending, depthWrite: false, opacity: .55,
       }),
     );
     pool.name = "practical";
