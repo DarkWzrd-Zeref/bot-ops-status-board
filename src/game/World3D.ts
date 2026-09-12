@@ -20,11 +20,14 @@ import { fitCampusCamera, MapClickGesture } from "./campusCamera.ts";
 
 const colors = { attentive: 0x80f5b8, busy: 0x80c8ff, away: 0xe4b76a, offline: 0x536570 };
 /**
- * Classified-night campus. Values measured from the Grok Imagine station set
- * (25 stills, 2026-09-11): pure black void, wet stone reading #1c2328-#2d2e30,
- * highlights #8f7c67 warm. Saturated-pixel hue budget is amber 15-45deg ~69%,
- * cool blue 195-255deg ~17%, lime 75-165deg ~3.5%. The campus is lit by warm
- * practicals against black, not by ambient fill — keep hemisphere near zero.
+ * Cyberpunk command-deck campus.
+ *
+ * The old header here specified the opposite rig — a measured hue budget off
+ * 25 Grok Imagine stills, amber-dominant against a pure black void, ambient
+ * "near zero". That direction shipped, was reviewed live and was rejected for
+ * being dark and flat. Nothing in this file follows it any more; the note is
+ * recorded rather than silently deleted so the next person does not rediscover
+ * the hue census and assume it is still the target.
  */
 // Slice 1-2 chased Grok Imagine's measured stills into a black-void-plus-dim-pools
 // look. Zeref saw it live, hated it, then handed a reference: a teal/cyan
@@ -462,8 +465,8 @@ export class World3D {
     const architecture = createArchitecture(h, !!b.project);
     architecture.name = "kit";
     group.add(architecture);
-    // Every station spills a warm practical pool onto the wet stone. This is
-    // what produces the amber majority the art set is built on.
+    // Every station spills a cyan practical pool onto the deck — the hologram
+    // base color, not the amber the abandoned direction was built on.
     //
     // These were real PointLights for a few passes and they looked right, but
     // MeshStandardMaterial loops every light per fragment, so 26 of them cost
