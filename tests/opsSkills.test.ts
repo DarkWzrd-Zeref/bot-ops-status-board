@@ -9,59 +9,70 @@ process.env.AREA67_TEST = "1";
 process.env.SERVE_STATIC = "0";
 const { app } = await import("../server/index.ts");
 
-const skillsJson = JSON.parse(readFileSync(new URL("../src/content/skills.json", import.meta.url), "utf8")) as { skills: { id: string; wantedBy: string[] }[] };
-const registry = JSON.parse(readFileSync(new URL("../src/content/skill-registry.json", import.meta.url), "utf8")) as { skills: { id: string; repo: { org: string } }[] };
+const registryRaw = readFileSync(new URL("../src/content/skill-registry.json", import.meta.url), "utf8");
 
-await test("/api/ops/skills returns the AM-STAMPED map with the four required columns", async () => {
+const BOX_SKILLS = [
+  "who-gets-this-job", "goal-syllabus-queue", "order-book-audit", "done-means-artifact",
+  "working-now-queue-next", "interrupt-triage", "resume-from-parked", "right-to-left-finish",
+  "lane-handoff-packet", "pc-hand-off-file", "reference-lock-consistency", "memory-upload",
+  "memory-download", "session-close-system-summary", "routines", "code-changes", "box-desktop", "dream-loop",
+];
+const LANE_SKILLS = [
+  "discord-agentmail-login", "bull-wizards-art-pipeline", "hard-drive-controller-skin-pack",
+  "blender-controller-deck", "controller-skin-decals", "ue5-import-controller-skin-pngs",
+];
+const ARSENAL_REPOS = [
+  "dream-loop", "hub-app-mcps", "hub-judgment", "hub-quota", "bot-ops-status-board", "media-money-printer",
+];
+const REMOVED_FIXTURES = ["discord-sync", "firecrawl-research", "cursor-pr", "rogue-exfil"];
+
+await test("/api/ops/skills stamps exactly the SoT Box + Lane skill ids", async () => {
   const res = await app.request("/api/ops/skills");
   assert.equal(res.status, 200);
   const data = await res.json();
   assert.equal(data.stamp, "AM-STAMPED");
   assert.equal(data.stampedBy, "account-manager");
-  assert.ok(Array.isArray(data.skills) && data.skills.length > 0);
+  const ids = data.skills.map((s: { id: string }) => s.id);
+  assert.deepEqual([...ids].sort(), [...BOX_SKILLS, ...LANE_SKILLS].sort());
+});
+
+await test("removed fixtures and example repos are gone from the map", async () => {
+  const data = await (await app.request("/api/ops/skills")).json();
+  const ids = new Set(data.skills.map((s: { id: string }) => s.id));
+  for (const fixture of REMOVED_FIXTURES) assert.equal(ids.has(fixture), false, `fixture ${fixture} still present`);
+  assert.doesNotMatch(registryRaw, /example\.(com|org)/);
+  assert.doesNotMatch(JSON.stringify(data), /example\.(com|org)/);
+});
+
+await test("skills carry their Box/Lane category and columns; owner/runner are GAP without invention", async () => {
+  const data = await (await app.request("/api/ops/skills")).json();
   for (const s of data.skills) {
-    assert.equal(typeof s.id, "string");
-    assert.ok("primaryOwner" in s);
-    assert.ok("bestRunner" in s);
+    assert.ok(s.category === "Box" || s.category === "Lane", `${s.id} missing category`);
+    assert.ok("primaryOwner" in s && "bestRunner" in s);
     assert.equal(typeof s.guidePath, "string");
   }
+  // Nothing is stamped with an owner/runner yet: soft-hold invent keeps them GAP.
+  assert.ok(data.skills.every((s: { primaryOwner: unknown; bestRunner: unknown }) => s.primaryOwner === null && s.bestRunner === null));
+  const dream = data.skills.find((s: { id: string }) => s.id === "dream-loop");
+  assert.equal(dream.guidePath, "docs/dream-loop/");
+  assert.equal(dream.repo.name, "dream-loop");
+  assert.equal(dream.repo.org, "DarkWzrd-Zeref");
 });
 
-await test("every skills.json id is stamped in the registry (map stays grounded)", () => {
-  const registryIds = new Set(registry.skills.map(s => s.id));
-  for (const s of skillsJson.skills) assert.ok(registryIds.has(s.id), `skills.json id ${s.id} missing from AM stamp`);
-});
-
-await test("owners and runners resolve to real seats with display names", async () => {
+await test("arsenal lists exactly the SoT DarkWzrd-Zeref repos", async () => {
   const data = await (await app.request("/api/ops/skills")).json();
-  const discord = data.skills.find((s: { id: string }) => s.id === "discord-sync");
-  assert.equal(discord.primaryOwner.id, "grok-am-a");
-  assert.equal(discord.primaryOwner.name, "Grok Twin A");
-  assert.equal(discord.bestRunner.id, "grok-am-b");
-  const cursorPr = data.skills.find((s: { id: string }) => s.id === "cursor-pr");
-  assert.equal(cursorPr.primaryOwner.id, "engineer");
-  assert.equal(cursorPr.bestRunner.id, "cursor-ultra");
-  const board = data.skills.find((s: { id: string }) => s.id === "bot-ops-status-board");
-  assert.equal(board.primaryOwner.name, "Zeref");
-});
-
-await test("blocked fixtures keep null owner/runner and a blocked flag", async () => {
-  const data = await (await app.request("/api/ops/skills")).json();
-  const rogue = data.skills.find((s: { id: string }) => s.id === "rogue-exfil");
-  assert.equal(rogue.primaryOwner, null);
-  assert.equal(rogue.bestRunner, null);
-  assert.equal(rogue.blocked, true);
-});
-
-await test("arsenal lists only DarkWzrd-Zeref repos and dedupes by repo", async () => {
-  const data = await (await app.request("/api/ops/skills")).json();
-  assert.ok(data.arsenal.length >= 2);
   for (const repo of data.arsenal) assert.equal(repo.org, "DarkWzrd-Zeref");
-  const names = data.arsenal.map((r: { name: string }) => r.name).sort();
-  assert.deepEqual(names, ["bot-ops-status-board", "dream-loop"]);
+  assert.deepEqual(data.arsenal.map((r: { name: string }) => r.name).sort(), [...ARSENAL_REPOS].sort());
   const dream = data.arsenal.find((r: { name: string }) => r.name === "dream-loop");
   assert.ok(dream.skills.includes("dream-loop"));
-  assert.ok(dream.url.startsWith("https://github.com/DarkWzrd-Zeref/"));
+});
+
+await test("turbo-machine is recorded as an alias GAP with no invented URL", async () => {
+  const data = await (await app.request("/api/ops/skills")).json();
+  const printer = data.arsenal.find((r: { name: string }) => r.name === "media-money-printer");
+  assert.equal(printer.alias, "turbo-machine");
+  assert.equal(printer.aliasUrl, null);
+  assert.doesNotMatch(JSON.stringify(data), /DarkWzrd-Zeref\/turbo-machine/);
 });
 
 await test("/ops/skills serves an openable HTML page wired to the registry API", async () => {

@@ -2,67 +2,35 @@
   "stamp": "AM-STAMPED",
   "stampedBy": "account-manager",
   "asOf": "2026-09-13",
-  "note": "Account Manager stamp of the skill registration roster. Skill ids and owners derive from src/content/skills.json (wantedBy) and src/content/agents.json seats. Owners and runners for the DarkWzrd-Zeref arsenal repos are AM-curated from seat roles. A stamp records a self-declared registration; it does not install, scan, or grant any skill.",
+  "note": "Account Manager stamp of the real skill roster (source-of-truth Box and Lane skill ids) plus the DarkWzrd-Zeref arsenal repositories referenced by that map. Soft-hold invent: per-skill primary owner, best runner and guide path are GAP where the source of truth has not stamped them yet, and repository URLs that cannot be verified are left as GAP rather than invented. A stamp records a self-declared registration; it does not install, scan or grant any skill.",
   "sources": [
-    "src/content/skills.json",
-    "src/content/agents.json",
-    "DarkWzrd-Zeref GitHub org (public repos)"
+    "AM source-of-truth skill roster (Box / Lane)",
+    "DarkWzrd-Zeref GitHub org"
   ],
   "skills": [
-    {
-      "id": "discord-sync",
-      "name": "Discord Sync",
-      "primaryOwner": "grok-am-a",
-      "bestRunner": "grok-am-b",
-      "guidePath": "src/content/skills.json#discord-sync",
-      "repo": {
-        "org": "example",
-        "name": "community-brain-discord-sync",
-        "url": "https://github.com/example/community-brain-discord-sync"
-      }
-    },
-    {
-      "id": "firecrawl-research",
-      "name": "Firecrawl Research",
-      "primaryOwner": "researcher",
-      "bestRunner": "researcher",
-      "guidePath": "src/content/skills.json#firecrawl-research",
-      "repo": {
-        "org": "example",
-        "name": "firecrawl-research-skill",
-        "url": "https://github.com/example/firecrawl-research-skill"
-      }
-    },
-    {
-      "id": "cursor-pr",
-      "name": "Cursor PR Pulse",
-      "primaryOwner": "engineer",
-      "bestRunner": "cursor-ultra",
-      "guidePath": "src/content/skills.json#cursor-pr",
-      "repo": {
-        "org": "example",
-        "name": "cursor-pr-pulse",
-        "url": "https://github.com/example/cursor-pr-pulse"
-      }
-    },
-    {
-      "id": "rogue-exfil",
-      "name": "Helpful Exfil (fixture)",
-      "primaryOwner": null,
-      "bestRunner": null,
-      "blocked": true,
-      "guidePath": "src/content/skills.json#rogue-exfil",
-      "repo": {
-        "org": "example",
-        "name": "do-not-install-exfil",
-        "url": "https://github.com/example/do-not-install-exfil"
-      }
-    },
+    { "id": "who-gets-this-job", "name": "who-gets-this-job", "category": "Box", "primaryOwner": null, "bestRunner": null, "guidePath": "GAP", "repo": null },
+    { "id": "goal-syllabus-queue", "name": "goal-syllabus-queue", "category": "Box", "primaryOwner": null, "bestRunner": null, "guidePath": "GAP", "repo": null },
+    { "id": "order-book-audit", "name": "order-book-audit", "category": "Box", "primaryOwner": null, "bestRunner": null, "guidePath": "GAP", "repo": null },
+    { "id": "done-means-artifact", "name": "done-means-artifact", "category": "Box", "primaryOwner": null, "bestRunner": null, "guidePath": "GAP", "repo": null },
+    { "id": "working-now-queue-next", "name": "working-now-queue-next", "category": "Box", "primaryOwner": null, "bestRunner": null, "guidePath": "GAP", "repo": null },
+    { "id": "interrupt-triage", "name": "interrupt-triage", "category": "Box", "primaryOwner": null, "bestRunner": null, "guidePath": "GAP", "repo": null },
+    { "id": "resume-from-parked", "name": "resume-from-parked", "category": "Box", "primaryOwner": null, "bestRunner": null, "guidePath": "GAP", "repo": null },
+    { "id": "right-to-left-finish", "name": "right-to-left-finish", "category": "Box", "primaryOwner": null, "bestRunner": null, "guidePath": "GAP", "repo": null },
+    { "id": "lane-handoff-packet", "name": "lane-handoff-packet", "category": "Box", "primaryOwner": null, "bestRunner": null, "guidePath": "GAP", "repo": null },
+    { "id": "pc-hand-off-file", "name": "pc-hand-off-file", "category": "Box", "primaryOwner": null, "bestRunner": null, "guidePath": "GAP", "repo": null },
+    { "id": "reference-lock-consistency", "name": "reference-lock-consistency", "category": "Box", "primaryOwner": null, "bestRunner": null, "guidePath": "GAP", "repo": null },
+    { "id": "memory-upload", "name": "memory-upload", "category": "Box", "primaryOwner": null, "bestRunner": null, "guidePath": "GAP", "repo": null },
+    { "id": "memory-download", "name": "memory-download", "category": "Box", "primaryOwner": null, "bestRunner": null, "guidePath": "GAP", "repo": null },
+    { "id": "session-close-system-summary", "name": "session-close-system-summary", "category": "Box", "primaryOwner": null, "bestRunner": null, "guidePath": "GAP", "repo": null },
+    { "id": "routines", "name": "routines", "category": "Box", "primaryOwner": null, "bestRunner": null, "guidePath": "GAP", "repo": null },
+    { "id": "code-changes", "name": "code-changes", "category": "Box", "primaryOwner": null, "bestRunner": null, "guidePath": "GAP", "repo": null },
+    { "id": "box-desktop", "name": "box-desktop", "category": "Box", "primaryOwner": null, "bestRunner": null, "guidePath": "GAP", "repo": null },
     {
       "id": "dream-loop",
-      "name": "Dream Loop",
-      "primaryOwner": "cursor-ultra",
-      "bestRunner": "director",
+      "name": "dream-loop",
+      "category": "Box",
+      "primaryOwner": null,
+      "bestRunner": null,
       "guidePath": "docs/dream-loop/",
       "repo": {
         "org": "DarkWzrd-Zeref",
@@ -72,19 +40,58 @@
         "language": "JavaScript"
       }
     },
+    { "id": "discord-agentmail-login", "name": "discord-agentmail-login", "category": "Lane", "primaryOwner": null, "bestRunner": null, "guidePath": "GAP", "repo": null },
+    { "id": "bull-wizards-art-pipeline", "name": "bull-wizards-art-pipeline", "category": "Lane", "primaryOwner": null, "bestRunner": null, "guidePath": "GAP", "repo": null },
+    { "id": "hard-drive-controller-skin-pack", "name": "hard-drive-controller-skin-pack", "category": "Lane", "primaryOwner": null, "bestRunner": null, "guidePath": "GAP", "repo": null },
+    { "id": "blender-controller-deck", "name": "blender-controller-deck", "category": "Lane", "primaryOwner": null, "bestRunner": null, "guidePath": "GAP", "repo": null },
+    { "id": "controller-skin-decals", "name": "controller-skin-decals", "category": "Lane", "primaryOwner": null, "bestRunner": null, "guidePath": "GAP", "repo": null },
+    { "id": "ue5-import-controller-skin-pngs", "name": "ue5-import-controller-skin-pngs", "category": "Lane", "primaryOwner": null, "bestRunner": null, "guidePath": "GAP", "repo": null }
+  ],
+  "arsenal": [
     {
-      "id": "bot-ops-status-board",
-      "name": "Bot Ops Status Board",
-      "primaryOwner": "zeref",
-      "bestRunner": "cursor-ultra",
-      "guidePath": "README.md",
-      "repo": {
-        "org": "DarkWzrd-Zeref",
-        "name": "bot-ops-status-board",
-        "url": "https://github.com/DarkWzrd-Zeref/bot-ops-status-board",
-        "description": "Bot Passport / Bot Ops Status Board - ledger-first mobile PWA",
-        "language": "TypeScript"
-      }
+      "org": "DarkWzrd-Zeref",
+      "name": "dream-loop",
+      "url": "https://github.com/DarkWzrd-Zeref/dream-loop",
+      "description": "Agent skill for impressive 3D visuals using Blender + image gen + subagent critic",
+      "language": "JavaScript"
+    },
+    {
+      "org": "DarkWzrd-Zeref",
+      "name": "hub-app-mcps",
+      "url": "https://github.com/DarkWzrd-Zeref/hub-app-mcps",
+      "description": null,
+      "language": null
+    },
+    {
+      "org": "DarkWzrd-Zeref",
+      "name": "hub-judgment",
+      "url": "https://github.com/DarkWzrd-Zeref/hub-judgment",
+      "description": null,
+      "language": null
+    },
+    {
+      "org": "DarkWzrd-Zeref",
+      "name": "hub-quota",
+      "url": "https://github.com/DarkWzrd-Zeref/hub-quota",
+      "description": null,
+      "language": null
+    },
+    {
+      "org": "DarkWzrd-Zeref",
+      "name": "bot-ops-status-board",
+      "url": "https://github.com/DarkWzrd-Zeref/bot-ops-status-board",
+      "description": "Bot Passport / Bot Ops Status Board - ledger-first mobile PWA",
+      "language": "TypeScript"
+    },
+    {
+      "org": "DarkWzrd-Zeref",
+      "name": "media-money-printer",
+      "url": "https://github.com/DarkWzrd-Zeref/media-money-printer",
+      "description": null,
+      "language": null,
+      "alias": "turbo-machine",
+      "aliasUrl": null,
+      "note": "turbo-machine alias URL is GAP (not invented)."
     }
   ]
 }
