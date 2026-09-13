@@ -1,0 +1,56 @@
+{
+  "comment": "Fixture reports in NVIDIA SkillSpector JSON shape (risk_assessment + issues). Live scans replace these via VITE_SKILLSPECTOR_URL / scan_skill.",
+  "reports": {
+    "discord-sync": {
+      "skill": { "name": "Discord Sync", "source": "https://github.com/example/community-brain-discord-sync", "scanned_at": "2026-09-09T04:00:00Z" },
+      "risk_assessment": { "score": 12, "severity": "LOW", "recommendation": "SAFE" },
+      "components": [{ "path": "SKILL.md", "type": "markdown", "lines": 80, "executable": false, "size_bytes": 3200 }],
+      "issues": [],
+      "metadata": { "has_executable_scripts": false, "skillspector_version": "fixture", "llm_requested": false, "llm_available": false, "inference_usage": [] }
+    },
+    "firecrawl-research": {
+      "skill": { "name": "Firecrawl Research", "source": "https://github.com/example/firecrawl-research-skill", "scanned_at": "2026-09-09T04:00:00Z" },
+      "risk_assessment": { "score": 38, "severity": "MEDIUM", "recommendation": "CAUTION" },
+      "components": [{ "path": "scripts/crawl.py", "type": "python", "lines": 140, "executable": true, "size_bytes": 4100 }],
+      "issues": [
+        {
+          "id": "EXCESSIVE_AGENCY.UNBOUNDED_CRAWL",
+          "category": "excessive_agency",
+          "severity": "MEDIUM",
+          "confidence": 0.72,
+          "location": { "file": "scripts/crawl.py", "start_line": 44 }
+        }
+      ],
+      "metadata": { "has_executable_scripts": true, "skillspector_version": "fixture", "llm_requested": false, "llm_available": false, "inference_usage": [] }
+    },
+    "cursor-pr": {
+      "skill": { "name": "Cursor PR Pulse", "source": "https://github.com/example/cursor-pr-pulse", "scanned_at": "2026-09-09T04:00:00Z" },
+      "risk_assessment": { "score": 8, "severity": "LOW", "recommendation": "SAFE" },
+      "components": [{ "path": "SKILL.md", "type": "markdown", "lines": 60, "executable": false, "size_bytes": 2100 }],
+      "issues": [],
+      "metadata": { "has_executable_scripts": false, "skillspector_version": "fixture", "llm_requested": false, "llm_available": false, "inference_usage": [] }
+    },
+    "rogue-exfil": {
+      "skill": { "name": "Helpful Exfil (fixture)", "source": "https://github.com/example/do-not-install-exfil", "scanned_at": "2026-09-09T04:00:00Z" },
+      "risk_assessment": { "score": 91, "severity": "CRITICAL", "recommendation": "DO_NOT_INSTALL" },
+      "components": [{ "path": "scripts/backup.py", "type": "python", "lines": 40, "executable": true, "size_bytes": 1800 }],
+      "issues": [
+        {
+          "id": "DATA_EXFIL.ENV_TO_URL",
+          "category": "data_exfiltration",
+          "severity": "CRITICAL",
+          "confidence": 0.94,
+          "location": { "file": "scripts/backup.py", "start_line": 12 }
+        },
+        {
+          "id": "MCP_TOOL_POISONING.HIDDEN_DESC",
+          "category": "mcp_tool_poisoning",
+          "severity": "HIGH",
+          "confidence": 0.81,
+          "location": { "file": "SKILL.md", "start_line": 3 }
+        }
+      ],
+      "metadata": { "has_executable_scripts": true, "skillspector_version": "fixture", "llm_requested": false, "llm_available": false, "inference_usage": [] }
+    }
+  }
+}

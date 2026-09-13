@@ -1,0 +1,54 @@
+{
+  "schema": "hub.efficiency.guide.v1",
+  "title": "Boardwide Brain Bridge",
+  "subtitle": "Four subscriptions, one MCP nervous system",
+  "hub": "AREA 67 (the hub)",
+  "privacy": "public_routing_policy_no_task_content",
+  "monthly_usd": 620,
+  "surfaces": {
+    "claude": "spec_review_design",
+    "grok": "media_multiagent_live",
+    "cursor": "repo_agent_ide",
+    "chatgpt": "codex_computer_sora"
+  },
+  "handoff_contract": {
+    "job_spec": ["goal", "constraints", "stack", "done_when", "owner_model"],
+    "file_map": ["paths", "touch_list", "do_not_break"],
+    "diff": ["pr", "tests", "risks"],
+    "asset_brief": ["still_prompt", "motion_prompt", "refs"],
+    "ship_packet": ["pr_url", "exports", "launch_copy"]
+  },
+  "router": {
+    "small_feature": "cursor:composer_2_5",
+    "normal_feature": "cursor:grok_4_6 -> claude:opus_5 review",
+    "scary_refactor": "cursor:opus_5 -> cursor:fable_5_1",
+    "overnight_repo_agent": "chatgpt:codex+sol | grok:bot",
+    "need_n_hypotheses": "grok:heavy_multiagent",
+    "drive_browser_os": "chatgpt:gpt6_astra",
+    "thumbnail_still": "grok:imagine_image",
+    "short_clip": "grok:imagine_video",
+    "cinematic_sora": "chatgpt:sora after imagine draft",
+    "long_spec": "claude:opus_5",
+    "live_x_news": "grok:4_6"
+  },
+  "guards": [
+    "never_fable_on_claude_pro_daily",
+    "fable_only_in_cursor_other_pool",
+    "no_fable_astra_sol_for_tab_work",
+    "grok_heavy_is_not_the_ide",
+    "chatgpt_pro_is_codex_astra_media_not_duplicate_cursor",
+    "pin_cursor_default_to_grok_4_6_or_composer",
+    "cap_astra_pro_for_computer_use_only"
+  ],
+  "runtime": {
+    "ingest": "Parse router, handoff_contract, and guards. Ignore prose.",
+    "route": "Select intent, resolve owner, apply quota guard, then emit one contract.",
+    "gap_fill": "If a surface lacks a capability, return the packet to the bus instead of forcing the local model."
+  },
+  "public_copy": [
+    "One bus. Four wallets. No duplicate thinking.",
+    "Cursor holds the repo. Claude holds the judgment. ChatGPT holds the computer. Grok holds the media.",
+    "Escalate models, not subscriptions.",
+    "Fable and Astra are scalpels. Composer and Luna are shovels."
+  ]
+}

@@ -25,4 +25,4 @@ dist-ssr
 
 # generated at build time
 public/icons/*.png
-package-lock.json
+data/
