@@ -234,6 +234,7 @@ export class HubScene extends Phaser.Scene {
     seatStationImage(img, {
       textureKey,
       paintedKey: keys.painted,
+      brokenKey: keys.broken,
       tileX: b.tx,
       tileY: b.ty,
       tilesW: hub.w,
@@ -271,6 +272,7 @@ export class HubScene extends Phaser.Scene {
         seatStationImage(spr, {
           textureKey,
           paintedKey: keys.painted,
+          brokenKey: keys.broken,
           tileX: building.tx,
           tileY: building.ty,
           tilesW: hub.w,

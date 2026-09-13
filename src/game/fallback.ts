@@ -9,7 +9,7 @@ class BootScene extends Phaser.Scene {
   preload(): void {
     this.load.image("robot", "/characters/robot.png");
     this.load.image("alien", "/characters/alien.png");
-    this.load.on("loaderror", () => { /* Missing hub/kind PNG keeps the painted box. */ });
+    this.load.on("loaderror", () => { /* Missing hub/kind PNG is a broken-art badge, not a guessed path. */ });
     for (const hub of HUBS) {
       this.load.image("sprite-hub-" + hub.id, hubSpritePath(hub.id));
     }
