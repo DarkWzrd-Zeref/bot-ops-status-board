@@ -1,0 +1,22 @@
+{
+  "schema": "area67.roadmap.v1",
+  "updated": "2026-09-11",
+  "privacy": "public_status_no_operational_task_content",
+  "items": [
+    { "id": 1, "name": "shared_mcp_service", "status": "BUILDING", "delivered": "Worker, D1 schema, private REST boundary, and seven MCP tools", "needed": "Jorge approves production D1 and OAuth identity boundary", "help": "Claude Opus 5 then Cursor Opus/Sol" },
+    { "id": 2, "name": "inbox_outbox_lifecycle", "status": "LIVE", "scope": "device_local" },
+    { "id": 3, "name": "task_specific_packets", "status": "LIVE" },
+    { "id": 4, "name": "live_sheet_schema_adapter", "status": "BUILDING", "needed": "Jorge or AM approves canonical v2 tab" },
+    { "id": 5, "name": "durable_task_identity", "status": "LIVE" },
+    { "id": 6, "name": "authenticated_writeback", "status": "WALLED", "needed": "Google service account or database migration approval", "help": "GPT-5.6 Sol then Claude Opus 5 review" },
+    { "id": 7, "name": "aging_escalation", "status": "LIVE" },
+    { "id": 8, "name": "executable_routing", "status": "LIVE" },
+    { "id": 9, "name": "provider_quota_telemetry", "status": "WALLED", "needed": "Provider credentials or approved manual budget import" },
+    { "id": 10, "name": "public_private_separation", "status": "BUILDING", "delivered": "Explicit per-packet private promotion using an in-memory authenticated browser session", "needed": "Production identity provider and retention policy" },
+    { "id": 11, "name": "stable_machine_endpoint", "status": "LIVE" },
+    { "id": 12, "name": "navigation_filters", "status": "LIVE" },
+    { "id": 13, "name": "provenance_audit", "status": "LIVE" },
+    { "id": 14, "name": "automated_tests", "status": "LIVE" },
+    { "id": 15, "name": "artifact_promotion", "status": "WALLED", "needed": "Choose R2, Google Drive, or Railway storage plus retention policy", "help": "Grok Imagine then Cursor Sol" }
+  ]
+}

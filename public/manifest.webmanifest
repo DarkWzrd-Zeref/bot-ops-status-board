@@ -1,7 +1,7 @@
 {
-  "name": "Bot Passport / Bot Ops Status Board",
-  "short_name": "Bot Passport",
-  "description": "Ledger-first status board for Jorge's bot ops.",
+  "name": "Area 67 · The Hub / Bot Passport",
+  "short_name": "Area 67 Hub",
+  "description": "Operations hub for bot status, model routing, and MCP handoffs.",
   "start_url": "./",
   "scope": "./",
   "display": "standalone",

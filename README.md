@@ -3,6 +3,10 @@
 Ledger-first, mobile-first PWA that mirrors Jorge's bot-ops ledger (a Google Sheet) into a
 single dark status board: Police, Researcher, Engineer, Stay on Track, AM twin, CoS.
 
+The board is also **Area 67 · The Hub**, a communication checkpoint for routing work between
+separate AI subscription surfaces. It includes a device-local handoff composer, lifecycle inbox,
+implementation roadmap, pending-work aging, and public machine-readable contracts.
+
 - Static site: Vite + TypeScript, no framework, no backend, no secrets.
 - Installable on iOS Safari (Add to Home Screen) and Android/Chrome; app shell works offline.
 - Source of truth: [the ledger sheet](https://docs.google.com/spreadsheets/d/18O7x24CJmE9qRwNBndNXi8SYrvUkU0woeutWOW-ce7k/edit),
@@ -16,6 +20,20 @@ single dark status board: Police, Researcher, Engineer, Stay on Track, AM twin, 
 3. Until then, open **Data** and paste a CSV or JSON snapshot. It is parsed client-side and kept
    only in the device's `localStorage`. **Load demo** shows layout with clearly-labelled fake data.
 4. Optional: set a tab `gid` (from the sheet URL `#gid=…`) to read a specific tab.
+
+## Area 67 bridge boundaries
+
+- `/.well-known/area-67.json` is the stable public discovery document.
+- `/area-67/efficiency-guide.json` contains public routing policy only.
+- `/area-67/handoff.schema.json` defines versioned private packet structure.
+- `/area-67/roadmap.json` reports LIVE, BUILDING, and WALLED capabilities.
+- Composed packets start in browser `localStorage` and must not contain secrets. A packet can be
+  explicitly promoted while an authenticated private MCP session is connected; its access token
+  remains in memory and is erased on reload.
+- The implementation-ready Worker/D1 service lives in `mcp/`. Production OAuth, database
+  provisioning, provider connectors, real quota telemetry, and artifact storage remain explicitly
+  WALLED until private infrastructure and credentials are approved. The UI names the required
+  decision and recommended model for each wall.
 
 Accepted shapes:
 

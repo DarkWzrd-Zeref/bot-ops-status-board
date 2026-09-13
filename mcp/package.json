@@ -1,0 +1,23 @@
+{
+  "name": "area67-private-mcp",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "scripts": {
+    "dev": "wrangler dev --local --port 8788",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "build": "npm run typecheck && wrangler deploy --dry-run --outdir dist",
+    "types": "wrangler types src/worker-configuration.d.ts"
+  },
+  "dependencies": {
+    "@modelcontextprotocol/server": "2.0.0",
+    "agents": "0.22.0",
+    "zod": "4.6.2"
+  },
+  "devDependencies": {
+    "typescript": "6.0.3",
+    "vitest": "4.1.11",
+    "wrangler": "4.131.0"
+  }
+}
