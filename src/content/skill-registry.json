@@ -233,130 +233,46 @@
   ],
   "arsenal": [
     {
-      "name": "dream-loop",
-      "url": "https://github.com/DarkWzrd-Zeref/dream-loop",
-      "primaryWho": "BOT14 Claude + BOT13 Cursor + Heavy",
-      "notes": "Process not renderer; guide PRESENT"
-    },
-    {
-      "name": "hub-app-mcps",
-      "url": "https://github.com/DarkWzrd-Zeref/hub-app-mcps",
-      "primaryWho": "Eng / AM",
-      "notes": "Private OK; App MCP shortcuts"
-    },
-    {
-      "name": "hub-judgment",
-      "url": "https://github.com/DarkWzrd-Zeref/hub-judgment",
-      "primaryWho": "CoS / AM",
-      "notes": "Private OK; decisions store \u2014 docs track board first"
-    },
-    {
-      "name": "hub-quota",
-      "url": "https://github.com/DarkWzrd-Zeref/hub-quota",
-      "primaryWho": "Eng / Police",
-      "notes": "Private OK; seat heartbeats \u2014 docs only first"
-    },
-    {
+      "org": "DarkWzrd-Zeref",
       "name": "bot-ops-status-board",
       "url": "https://github.com/DarkWzrd-Zeref/bot-ops-status-board",
-      "primaryWho": "Eng",
-      "notes": "Live Hub LOCKED Railway"
+      "description": null,
+      "language": null
     },
     {
+      "org": "DarkWzrd-Zeref",
+      "name": "hub-quota",
+      "url": "https://github.com/DarkWzrd-Zeref/hub-quota",
+      "description": null,
+      "language": null
+    },
+    {
+      "org": "DarkWzrd-Zeref",
+      "name": "hub-judgment",
+      "url": "https://github.com/DarkWzrd-Zeref/hub-judgment",
+      "description": null,
+      "language": null
+    },
+    {
+      "org": "DarkWzrd-Zeref",
+      "name": "hub-app-mcps",
+      "url": "https://github.com/DarkWzrd-Zeref/hub-app-mcps",
+      "description": null,
+      "language": null
+    },
+    {
+      "org": "DarkWzrd-Zeref",
+      "name": "dream-loop",
+      "url": "https://github.com/DarkWzrd-Zeref/dream-loop",
+      "description": null,
+      "language": null
+    },
+    {
+      "org": "DarkWzrd-Zeref",
       "name": "media-money-printer",
       "url": "https://github.com/DarkWzrd-Zeref/media-money-printer",
-      "primaryWho": "BOT04 Content / cc2",
-      "notes": "Private OK; **turbo-machine alias = GAP** (not locked)"
-    },
-    {
-      "name": "BOT",
-      "url": "Subject",
-      "primaryWho": "Status",
-      "notes": "Map note"
-    },
-    {
-      "name": "BOT01",
-      "url": "Chief of Staff",
-      "primaryWho": "live",
-      "notes": "CoS"
-    },
-    {
-      "name": "BOT02",
-      "url": "Account Manager",
-      "primaryWho": "live",
-      "notes": "AM MOBILE ios"
-    },
-    {
-      "name": "BOT03",
-      "url": "Media automated",
-      "primaryWho": "live",
-      "notes": "Group Automated Media (no dedicated bot)"
-    },
-    {
-      "name": "BOT04",
-      "url": "Content Creation",
-      "primaryWho": "live",
-      "notes": "+ cc2 twin on box"
-    },
-    {
-      "name": "BOT05",
-      "url": "Marketing",
-      "primaryWho": "live",
-      "notes": ""
-    },
-    {
-      "name": "BOT06",
-      "url": "Mr Finances",
-      "primaryWho": "live",
-      "notes": "read-only funds"
-    },
-    {
-      "name": "BOT07",
-      "url": "automated trading",
-      "primaryWho": "**paused**",
-      "notes": "soft-hold"
-    },
-    {
-      "name": "BOT08",
-      "url": "Game Earn",
-      "primaryWho": "live",
-      "notes": "HARD-DRIVE Neon"
-    },
-    {
-      "name": "BOT09",
-      "url": "MLB Predictions",
-      "primaryWho": "live",
-      "notes": ""
-    },
-    {
-      "name": "BOT10",
-      "url": "Bull Wizards",
-      "primaryWho": "dark",
-      "notes": "\u2260 HARD-DRIVE"
-    },
-    {
-      "name": "BOT11",
-      "url": "self hosted",
-      "primaryWho": "live",
-      "notes": "missing on this box \u2014 soft-hold invent"
-    },
-    {
-      "name": "BOT12",
-      "url": "im alive",
-      "primaryWho": "live",
-      "notes": "missing on this box \u2014 soft-hold invent"
-    },
-    {
-      "name": "BOT13",
-      "url": "Cursor Cloud",
-      "primaryWho": "live",
-      "notes": "coding rail"
-    },
-    {
-      "name": "BOT14",
-      "url": "Claude Pro",
-      "primaryWho": "live",
-      "notes": "build rail"
+      "description": null,
+      "language": null
     }
   ]
 }
