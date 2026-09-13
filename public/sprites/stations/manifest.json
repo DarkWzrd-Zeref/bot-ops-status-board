@@ -1,0 +1,360 @@
+{
+  "version": 1,
+  "generator": "A67 headless three.js render of src/game/architecture.ts (the live kit, neutral shell)",
+  "as_of": "2026-09-13",
+  "freeze": "rev61",
+  "note": "Kind fallbacks. Neutral shell on purpose: a kind sprite must not carry one member station's catalog colour.",
+  "entries": [
+    {
+      "kind": "code",
+      "src": "/sprites/stations/code.e81a114a068f.png",
+      "file": "code.e81a114a068f.png",
+      "sha256": "e81a114a068f63c9f96001339eeffcb335641cf5b9381123aac10b9b88f0e6c3",
+      "sha12": "e81a114a068f",
+      "bytes": 20358,
+      "pixelWidth": 224,
+      "pixelHeight": 234,
+      "anchorX": 0.5,
+      "anchorY": 0.610757,
+      "groundBounds": [
+        0.0,
+        0.123496,
+        1.0,
+        1.0
+      ],
+      "groundQuad": [
+        [
+          0.403795,
+          0.123496
+        ],
+        [
+          1.0,
+          0.736375
+        ],
+        [
+          0.596205,
+          1.0
+        ],
+        [
+          0.0,
+          0.583155
+        ]
+      ],
+      "tileW": 4,
+      "tileH": 3,
+      "sourceHub": "cursor"
+    },
+    {
+      "kind": "comms",
+      "src": "/sprites/stations/comms.758116653f2a.png",
+      "file": "comms.758116653f2a.png",
+      "sha256": "758116653f2ab2cc24274094b7d415d1f542b7f4fbff22c682d2c3954d2cc79c",
+      "sha12": "758116653f2a",
+      "bytes": 15974,
+      "pixelWidth": 192,
+      "pixelHeight": 233,
+      "anchorX": 0.5,
+      "anchorY": 0.611869,
+      "groundBounds": [
+        0.0,
+        0.127486,
+        1.0,
+        1.0
+      ],
+      "groundQuad": [
+        [
+          0.387761,
+          0.127486
+        ],
+        [
+          1.0,
+          0.736068
+        ],
+        [
+          0.612239,
+          1.0
+        ],
+        [
+          0.0,
+          0.583923
+        ]
+      ],
+      "tileW": 4,
+      "tileH": 3,
+      "sourceHub": "discord"
+    },
+    {
+      "kind": "core",
+      "src": "/sprites/stations/core.20451d238ac7.png",
+      "file": "core.20451d238ac7.png",
+      "sha256": "20451d238ac727072220eb5fb13566443fa1c81d587806f3b02a55649ca09f5d",
+      "sha12": "20451d238ac7",
+      "bytes": 19150,
+      "pixelWidth": 170,
+      "pixelHeight": 239,
+      "anchorX": 0.5,
+      "anchorY": 0.669642,
+      "groundBounds": [
+        0.0,
+        0.257487,
+        1.0,
+        1.0
+      ],
+      "groundQuad": [
+        [
+          0.5,
+          0.257487
+        ],
+        [
+          1.0,
+          0.71054
+        ],
+        [
+          0.5,
+          1.0
+        ],
+        [
+          0.0,
+          0.71054
+        ]
+      ],
+      "tileW": 2,
+      "tileH": 2,
+      "sourceHub": "well"
+    },
+    {
+      "kind": "guard",
+      "src": "/sprites/stations/guard.1afe2ef337e1.png",
+      "file": "guard.1afe2ef337e1.png",
+      "sha256": "1afe2ef337e19dfe578e08ccb86947a605cbc432ab9ebf9b53cc3f4e8a6be61c",
+      "sha12": "1afe2ef337e1",
+      "bytes": 23373,
+      "pixelWidth": 220,
+      "pixelHeight": 206,
+      "anchorX": 0.5,
+      "anchorY": 0.528446,
+      "groundBounds": [
+        0.0,
+        0.0,
+        1.0,
+        1.0
+      ],
+      "groundQuad": [
+        [
+          0.5,
+          0.0
+        ],
+        [
+          1.0,
+          0.556891
+        ],
+        [
+          0.5,
+          1.0
+        ],
+        [
+          0.0,
+          0.556891
+        ]
+      ],
+      "tileW": 4,
+      "tileH": 4,
+      "sourceHub": "skillspector"
+    },
+    {
+      "kind": "infra",
+      "src": "/sprites/stations/infra.f12ab378df29.png",
+      "file": "infra.f12ab378df29.png",
+      "sha256": "f12ab378df296c7f1adb23ca6d630628ef88d64843853701c8c2123c5028ddac",
+      "sha12": "f12ab378df29",
+      "bytes": 23620,
+      "pixelWidth": 192,
+      "pixelHeight": 213,
+      "anchorX": 0.5,
+      "anchorY": 0.568076,
+      "groundBounds": [
+        0.0,
+        0.029561,
+        1.0,
+        1.0
+      ],
+      "groundQuad": [
+        [
+          0.387761,
+          0.029561
+        ],
+        [
+          1.0,
+          0.705916
+        ],
+        [
+          0.612239,
+          1.0
+        ],
+        [
+          0.0,
+          0.536827
+        ]
+      ],
+      "tileW": 4,
+      "tileH": 3,
+      "sourceHub": "railway"
+    },
+    {
+      "kind": "media",
+      "src": "/sprites/stations/media.99e4b6ffcc45.png",
+      "file": "media.99e4b6ffcc45.png",
+      "sha256": "99e4b6ffcc453eb5ebb969bf669c4df5a9a6e7ba7222a1f0b9e00a5a6d005c23",
+      "sha12": "99e4b6ffcc45",
+      "bytes": 16308,
+      "pixelWidth": 203,
+      "pixelHeight": 265,
+      "anchorX": 0.501232,
+      "anchorY": 0.64562,
+      "groundBounds": [
+        0.0,
+        0.202713,
+        1.0,
+        1.0
+      ],
+      "groundQuad": [
+        [
+          0.502463,
+          0.202713
+        ],
+        [
+          1.0,
+          0.689883
+        ],
+        [
+          0.502463,
+          1.0
+        ],
+        [
+          0.0,
+          0.689883
+        ]
+      ],
+      "tileW": 3,
+      "tileH": 3,
+      "sourceHub": "elevenlabs"
+    },
+    {
+      "kind": "ops",
+      "src": "/sprites/stations/ops.0141d073ab61.png",
+      "file": "ops.0141d073ab61.png",
+      "sha256": "0141d073ab61cadd4f7222356f51e8e4f902e65685f58e3091778c157b90c098",
+      "sha12": "0141d073ab61",
+      "bytes": 16522,
+      "pixelWidth": 220,
+      "pixelHeight": 251,
+      "anchorX": 0.5,
+      "anchorY": 0.586316,
+      "groundBounds": [
+        0.0,
+        0.069103,
+        1.0,
+        1.0
+      ],
+      "groundQuad": [
+        [
+          0.5,
+          0.069103
+        ],
+        [
+          1.0,
+          0.63808
+        ],
+        [
+          0.5,
+          1.0
+        ],
+        [
+          0.0,
+          0.63808
+        ]
+      ],
+      "tileW": 3,
+      "tileH": 3,
+      "sourceHub": "calendar"
+    },
+    {
+      "kind": "project",
+      "src": "/sprites/stations/project.4b612f234ad7.png",
+      "file": "project.4b612f234ad7.png",
+      "sha256": "4b612f234ad7039e50c418e8e4b71cee053a9d5e9a4c830aa8acf8fc92a10992",
+      "sha12": "4b612f234ad7",
+      "bytes": 24000,
+      "pixelWidth": 254,
+      "pixelHeight": 278,
+      "anchorX": 0.5,
+      "anchorY": 0.631152,
+      "groundBounds": [
+        0.0,
+        0.169528,
+        1.0,
+        1.0
+      ],
+      "groundQuad": [
+        [
+          0.5,
+          0.169528
+        ],
+        [
+          1.0,
+          0.67754
+        ],
+        [
+          0.5,
+          1.0
+        ],
+        [
+          0.0,
+          0.67754
+        ]
+      ],
+      "tileW": 3,
+      "tileH": 3,
+      "sourceHub": "project-site"
+    },
+    {
+      "kind": "research",
+      "src": "/sprites/stations/research.a1c7ba7664a6.png",
+      "file": "research.a1c7ba7664a6.png",
+      "sha256": "a1c7ba7664a60e95a1f4d42e52ce3bffee70c50cb2f7380a75188d89825ae744",
+      "sha12": "a1c7ba7664a6",
+      "bytes": 21044,
+      "pixelWidth": 192,
+      "pixelHeight": 197,
+      "anchorX": 0.5,
+      "anchorY": 0.547147,
+      "groundBounds": [
+        0.0,
+        0.0,
+        1.0,
+        1.0
+      ],
+      "groundQuad": [
+        [
+          0.387761,
+          0.0
+        ],
+        [
+          1.0,
+          0.685334
+        ],
+        [
+          0.612239,
+          1.0
+        ],
+        [
+          0.0,
+          0.503253
+        ]
+      ],
+      "tileW": 4,
+      "tileH": 3,
+      "sourceHub": "firecrawl"
+    }
+  ]
+}
