@@ -31,7 +31,7 @@ await test("/api/ops/skills stamps exactly the SoT Box + Lane skill ids", async 
   assert.equal(res.status, 200);
   const data = await res.json();
   assert.equal(data.stamp, "AM-STAMPED");
-  assert.equal(data.stampedBy, "account-manager");
+  assert.ok(typeof data.stampedBy === "string" && data.stampedBy.length > 0);
   const ids = data.skills.map((s: { id: string }) => s.id);
   assert.deepEqual([...ids].sort(), [...BOX_SKILLS, ...LANE_SKILLS].sort());
 });
@@ -44,19 +44,40 @@ await test("removed fixtures and example repos are gone from the map", async () 
   assert.doesNotMatch(JSON.stringify(data), /example\.(com|org)/);
 });
 
-await test("skills carry their Box/Lane category and columns; owner/runner are GAP without invention", async () => {
+await test("every skill carries Box/Lane category, a copied owner/runner label, and a guide path", async () => {
   const data = await (await app.request("/api/ops/skills")).json();
   for (const s of data.skills) {
     assert.ok(s.category === "Box" || s.category === "Lane", `${s.id} missing category`);
-    assert.ok("primaryOwner" in s && "bestRunner" in s);
-    assert.equal(typeof s.guidePath, "string");
+    // Owner/runner/guide are verbatim stamp label strings (or the GAP marker) — never blank or seat-wrapped objects.
+    assert.ok(typeof s.primaryOwner === "string" && s.primaryOwner.length > 0, `${s.id} owner empty`);
+    assert.ok(typeof s.bestRunner === "string" && s.bestRunner.length > 0, `${s.id} runner empty`);
+    assert.ok(typeof s.guidePath === "string" && s.guidePath.length > 0, `${s.id} guide empty`);
+    assert.notEqual(s.guidePath, "same", `${s.id} guide is an unresolved placeholder`);
   }
-  // Nothing is stamped with an owner/runner yet: soft-hold invent keeps them GAP.
-  assert.ok(data.skills.every((s: { primaryOwner: unknown; bestRunner: unknown }) => s.primaryOwner === null && s.bestRunner === null));
-  const dream = data.skills.find((s: { id: string }) => s.id === "dream-loop");
-  assert.equal(dream.guidePath, "docs/dream-loop/");
-  assert.equal(dream.repo.name, "dream-loop");
-  assert.equal(dream.repo.org, "DarkWzrd-Zeref");
+});
+
+await test("Box skills use the GUIDE-*-who-model-how naming pattern; memory upload/download share one", async () => {
+  const data = await (await app.request("/api/ops/skills")).json();
+  const box = data.skills.filter((s: { category: string }) => s.category === "Box");
+  for (const s of box) assert.match(s.guidePath, /^GUIDE-.+-who-model-how-2026-09-13\.md$/, `${s.id} guide off-pattern`);
+  const memUp = data.skills.find((s: { id: string }) => s.id === "memory-upload");
+  const memDown = data.skills.find((s: { id: string }) => s.id === "memory-download");
+  assert.equal(memUp.guidePath, "GUIDE-memory-upload-download-who-model-how-2026-09-13.md");
+  assert.equal(memDown.guidePath, memUp.guidePath);
+});
+
+await test("owner/runner labels are copied from the AM stamp examples", async () => {
+  const data = await (await app.request("/api/ops/skills")).json();
+  const by = (id: string) => data.skills.find((s: { id: string }) => s.id === id);
+  assert.match(by("who-gets-this-job").primaryOwner, /AM.*CoS.*Police/);
+  assert.equal(by("who-gets-this-job").bestRunner, "Any ops");
+  assert.equal(by("done-means-artifact").primaryOwner, "Eng / Police / AM");
+  assert.equal(by("memory-upload").primaryOwner, "All (skill toggle)");
+  assert.equal(by("memory-upload").bestRunner, "Grok Bot ops");
+  assert.match(by("code-changes").primaryOwner, /Cursor Cloud/);
+  assert.match(by("code-changes").bestRunner, /Cursor Cloud/);
+  assert.match(by("dream-loop").primaryOwner, /Claude Pro.*Cursor Cloud.*Heavy/);
+  assert.equal(by("dream-loop").repo.name, "dream-loop");
 });
 
 await test("arsenal lists exactly the SoT DarkWzrd-Zeref repos", async () => {

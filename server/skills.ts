@@ -1,7 +1,6 @@
 import { readFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
-import { AGENTS } from "./catalog.ts";
 
 const root = join(dirname(fileURLToPath(import.meta.url)), "..");
 
@@ -37,24 +36,15 @@ interface Registry {
 }
 
 const registry = JSON.parse(readFileSync(join(root, "src/content", "skill-registry.json"), "utf8")) as Registry;
-const player = JSON.parse(readFileSync(join(root, "src/content", "agents.json"), "utf8")).player as { id: string; name: string; title: string };
 
 const ARSENAL_ORG = "DarkWzrd-Zeref";
-
-export interface Seat { id: string; name: string; role: string }
-function seatOf(id: string | null): Seat | null {
-  if (!id) return null;
-  if (id === player.id) return { id: player.id, name: player.name, role: player.title };
-  const agent = AGENTS.find(a => a.id === id);
-  return agent ? { id: agent.id, name: agent.name, role: agent.role } : { id, name: id, role: "unknown" };
-}
 
 export interface StampedSkill {
   id: string;
   name: string;
   category: string | null;
-  primaryOwner: Seat | null;
-  bestRunner: Seat | null;
+  primaryOwner: string | null;
+  bestRunner: string | null;
   blocked: boolean;
   guidePath: string;
   repo: RegistryRepo | null;
@@ -76,8 +66,8 @@ export function stampedSkills(): StampedSkill[] {
     id: s.id,
     name: s.name,
     category: s.category ?? null,
-    primaryOwner: seatOf(s.primaryOwner),
-    bestRunner: seatOf(s.bestRunner),
+    primaryOwner: s.primaryOwner ?? null,
+    bestRunner: s.bestRunner ?? null,
     blocked: s.blocked === true,
     guidePath: s.guidePath,
     repo: s.repo ?? null,

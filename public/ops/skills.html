@@ -45,12 +45,12 @@ tr:hover td { background:#101d24 }
 <p style="margin-top:24px">Machine-readable copy: <a href="/api/ops/skills"><code>/api/ops/skills</code></a>.</p>
 </main>
 <script>
-function seatCell(seat) {
+function labelCell(value) {
   const td = document.createElement("td");
-  if (!seat) { td.className = "muted"; td.textContent = "—"; return td; }
-  const name = document.createElement("span"); name.className = "owner"; name.textContent = seat.name;
-  const role = document.createElement("span"); role.className = "role"; role.textContent = seat.role + " · " + seat.id;
-  td.append(name, role); return td;
+  if (value === null || value === undefined || value === "") { td.className = "muted"; td.textContent = "—"; return td; }
+  if (value === "GAP") { td.className = "muted"; td.textContent = "GAP"; return td; }
+  const span = document.createElement("span"); span.className = "owner"; span.textContent = value;
+  td.append(span); return td;
 }
 
 fetch("/api/ops/skills").then(r => { if (!r.ok) throw Error("registry unavailable"); return r.json(); }).then(data => {
@@ -73,7 +73,7 @@ fetch("/api/ops/skills").then(r => { if (!r.ok) throw Error("registry unavailabl
     const idCode = document.createElement("code"); idCode.textContent = s.id; idTd.append(idCode);
     if (s.blocked) { const t = document.createElement("span"); t.className = "tag blocked"; t.textContent = "SkillSpector blocks"; idTd.append(t); }
     else if (s.repo && s.repo.org === (data.arsenalOrg || "DarkWzrd-Zeref")) { const t = document.createElement("span"); t.className = "tag"; t.textContent = "arsenal"; idTd.append(t); }
-    tr.append(idTd, seatCell(s.primaryOwner), seatCell(s.bestRunner));
+    tr.append(idTd, labelCell(s.primaryOwner), labelCell(s.bestRunner));
     const guideTd = document.createElement("td");
     const guide = document.createElement("code"); guide.textContent = s.guidePath; guideTd.append(guide);
     tr.append(guideTd);

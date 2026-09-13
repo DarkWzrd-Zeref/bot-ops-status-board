@@ -122,7 +122,7 @@
       "category": "Box",
       "primaryOwner": "All (skill toggle)",
       "bestRunner": "Grok Bot ops",
-      "guidePath": "same",
+      "guidePath": "GUIDE-memory-upload-download-who-model-how-2026-09-13.md",
       "repo": null
     },
     {
@@ -272,7 +272,10 @@
       "name": "media-money-printer",
       "url": "https://github.com/DarkWzrd-Zeref/media-money-printer",
       "description": null,
-      "language": null
+      "language": null,
+      "alias": "turbo-machine",
+      "aliasUrl": null,
+      "note": "turbo-machine alias URL is GAP (not invented)."
     }
   ]
 }
