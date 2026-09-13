@@ -1,0 +1,90 @@
+{
+  "stamp": "AM-STAMPED",
+  "stampedBy": "account-manager",
+  "asOf": "2026-09-13",
+  "note": "Account Manager stamp of the skill registration roster. Skill ids and owners derive from src/content/skills.json (wantedBy) and src/content/agents.json seats. Owners and runners for the DarkWzrd-Zeref arsenal repos are AM-curated from seat roles. A stamp records a self-declared registration; it does not install, scan, or grant any skill.",
+  "sources": [
+    "src/content/skills.json",
+    "src/content/agents.json",
+    "DarkWzrd-Zeref GitHub org (public repos)"
+  ],
+  "skills": [
+    {
+      "id": "discord-sync",
+      "name": "Discord Sync",
+      "primaryOwner": "grok-am-a",
+      "bestRunner": "grok-am-b",
+      "guidePath": "src/content/skills.json#discord-sync",
+      "repo": {
+        "org": "example",
+        "name": "community-brain-discord-sync",
+        "url": "https://github.com/example/community-brain-discord-sync"
+      }
+    },
+    {
+      "id": "firecrawl-research",
+      "name": "Firecrawl Research",
+      "primaryOwner": "researcher",
+      "bestRunner": "researcher",
+      "guidePath": "src/content/skills.json#firecrawl-research",
+      "repo": {
+        "org": "example",
+        "name": "firecrawl-research-skill",
+        "url": "https://github.com/example/firecrawl-research-skill"
+      }
+    },
+    {
+      "id": "cursor-pr",
+      "name": "Cursor PR Pulse",
+      "primaryOwner": "engineer",
+      "bestRunner": "cursor-ultra",
+      "guidePath": "src/content/skills.json#cursor-pr",
+      "repo": {
+        "org": "example",
+        "name": "cursor-pr-pulse",
+        "url": "https://github.com/example/cursor-pr-pulse"
+      }
+    },
+    {
+      "id": "rogue-exfil",
+      "name": "Helpful Exfil (fixture)",
+      "primaryOwner": null,
+      "bestRunner": null,
+      "blocked": true,
+      "guidePath": "src/content/skills.json#rogue-exfil",
+      "repo": {
+        "org": "example",
+        "name": "do-not-install-exfil",
+        "url": "https://github.com/example/do-not-install-exfil"
+      }
+    },
+    {
+      "id": "dream-loop",
+      "name": "Dream Loop",
+      "primaryOwner": "cursor-ultra",
+      "bestRunner": "director",
+      "guidePath": "docs/dream-loop/",
+      "repo": {
+        "org": "DarkWzrd-Zeref",
+        "name": "dream-loop",
+        "url": "https://github.com/DarkWzrd-Zeref/dream-loop",
+        "description": "Agent skill for impressive 3D visuals using Blender + image gen + subagent critic",
+        "language": "JavaScript"
+      }
+    },
+    {
+      "id": "bot-ops-status-board",
+      "name": "Bot Ops Status Board",
+      "primaryOwner": "zeref",
+      "bestRunner": "cursor-ultra",
+      "guidePath": "README.md",
+      "repo": {
+        "org": "DarkWzrd-Zeref",
+        "name": "bot-ops-status-board",
+        "url": "https://github.com/DarkWzrd-Zeref/bot-ops-status-board",
+        "description": "Bot Passport / Bot Ops Status Board - ledger-first mobile PWA",
+        "language": "TypeScript"
+      }
+    }
+  ]
+}

@@ -1,0 +1,117 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Skills registry · AREA 67</title>
+<link rel="icon" href="/favicon.svg" type="image/svg+xml">
+<style>
+:root { color-scheme: dark; font: 16px/1.65 system-ui,sans-serif; color:#dae8e7; background:#0c141c }
+* { box-sizing:border-box } body { margin:0 } main { max-width:1040px; padding:48px 24px 80px; margin:auto }
+a { color:#80f5cd } h1 { font-size:clamp(30px,5vw,50px); line-height:1.1; letter-spacing:-.04em; margin:28px 0 12px }
+h2 { margin-top:44px; font-size:24px } p { color:#a8bec6 } .eyebrow { color:#80f5cd; letter-spacing:.16em; font-size:12px }
+code, pre { color:#b3e9d6; background:#14242b; border-radius:6px; font-size:13px; overflow-wrap:anywhere }
+code { padding:3px 7px }
+table { width:100%; border-collapse:collapse; margin:20px 0 8px; font-size:14px }
+th, td { text-align:left; padding:10px 12px; border-bottom:1px solid #253842; vertical-align:top }
+th { color:#80f5cd; font-weight:600; letter-spacing:.04em; font-size:12px; text-transform:uppercase }
+tr:hover td { background:#101d24 }
+.owner { color:#dae8e7 } .role { color:#7f9aa4; font-size:12px; display:block }
+.tag { display:inline-block; font-size:11px; letter-spacing:.06em; padding:2px 7px; border-radius:999px; border:1px solid #75613c; color:#e7c27a; margin-left:6px }
+.tag.blocked { border-color:#a3505a; color:#f5a3ad }
+.muted { color:#6f8790 }
+#arsenal { border:1px solid #31464f; border-radius:12px; overflow:hidden; margin-top:20px }
+.repo { padding:18px; border-top:1px solid #253842 }
+.repo:first-child { border:0 } .repo h3 { margin:0 0 4px; font-size:18px }
+.repo .meta { color:#7f9aa4; font-size:13px; margin:6px 0 0 }
+.note { border:1px solid #31464f; background:#0f1c24; padding:18px; border-radius:10px; margin-top:24px }
+.note p { margin:8px 0 0 }
+@media(max-width:640px){ th:nth-child(4), td:nth-child(4){ display:none } main{ padding-top:24px } }
+</style>
+</head>
+<body><main>
+<a href="/">← Back to command deck</a>
+<h1>Skill registration map.</h1>
+<div class="eyebrow" id="stamp">AM-STAMPED · LOADING…</div>
+<p>The Account Manager's stamped roster of registered skills — skill id, primary owner, best runner and guide path — plus the DarkWzrd-Zeref arsenal repositories drawn from that map. A stamp records a self-declared registration; it does not install, scan or grant any skill.</p>
+
+<h2>Registered skills</h2>
+<div id="skills"><p class="muted">Loading skill registration map…</p></div>
+
+<h2>DarkWzrd-Zeref arsenal</h2>
+<p>Public repositories from the DarkWzrd-Zeref org referenced by the stamped map above.</p>
+<div id="arsenal"><p class="muted" style="padding:18px">Loading arsenal…</p></div>
+
+<div class="note" id="provenance"><strong>Provenance.</strong><p class="muted">Loading provenance…</p></div>
+<p style="margin-top:24px">Machine-readable copy: <a href="/api/ops/skills"><code>/api/ops/skills</code></a>.</p>
+</main>
+<script>
+function seatCell(seat) {
+  const td = document.createElement("td");
+  if (!seat) { td.className = "muted"; td.textContent = "—"; return td; }
+  const name = document.createElement("span"); name.className = "owner"; name.textContent = seat.name;
+  const role = document.createElement("span"); role.className = "role"; role.textContent = seat.role + " · " + seat.id;
+  td.append(name, role); return td;
+}
+
+fetch("/api/ops/skills").then(r => { if (!r.ok) throw Error("registry unavailable"); return r.json(); }).then(data => {
+  document.getElementById("stamp").textContent =
+    (data.stamp || "AM-STAMPED") + " · by " + (data.stampedBy || "account-manager") + " · as of " + (data.asOf || "unknown");
+
+  const skillsRoot = document.getElementById("skills");
+  skillsRoot.replaceChildren();
+  const table = document.createElement("table");
+  const thead = document.createElement("thead");
+  const hr = document.createElement("tr");
+  for (const h of ["Skill id", "Primary owner", "Best runner", "Guide path"]) {
+    const th = document.createElement("th"); th.textContent = h; hr.append(th);
+  }
+  thead.append(hr); table.append(thead);
+  const tbody = document.createElement("tbody");
+  for (const s of data.skills || []) {
+    const tr = document.createElement("tr");
+    const idTd = document.createElement("td");
+    const idCode = document.createElement("code"); idCode.textContent = s.id; idTd.append(idCode);
+    if (s.blocked) { const t = document.createElement("span"); t.className = "tag blocked"; t.textContent = "SkillSpector blocks"; idTd.append(t); }
+    else if (s.repo && s.repo.org === (data.arsenalOrg || "DarkWzrd-Zeref")) { const t = document.createElement("span"); t.className = "tag"; t.textContent = "arsenal"; idTd.append(t); }
+    tr.append(idTd, seatCell(s.primaryOwner), seatCell(s.bestRunner));
+    const guideTd = document.createElement("td");
+    const guide = document.createElement("code"); guide.textContent = s.guidePath; guideTd.append(guide);
+    tr.append(guideTd);
+    tbody.append(tr);
+  }
+  table.append(tbody);
+  skillsRoot.append(table);
+
+  const arsenalRoot = document.getElementById("arsenal");
+  arsenalRoot.replaceChildren();
+  const repos = data.arsenal || [];
+  if (!repos.length) { const p = document.createElement("p"); p.className = "muted"; p.style.padding = "18px"; p.textContent = "No DarkWzrd-Zeref repositories in the current map."; arsenalRoot.append(p); }
+  for (const repo of repos) {
+    const card = document.createElement("div"); card.className = "repo";
+    const h = document.createElement("h3");
+    const link = document.createElement("a"); link.href = repo.url; link.textContent = repo.org + "/" + repo.name;
+    link.rel = "noopener noreferrer"; link.target = "_blank";
+    h.append(link);
+    card.append(h);
+    if (repo.description) { const d = document.createElement("p"); d.textContent = repo.description; card.append(d); }
+    const meta = document.createElement("p"); meta.className = "meta";
+    meta.textContent = (repo.language ? repo.language + " · " : "") + "skills: " + (repo.skills || []).join(", ");
+    card.append(meta);
+    arsenalRoot.append(card);
+  }
+
+  const prov = document.getElementById("provenance");
+  prov.replaceChildren();
+  const strong = document.createElement("strong"); strong.textContent = "Provenance.";
+  const p = document.createElement("p"); p.className = "muted"; p.textContent = data.note || "";
+  prov.append(strong, p);
+  if (data.sources && data.sources.length) {
+    const s = document.createElement("p"); s.className = "muted"; s.textContent = "Sources: " + data.sources.join("; ") + ".";
+    prov.append(s);
+  }
+}).catch(() => {
+  document.getElementById("skills").textContent = "The skill registration map is unavailable. Reconnect to the hub and reload this page.";
+  document.getElementById("arsenal").textContent = "";
+});
+</script>
+</body></html>

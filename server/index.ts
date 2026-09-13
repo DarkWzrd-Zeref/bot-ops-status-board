@@ -15,6 +15,7 @@ import { MAP_W, MAP_H } from "../shared/map.ts";
 import { cardSchema, cardActionSchema, registrationSchema } from "../shared/ecosystem.ts";
 import { EcosystemAccessError, ecosystemAuthorized, requireAnySeat, requireEcosystemWriter } from "./ecosystem-auth.ts";
 import { boosterCapabilities, readUsage, searchMemory, recordMemory } from "./boosters.ts";
+import { skillRegistry } from "./skills.ts";
 import { lockerList, lockerPut, lockerRead, lockerUsage } from "./locker.ts";
 import { artifactPutSchema, MAX_ARTIFACT_BYTES, MAX_LOCKER_BYTES } from "../shared/locker.ts";
 
@@ -68,6 +69,16 @@ app.get("/api/seats", (c) =>
 app.get("/connect", async (c) => {
   const file = existsSync("dist/connect.html") ? "dist/connect.html" : "public/connect.html";
   return c.html(await readFile(file, "utf8"));
+});
+
+app.get("/ops/skills", async (c) => {
+  const file = existsSync("dist/ops/skills.html") ? "dist/ops/skills.html" : "public/ops/skills.html";
+  return c.html(await readFile(file, "utf8"));
+});
+
+app.get("/api/ops/skills", (c) => {
+  c.header("Cache-Control", "no-store");
+  return c.json(skillRegistry());
 });
 
 app.all("/mcp/:seat", (c) => {
