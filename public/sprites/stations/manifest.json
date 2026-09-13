@@ -1,354 +1,360 @@
 {
   "version": 1,
-  "generatedAt": "2026-09-09",
-  "generatedBy": "claude/architect",
-  "generator": "Blender bpy 4.3.0, Cycles 96spp, headless",
-  "projection": {
-    "type": "orthographic",
-    "elevationDeg": 35.264,
-    "azimuthDeg": 45.0,
-    "note": "true isometric; groundQuad is the plinth footprint in normalized image space, origin top-left"
-  },
-  "transparency": "straight (non-premultiplied) alpha, RGBA8 PNG",
-  "ownership": "original geometry generated procedurally for AREA 67; no third-party assets",
-  "usage": {
-    "fallback": "if a kind is absent the engine MUST keep its existing procedural box",
-    "collision": "art is decorative only - does not change footprints, UIDs or station docks",
-    "align": "seat groundQuad onto the tile footprint; do not scale to the image bounds or the roof stretches"
-  },
+  "generator": "A67 headless three.js render of src/game/architecture.ts (the live kit, neutral shell)",
+  "as_of": "2026-09-13",
+  "freeze": "rev61",
+  "note": "Kind fallbacks. Neutral shell on purpose: a kind sprite must not carry one member station's catalog colour.",
   "entries": [
     {
       "kind": "code",
-      "src": "/sprites/stations/code.0c749d31c143.png",
-      "pixelWidth": 320,
-      "pixelHeight": 320,
+      "src": "/sprites/stations/code.e81a114a068f.png",
+      "file": "code.e81a114a068f.png",
+      "sha256": "e81a114a068f63c9f96001339eeffcb335641cf5b9381123aac10b9b88f0e6c3",
+      "sha12": "e81a114a068f",
+      "bytes": 20358,
+      "pixelWidth": 224,
+      "pixelHeight": 234,
       "anchorX": 0.5,
-      "anchorY": 0.60345,
+      "anchorY": 0.610757,
       "groundBounds": [
-        0.09653,
-        0.3705,
-        0.90347,
-        0.83639
+        0.0,
+        0.123496,
+        1.0,
+        1.0
       ],
       "groundQuad": [
         [
-          0.09653,
-          0.57374
+          0.403795,
+          0.123496
         ],
         [
-          0.55146,
-          0.83639
+          1.0,
+          0.736375
         ],
         [
-          0.90347,
-          0.63316
+          0.596205,
+          1.0
         ],
         [
-          0.44854,
-          0.3705
+          0.0,
+          0.583155
         ]
       ],
       "tileW": 4,
       "tileH": 3,
-      "sha256": "0c749d31c1432297cb3d673080b1a9b3887aa1ee355af70e6ca388ac4eadeb88",
-      "bytes": 87347,
-      "exampleStation": "cursor"
+      "sourceHub": "cursor"
     },
     {
       "kind": "comms",
-      "src": "/sprites/stations/comms.a0d15e11c7b3.png",
-      "pixelWidth": 320,
-      "pixelHeight": 320,
+      "src": "/sprites/stations/comms.758116653f2a.png",
+      "file": "comms.758116653f2a.png",
+      "sha256": "758116653f2ab2cc24274094b7d415d1f542b7f4fbff22c682d2c3954d2cc79c",
+      "sha12": "758116653f2a",
+      "bytes": 15974,
+      "pixelWidth": 192,
+      "pixelHeight": 233,
       "anchorX": 0.5,
-      "anchorY": 0.61278,
+      "anchorY": 0.611869,
       "groundBounds": [
-        0.1043,
-        0.38433,
-        0.8957,
-        0.84124
+        0.0,
+        0.127486,
+        1.0,
+        1.0
       ],
       "groundQuad": [
         [
-          0.1043,
-          0.58364
+          0.387761,
+          0.127486
         ],
         [
-          0.55047,
-          0.84124
+          1.0,
+          0.736068
         ],
         [
-          0.8957,
-          0.64192
+          0.612239,
+          1.0
         ],
         [
-          0.44953,
-          0.38433
+          0.0,
+          0.583923
         ]
       ],
       "tileW": 4,
       "tileH": 3,
-      "sha256": "a0d15e11c7b389b8e2f287e878dacc309f52d30fdc75a5e63cd38cb8eccf125e",
-      "bytes": 82110,
-      "exampleStation": "discord"
+      "sourceHub": "discord"
     },
     {
       "kind": "core",
-      "src": "/sprites/stations/core.a1fa03ee410d.png",
-      "pixelWidth": 320,
-      "pixelHeight": 320,
+      "src": "/sprites/stations/core.20451d238ac7.png",
+      "file": "core.20451d238ac7.png",
+      "sha256": "20451d238ac727072220eb5fb13566443fa1c81d587806f3b02a55649ca09f5d",
+      "sha12": "20451d238ac7",
+      "bytes": 19150,
+      "pixelWidth": 170,
+      "pixelHeight": 239,
       "anchorX": 0.5,
-      "anchorY": 0.63285,
+      "anchorY": 0.669642,
       "groundBounds": [
-        0.13822,
-        0.42398,
-        0.86178,
-        0.84172
+        0.0,
+        0.257487,
+        1.0,
+        1.0
       ],
       "groundQuad": [
         [
-          0.13822,
-          0.63285
+          0.5,
+          0.257487
+        ],
+        [
+          1.0,
+          0.71054
         ],
         [
           0.5,
-          0.84172
+          1.0
         ],
         [
-          0.86178,
-          0.63285
-        ],
-        [
-          0.5,
-          0.42398
+          0.0,
+          0.71054
         ]
       ],
       "tileW": 2,
       "tileH": 2,
-      "sha256": "a1fa03ee410d2dd6746f8be6f2c604d81f77f6ff958194120b6ca8a1c07039df",
-      "bytes": 91060,
-      "exampleStation": "well"
+      "sourceHub": "well"
     },
     {
       "kind": "guard",
-      "src": "/sprites/stations/guard.104077214401.png",
-      "pixelWidth": 320,
-      "pixelHeight": 320,
+      "src": "/sprites/stations/guard.1afe2ef337e1.png",
+      "file": "guard.1afe2ef337e1.png",
+      "sha256": "1afe2ef337e19dfe578e08ccb86947a605cbc432ab9ebf9b53cc3f4e8a6be61c",
+      "sha12": "1afe2ef337e1",
+      "bytes": 23373,
+      "pixelWidth": 220,
+      "pixelHeight": 206,
       "anchorX": 0.5,
-      "anchorY": 0.56989,
+      "anchorY": 0.528446,
       "groundBounds": [
-        0.01355,
-        0.28905,
-        0.98645,
-        0.85074
+        0.0,
+        0.0,
+        1.0,
+        1.0
       ],
       "groundQuad": [
         [
-          0.01355,
-          0.56989
+          0.5,
+          0.0
+        ],
+        [
+          1.0,
+          0.556891
         ],
         [
           0.5,
-          0.85074
+          1.0
         ],
         [
-          0.98645,
-          0.56989
-        ],
-        [
-          0.5,
-          0.28905
+          0.0,
+          0.556891
         ]
       ],
       "tileW": 4,
       "tileH": 4,
-      "sha256": "104077214401f997841ad25ec1656d5d88652de4f4e0003c4d8fd4a0dc0d6e73",
-      "bytes": 100402,
-      "exampleStation": "skillspector"
+      "sourceHub": "skillspector"
     },
     {
       "kind": "infra",
-      "src": "/sprites/stations/infra.e4280b6be805.png",
-      "pixelWidth": 320,
-      "pixelHeight": 320,
+      "src": "/sprites/stations/infra.f12ab378df29.png",
+      "file": "infra.f12ab378df29.png",
+      "sha256": "f12ab378df296c7f1adb23ca6d630628ef88d64843853701c8c2123c5028ddac",
+      "sha12": "f12ab378df29",
+      "bytes": 23620,
+      "pixelWidth": 192,
+      "pixelHeight": 213,
       "anchorX": 0.5,
-      "anchorY": 0.60074,
+      "anchorY": 0.568076,
       "groundBounds": [
-        0.07008,
-        0.35253,
-        0.92992,
-        0.84895
+        0.0,
+        0.029561,
+        1.0,
+        1.0
       ],
       "groundQuad": [
         [
-          0.07008,
-          0.60074
+          0.387761,
+          0.029561
         ],
         [
-          0.5,
-          0.84895
+          1.0,
+          0.705916
         ],
         [
-          0.92992,
-          0.60074
+          0.612239,
+          1.0
         ],
         [
-          0.5,
-          0.35253
+          0.0,
+          0.536827
         ]
       ],
-      "tileW": 3,
+      "tileW": 4,
       "tileH": 3,
-      "sha256": "e4280b6be80584a939f9d0cc1d1bb028c56741d23b4494e33dd6b4caf388e7f7",
-      "bytes": 81421,
-      "exampleStation": "neon"
+      "sourceHub": "railway"
     },
     {
       "kind": "media",
-      "src": "/sprites/stations/media.b675dfbb3a80.png",
-      "pixelWidth": 320,
-      "pixelHeight": 320,
-      "anchorX": 0.5,
-      "anchorY": 0.56302,
+      "src": "/sprites/stations/media.99e4b6ffcc45.png",
+      "file": "media.99e4b6ffcc45.png",
+      "sha256": "99e4b6ffcc453eb5ebb969bf669c4df5a9a6e7ba7222a1f0b9e00a5a6d005c23",
+      "sha12": "99e4b6ffcc45",
+      "bytes": 16308,
+      "pixelWidth": 203,
+      "pixelHeight": 265,
+      "anchorX": 0.501232,
+      "anchorY": 0.64562,
       "groundBounds": [
-        0.05217,
-        0.30447,
-        0.94783,
-        0.82158
+        0.0,
+        0.202713,
+        1.0,
+        1.0
       ],
       "groundQuad": [
         [
-          0.05217,
-          0.56302
+          0.502463,
+          0.202713
         ],
         [
-          0.5,
-          0.82158
+          1.0,
+          0.689883
         ],
         [
-          0.94783,
-          0.56302
+          0.502463,
+          1.0
         ],
         [
-          0.5,
-          0.30447
+          0.0,
+          0.689883
         ]
       ],
       "tileW": 3,
       "tileH": 3,
-      "sha256": "b675dfbb3a80799623195ed0ac9bf71a7ad9065526b44d51bf4aeae396a4885b",
-      "bytes": 94562,
-      "exampleStation": "elevenlabs"
+      "sourceHub": "elevenlabs"
     },
     {
       "kind": "ops",
-      "src": "/sprites/stations/ops.30c7fe5071ff.png",
-      "pixelWidth": 320,
-      "pixelHeight": 320,
+      "src": "/sprites/stations/ops.0141d073ab61.png",
+      "file": "ops.0141d073ab61.png",
+      "sha256": "0141d073ab61cadd4f7222356f51e8e4f902e65685f58e3091778c157b90c098",
+      "sha12": "0141d073ab61",
+      "bytes": 16522,
+      "pixelWidth": 220,
+      "pixelHeight": 251,
       "anchorX": 0.5,
-      "anchorY": 0.54261,
+      "anchorY": 0.586316,
       "groundBounds": [
-        0.0669,
-        0.29256,
-        0.9331,
-        0.79266
+        0.0,
+        0.069103,
+        1.0,
+        1.0
       ],
       "groundQuad": [
         [
-          0.0669,
-          0.51072
+          0.5,
+          0.069103
         ],
         [
-          0.55524,
-          0.79266
+          1.0,
+          0.63808
         ],
         [
-          0.9331,
-          0.57451
+          0.5,
+          1.0
         ],
         [
-          0.44476,
-          0.29256
+          0.0,
+          0.63808
         ]
       ],
-      "tileW": 4,
+      "tileW": 3,
       "tileH": 3,
-      "sha256": "30c7fe5071ff8f2db0d8871213ecfd04e8f68e303de9beb0f2107c049d62e3aa",
-      "bytes": 90372,
-      "exampleStation": "drive"
+      "sourceHub": "calendar"
     },
     {
       "kind": "project",
-      "src": "/sprites/stations/project.263ee06bbed6.png",
-      "pixelWidth": 320,
-      "pixelHeight": 320,
+      "src": "/sprites/stations/project.4b612f234ad7.png",
+      "file": "project.4b612f234ad7.png",
+      "sha256": "4b612f234ad7039e50c418e8e4b71cee053a9d5e9a4c830aa8acf8fc92a10992",
+      "sha12": "4b612f234ad7",
+      "bytes": 24000,
+      "pixelWidth": 254,
+      "pixelHeight": 278,
       "anchorX": 0.5,
-      "anchorY": 0.54491,
+      "anchorY": 0.631152,
       "groundBounds": [
-        0.0669,
-        0.29486,
-        0.9331,
-        0.79496
+        0.0,
+        0.169528,
+        1.0,
+        1.0
       ],
       "groundQuad": [
         [
-          0.0669,
-          0.51301
+          0.5,
+          0.169528
         ],
         [
-          0.55524,
-          0.79496
+          1.0,
+          0.67754
         ],
         [
-          0.9331,
-          0.5768
+          0.5,
+          1.0
         ],
         [
-          0.44476,
-          0.29486
+          0.0,
+          0.67754
         ]
       ],
-      "tileW": 4,
+      "tileW": 3,
       "tileH": 3,
-      "sha256": "263ee06bbed616d3b0a0d765a8ba5968a8e9e49b2f83173c8b6c7b3ebe9f5baa",
-      "bytes": 91068,
-      "exampleStation": "project-site"
+      "sourceHub": "project-site"
     },
     {
       "kind": "research",
-      "src": "/sprites/stations/research.4ad551025152.png",
-      "pixelWidth": 320,
-      "pixelHeight": 320,
+      "src": "/sprites/stations/research.a1c7ba7664a6.png",
+      "file": "research.a1c7ba7664a6.png",
+      "sha256": "a1c7ba7664a60e95a1f4d42e52ce3bffee70c50cb2f7380a75188d89825ae744",
+      "sha12": "a1c7ba7664a6",
+      "bytes": 21044,
+      "pixelWidth": 192,
+      "pixelHeight": 197,
       "anchorX": 0.5,
-      "anchorY": 0.55777,
+      "anchorY": 0.547147,
       "groundBounds": [
-        0.0669,
-        0.30772,
-        0.9331,
-        0.80782
+        0.0,
+        0.0,
+        1.0,
+        1.0
       ],
       "groundQuad": [
         [
-          0.0669,
-          0.52587
+          0.387761,
+          0.0
         ],
         [
-          0.55524,
-          0.80782
+          1.0,
+          0.685334
         ],
         [
-          0.9331,
-          0.58966
+          0.612239,
+          1.0
         ],
         [
-          0.44476,
-          0.30772
+          0.0,
+          0.503253
         ]
       ],
       "tileW": 4,
       "tileH": 3,
-      "sha256": "4ad5510251527beaadc9be0eb952001ce206aff5b9c1f829b9d6ee9f0e968355",
-      "bytes": 89655,
-      "exampleStation": "firecrawl"
+      "sourceHub": "firecrawl"
     }
   ]
 }
