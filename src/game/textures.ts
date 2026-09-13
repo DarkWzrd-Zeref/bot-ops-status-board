@@ -23,6 +23,7 @@ export function cookTextures(scene: Phaser.Scene): void {
   paintFence(scene);
   paintCactus(scene);
   paintWell(scene);
+  paintBrokenArt(scene);
 
   for (const hub of HUBS) {
     paintBuilding(scene, hub.id, hub.w, hub.h, hex(hub.color), hex(hub.roof));
@@ -83,6 +84,18 @@ function paintCactus(scene: Phaser.Scene): void {
     g.fillRect(18, 16, 6, 4);
     g.fillStyle(0x00e5ff, 0.5);
     g.fillRect(14, 8, 4, 3);
+  });
+}
+
+function paintBrokenArt(scene: Phaser.Scene): void {
+  g2t(scene, "broken-art", TILE, TILE, (g) => {
+    g.fillStyle(0x0d0d13, 1);
+    g.fillRect(0, 0, TILE, TILE);
+    g.lineStyle(2, 0x00e5ff, 1);
+    g.strokeRect(2, 2, TILE - 4, TILE - 4);
+    g.lineStyle(3, 0x00e5ff, 0.95);
+    g.lineBetween(8, 8, TILE - 8, TILE - 8);
+    g.lineBetween(TILE - 8, 8, 8, TILE - 8);
   });
 }
 

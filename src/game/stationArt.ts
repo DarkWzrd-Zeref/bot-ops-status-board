@@ -1,7 +1,9 @@
 import type Phaser from "phaser";
 import { TILE } from "../core/grid.ts";
 
-/** Claude's hashed kind silhouettes. Decorative only — missing files keep painted boxes. */
+/** Kind-sprite contract. A path is not a file — src is only honored when the PNG exists. */
+export const BROKEN_ART_KEY = "broken-art";
+
 export type StationArtKind = {
   kind: string;
   sha12?: string;
@@ -14,6 +16,9 @@ export type StationArtKind = {
   anchorY?: number;
   groundBounds?: [number, number, number, number];
   groundQuad?: Array<[number, number]>;
+  tileW?: number;
+  tileH?: number;
+  bytes?: number;
 };
 
 type StationArtManifest = {
@@ -30,6 +35,11 @@ type GroundSeat = {
   pixelHeight?: number;
   groundBounds?: [number, number, number, number];
   groundQuad?: Array<[number, number]>;
+  tileW?: number;
+  tileH?: number;
+  bytes?: number;
+  sha256?: string;
+  src?: string;
 };
 
 export type StationSeatLayout = {
@@ -38,32 +48,14 @@ export type StationSeatLayout = {
   displayWidth: number;
   displayHeight: number;
   painted: boolean;
-};
-
-/** Radio-posted hashes until Claude commits src/content/station-art.json / public/sprites/stations/manifest.json. */
-const KIND_HASH: Record<string, string> = {
-  code: "0c749d31c143",
-  comms: "a0d15e11c7b3",
-  core: "a1fa03ee410d",
-  guard: "104077214401",
-  infra: "e4280b6be805",
-  media: "b675dfbb3a80",
-  ops: "30c7fe5071ff",
-  project: "263ee06bbed6",
-  research: "4ad551025152",
+  broken: boolean;
 };
 
 const catalog = new Map<string, string>();
 const seats = new Map<string, GroundSeat>();
 
-function sha12Of(entry: { sha12?: string; sha256?: string }): string | undefined {
-  if (entry.sha12) return entry.sha12;
-  if (entry.sha256 && entry.sha256.length >= 12) return entry.sha256.slice(0, 12);
-  return undefined;
-}
-
-function hashedPath(kind: string, sha12: string): string {
-  return "/sprites/stations/" + kind + "." + sha12 + ".png";
+function positiveInt(v: unknown): v is number {
+  return typeof v === "number" && Number.isInteger(v) && v > 0;
 }
 
 function rememberSeat(kind: string, row: Omit<StationArtKind, "kind">): void {
@@ -76,13 +68,24 @@ function rememberSeat(kind: string, row: Omit<StationArtKind, "kind">): void {
     && row.groundQuad.every(p => Array.isArray(p) && p.length === 2 && p.every(unit))
     ? row.groundQuad
     : undefined;
-  if (!bounds && !quad && typeof row.anchorX !== "number") return;
+  if (!bounds && !quad && typeof row.anchorX !== "number" && !positiveInt(row.tileW) && !positiveInt(row.bytes)) return;
   seats.set(kind, {
     anchorX: unit(row.anchorX) ? row.anchorX : 0.5,
     anchorY: unit(row.anchorY) ? row.anchorY : 0.5,
     groundBounds: bounds,
     groundQuad: quad,
+    ...(positiveInt(row.pixelWidth) ? { pixelWidth: row.pixelWidth } : {}),
+    ...(positiveInt(row.pixelHeight) ? { pixelHeight: row.pixelHeight } : {}),
+    ...(positiveInt(row.tileW) ? { tileW: row.tileW } : {}),
+    ...(positiveInt(row.tileH) ? { tileH: row.tileH } : {}),
+    ...(positiveInt(row.bytes) ? { bytes: row.bytes } : {}),
+    ...(typeof row.sha256 === "string" ? { sha256: row.sha256 } : {}),
+    ...(typeof row.src === "string" ? { src: row.src } : {}),
   });
+}
+
+export function stationArtEntry(kind: string): GroundSeat | undefined {
+  return seats.get(kind);
 }
 
 function rememberPath(kind: string, row: Omit<StationArtKind, "kind">): void {
@@ -93,10 +96,6 @@ function rememberPath(kind: string, row: Omit<StationArtKind, "kind">): void {
   if (row.sha256 && (typeof row.sha256 !== "string" || !/^[a-f0-9]{12,64}$/.test(row.sha256))) return;
   if (row.src) catalog.set(kind, row.src);
   else if (row.file) catalog.set(kind, row.file.startsWith("/") ? row.file : "/sprites/stations/" + row.file);
-  else {
-    const sha = sha12Of(row);
-    if (sha) catalog.set(kind, hashedPath(kind, sha));
-  }
   rememberSeat(kind, row);
 }
 
@@ -123,11 +122,7 @@ export function resetStationArtCatalog(): void {
 }
 
 export function kindSpritePath(kind: string): string | null {
-  const fromManifest = catalog.get(kind);
-  if (fromManifest) return fromManifest;
-  const sha = KIND_HASH[kind];
-  if (sha) return hashedPath(kind, sha);
-  return null;
+  return catalog.get(kind) ?? null;
 }
 
 export function hubSpritePath(id: string): string {
@@ -135,14 +130,19 @@ export function hubSpritePath(id: string): string {
 }
 
 export function stationTextureKeys(id: string, kind: string) {
-  return { hub: "sprite-hub-" + id, kind: "sprite-kind-" + kind, painted: id === "well" ? "well-mark" : "b-" + id };
+  return {
+    hub: "sprite-hub-" + id,
+    kind: "sprite-kind-" + kind,
+    painted: id === "well" ? "well-mark" : "b-" + id,
+    broken: BROKEN_ART_KEY,
+  };
 }
 
 export function pickStationTexture(scene: Phaser.Scene, id: string, kind: string): string {
   const keys = stationTextureKeys(id, kind);
   if (hasRealTexture(scene, keys.hub)) return keys.hub;
   if (hasRealTexture(scene, keys.kind)) return keys.kind;
-  return keys.painted;
+  return keys.broken;
 }
 
 function hasRealTexture(scene: Phaser.Scene, key: string): boolean {
@@ -180,6 +180,7 @@ function seatForTexture(kind: string, textureKey?: string): GroundSeat | undefin
 /** Uniform scale from the plinth, not the full PNG bounds. Painted boxes still fill the tile footprint. */
 export function stationSeatLayout(opts: {
   painted: boolean;
+  broken?: boolean;
   pixelWidth: number;
   pixelHeight: number;
   footprintWidth: number;
@@ -187,6 +188,16 @@ export function stationSeatLayout(opts: {
   kind: string;
   textureKey?: string;
 }): StationSeatLayout {
+  if (opts.broken || opts.textureKey === BROKEN_ART_KEY) {
+    return {
+      originX: 0.5,
+      originY: 0.5,
+      displayWidth: TILE,
+      displayHeight: TILE,
+      painted: false,
+      broken: true,
+    };
+  }
   if (opts.painted) {
     return {
       originX: 0.5,
@@ -194,6 +205,7 @@ export function stationSeatLayout(opts: {
       displayWidth: opts.footprintWidth,
       displayHeight: opts.footprintHeight,
       painted: true,
+      broken: false,
     };
   }
   const seat = seatForTexture(opts.kind, opts.textureKey);
@@ -207,6 +219,7 @@ export function stationSeatLayout(opts: {
     displayWidth: imgW * scale,
     displayHeight: imgH * scale,
     painted: false,
+    broken: false,
   };
 }
 
@@ -215,6 +228,7 @@ export function seatStationImage(
   opts: {
     textureKey: string;
     paintedKey: string;
+    brokenKey?: string;
     tileX: number;
     tileY: number;
     tilesW: number;
@@ -226,6 +240,7 @@ export function seatStationImage(
   const footprintHeight = opts.tilesH * TILE;
   const layout = stationSeatLayout({
     painted: opts.textureKey === opts.paintedKey,
+    broken: opts.textureKey === (opts.brokenKey ?? BROKEN_ART_KEY),
     pixelWidth: img.frame?.realWidth || img.width || 1,
     pixelHeight: img.frame?.realHeight || img.height || 1,
     footprintWidth,
@@ -246,6 +261,6 @@ export async function hydrateStationArt(fetchImpl: typeof fetch = fetch): Promis
     if (!res.ok) return;
     applyStationArtManifest(await res.json() as StationArtManifest);
   } catch {
-    /* PNGs are decorative; procedural boxes stay. */
+    /* Missing manifest or PNG is a broken-art badge, not a guessed path. */
   } finally { clearTimeout(timer); }
 }
