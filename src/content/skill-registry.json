@@ -1,37 +1,173 @@
 {
   "stamp": "AM-STAMPED",
-  "stampedBy": "account-manager",
+  "stampedBy": "AM MOBILE ios",
   "asOf": "2026-09-13",
-  "note": "Account Manager stamp of the real skill roster (source-of-truth Box and Lane skill ids) plus the DarkWzrd-Zeref arsenal repositories referenced by that map. Soft-hold invent: per-skill primary owner, best runner and guide path are GAP where the source of truth has not stamped them yet, and repository URLs that cannot be verified are left as GAP rather than invented. A stamp records a self-declared registration; it does not install, scan or grant any skill.",
+  "note": "Account Manager stamp of the real skill roster (Box and Lane) plus DarkWzrd-Zeref arsenal. Owners/runners/guides copied from AM stamp SoT. Soft-hold invent.",
   "sources": [
-    "AM source-of-truth skill roster (Box / Lane)",
-    "DarkWzrd-Zeref GitHub org"
+    "/workspace/hub-ops/AM-SKILL-REGISTRATION-MAP-STAMPED-2026-09-13.md",
+    "AM-SKILL-REGISTRY-PASTE-FOR-PR42-2026-09-13.json"
   ],
   "skills": [
-    { "id": "who-gets-this-job", "name": "who-gets-this-job", "category": "Box", "primaryOwner": null, "bestRunner": null, "guidePath": "GAP", "repo": null },
-    { "id": "goal-syllabus-queue", "name": "goal-syllabus-queue", "category": "Box", "primaryOwner": null, "bestRunner": null, "guidePath": "GAP", "repo": null },
-    { "id": "order-book-audit", "name": "order-book-audit", "category": "Box", "primaryOwner": null, "bestRunner": null, "guidePath": "GAP", "repo": null },
-    { "id": "done-means-artifact", "name": "done-means-artifact", "category": "Box", "primaryOwner": null, "bestRunner": null, "guidePath": "GAP", "repo": null },
-    { "id": "working-now-queue-next", "name": "working-now-queue-next", "category": "Box", "primaryOwner": null, "bestRunner": null, "guidePath": "GAP", "repo": null },
-    { "id": "interrupt-triage", "name": "interrupt-triage", "category": "Box", "primaryOwner": null, "bestRunner": null, "guidePath": "GAP", "repo": null },
-    { "id": "resume-from-parked", "name": "resume-from-parked", "category": "Box", "primaryOwner": null, "bestRunner": null, "guidePath": "GAP", "repo": null },
-    { "id": "right-to-left-finish", "name": "right-to-left-finish", "category": "Box", "primaryOwner": null, "bestRunner": null, "guidePath": "GAP", "repo": null },
-    { "id": "lane-handoff-packet", "name": "lane-handoff-packet", "category": "Box", "primaryOwner": null, "bestRunner": null, "guidePath": "GAP", "repo": null },
-    { "id": "pc-hand-off-file", "name": "pc-hand-off-file", "category": "Box", "primaryOwner": null, "bestRunner": null, "guidePath": "GAP", "repo": null },
-    { "id": "reference-lock-consistency", "name": "reference-lock-consistency", "category": "Box", "primaryOwner": null, "bestRunner": null, "guidePath": "GAP", "repo": null },
-    { "id": "memory-upload", "name": "memory-upload", "category": "Box", "primaryOwner": null, "bestRunner": null, "guidePath": "GAP", "repo": null },
-    { "id": "memory-download", "name": "memory-download", "category": "Box", "primaryOwner": null, "bestRunner": null, "guidePath": "GAP", "repo": null },
-    { "id": "session-close-system-summary", "name": "session-close-system-summary", "category": "Box", "primaryOwner": null, "bestRunner": null, "guidePath": "GAP", "repo": null },
-    { "id": "routines", "name": "routines", "category": "Box", "primaryOwner": null, "bestRunner": null, "guidePath": "GAP", "repo": null },
-    { "id": "code-changes", "name": "code-changes", "category": "Box", "primaryOwner": null, "bestRunner": null, "guidePath": "GAP", "repo": null },
-    { "id": "box-desktop", "name": "box-desktop", "category": "Box", "primaryOwner": null, "bestRunner": null, "guidePath": "GAP", "repo": null },
+    {
+      "id": "who-gets-this-job",
+      "name": "who-gets-this-job",
+      "category": "Box",
+      "primaryOwner": "AM (BOT02) / CoS (BOT01) / Police (Hub Ops)",
+      "bestRunner": "Any ops",
+      "guidePath": "GUIDE-who-gets-this-job-who-model-how-2026-09-13.md",
+      "repo": null
+    },
+    {
+      "id": "goal-syllabus-queue",
+      "name": "goal-syllabus-queue",
+      "category": "Box",
+      "primaryOwner": "Police (Hub Ops) \u00b7 stay on track assist",
+      "bestRunner": "Any",
+      "guidePath": "GUIDE-goal-syllabus-queue-who-model-how-2026-09-13.md",
+      "repo": null
+    },
+    {
+      "id": "order-book-audit",
+      "name": "order-book-audit",
+      "category": "Box",
+      "primaryOwner": "Police / stay on track",
+      "bestRunner": "Any",
+      "guidePath": "GUIDE-order-book-audit-who-model-how-2026-09-13.md",
+      "repo": null
+    },
+    {
+      "id": "done-means-artifact",
+      "name": "done-means-artifact",
+      "category": "Box",
+      "primaryOwner": "Eng / Police / AM",
+      "bestRunner": "Any",
+      "guidePath": "GUIDE-done-means-artifact-who-model-how-2026-09-13.md",
+      "repo": null
+    },
+    {
+      "id": "working-now-queue-next",
+      "name": "working-now-queue-next",
+      "category": "Box",
+      "primaryOwner": "Eng / stay on track",
+      "bestRunner": "Any",
+      "guidePath": "GUIDE-working-now-queue-next-who-model-how-2026-09-13.md",
+      "repo": null
+    },
+    {
+      "id": "interrupt-triage",
+      "name": "interrupt-triage",
+      "category": "Box",
+      "primaryOwner": "Eng / CoS",
+      "bestRunner": "Any",
+      "guidePath": "GUIDE-interrupt-triage-who-model-how-2026-09-13.md",
+      "repo": null
+    },
+    {
+      "id": "resume-from-parked",
+      "name": "resume-from-parked",
+      "category": "Box",
+      "primaryOwner": "Eng",
+      "bestRunner": "Any",
+      "guidePath": "GUIDE-resume-from-parked-who-model-how-2026-09-13.md",
+      "repo": null
+    },
+    {
+      "id": "right-to-left-finish",
+      "name": "right-to-left-finish",
+      "category": "Box",
+      "primaryOwner": "Eng / Police",
+      "bestRunner": "Any",
+      "guidePath": "GUIDE-right-to-left-finish-who-model-how-2026-09-13.md",
+      "repo": null
+    },
+    {
+      "id": "lane-handoff-packet",
+      "name": "lane-handoff-packet",
+      "category": "Box",
+      "primaryOwner": "Eng / AM",
+      "bestRunner": "Any",
+      "guidePath": "GUIDE-lane-handoff-packet-who-model-how-2026-09-13.md",
+      "repo": null
+    },
+    {
+      "id": "pc-hand-off-file",
+      "name": "pc-hand-off-file",
+      "category": "Box",
+      "primaryOwner": "Eng / AM",
+      "bestRunner": "Any",
+      "guidePath": "GUIDE-pc-hand-off-file-who-model-how-2026-09-13.md",
+      "repo": null
+    },
+    {
+      "id": "reference-lock-consistency",
+      "name": "reference-lock-consistency",
+      "category": "Box",
+      "primaryOwner": "Eng / Police / BW (BOT10)",
+      "bestRunner": "Any",
+      "guidePath": "GUIDE-reference-lock-consistency-who-model-how-2026-09-13.md",
+      "repo": null
+    },
+    {
+      "id": "memory-upload",
+      "name": "memory-upload",
+      "category": "Box",
+      "primaryOwner": "All (skill toggle)",
+      "bestRunner": "Grok Bot ops",
+      "guidePath": "GUIDE-memory-upload-download-who-model-how-2026-09-13.md",
+      "repo": null
+    },
+    {
+      "id": "memory-download",
+      "name": "memory-download",
+      "category": "Box",
+      "primaryOwner": "All (skill toggle)",
+      "bestRunner": "Grok Bot ops",
+      "guidePath": "same",
+      "repo": null
+    },
+    {
+      "id": "session-close-system-summary",
+      "name": "session-close-system-summary",
+      "category": "Box",
+      "primaryOwner": "AM / Eng",
+      "bestRunner": "Any",
+      "guidePath": "GUIDE-session-close-system-summary-who-model-how-2026-09-13.md",
+      "repo": null
+    },
+    {
+      "id": "routines",
+      "name": "routines",
+      "category": "Box",
+      "primaryOwner": "Any ops",
+      "bestRunner": "Grok Bot ops",
+      "guidePath": "GUIDE-routines-who-model-how-2026-09-13.md",
+      "repo": null
+    },
+    {
+      "id": "code-changes",
+      "name": "code-changes",
+      "category": "Box",
+      "primaryOwner": "Cursor Cloud (BOT13) / PC",
+      "bestRunner": "Cursor Cloud \u2014 **not** Grok Bot clones",
+      "guidePath": "GUIDE-code-changes-who-model-how-2026-09-13.md",
+      "repo": null
+    },
+    {
+      "id": "box-desktop",
+      "name": "box-desktop",
+      "category": "Box",
+      "primaryOwner": "Any GUI need",
+      "bestRunner": "Grok Bot + computerUse",
+      "guidePath": "GUIDE-box-desktop-who-model-how-2026-09-13.md",
+      "repo": null
+    },
     {
       "id": "dream-loop",
       "name": "dream-loop",
       "category": "Box",
-      "primaryOwner": null,
-      "bestRunner": null,
-      "guidePath": "docs/dream-loop/",
+      "primaryOwner": "Claude Pro (BOT14) + Cursor Cloud (BOT13) + Heavy",
+      "bestRunner": "see guide",
+      "guidePath": "GUIDE-dream-loop-who-model-how-2026-09-13.md",
       "repo": {
         "org": "DarkWzrd-Zeref",
         "name": "dream-loop",
@@ -40,58 +176,187 @@
         "language": "JavaScript"
       }
     },
-    { "id": "discord-agentmail-login", "name": "discord-agentmail-login", "category": "Lane", "primaryOwner": null, "bestRunner": null, "guidePath": "GAP", "repo": null },
-    { "id": "bull-wizards-art-pipeline", "name": "bull-wizards-art-pipeline", "category": "Lane", "primaryOwner": null, "bestRunner": null, "guidePath": "GAP", "repo": null },
-    { "id": "hard-drive-controller-skin-pack", "name": "hard-drive-controller-skin-pack", "category": "Lane", "primaryOwner": null, "bestRunner": null, "guidePath": "GAP", "repo": null },
-    { "id": "blender-controller-deck", "name": "blender-controller-deck", "category": "Lane", "primaryOwner": null, "bestRunner": null, "guidePath": "GAP", "repo": null },
-    { "id": "controller-skin-decals", "name": "controller-skin-decals", "category": "Lane", "primaryOwner": null, "bestRunner": null, "guidePath": "GAP", "repo": null },
-    { "id": "ue5-import-controller-skin-pngs", "name": "ue5-import-controller-skin-pngs", "category": "Lane", "primaryOwner": null, "bestRunner": null, "guidePath": "GAP", "repo": null }
+    {
+      "id": "discord-agentmail-login",
+      "name": "discord-agentmail-login",
+      "category": "Lane",
+      "primaryOwner": "AM / CoS",
+      "bestRunner": "Grok Bot + AgentMail",
+      "guidePath": "Passport G10 Discord Forgot path",
+      "repo": null
+    },
+    {
+      "id": "bull-wizards-art-pipeline",
+      "name": "bull-wizards-art-pipeline",
+      "category": "Lane",
+      "primaryOwner": "BOT10 Bull Wizards",
+      "bestRunner": "Grok Bot / Imagine gated",
+      "guidePath": "BW \u2260 HARD-DRIVE (Passport)",
+      "repo": null
+    },
+    {
+      "id": "hard-drive-controller-skin-pack",
+      "name": "hard-drive-controller-skin-pack",
+      "category": "Lane",
+      "primaryOwner": "BOT08 Game Earn",
+      "bestRunner": "Grok Build / Claude",
+      "guidePath": "GE HARD-DRIVE Neon rule",
+      "repo": null
+    },
+    {
+      "id": "blender-controller-deck",
+      "name": "blender-controller-deck",
+      "category": "Lane",
+      "primaryOwner": "GE / Eng",
+      "bestRunner": "Claude / Grok Build",
+      "guidePath": "HD art lane",
+      "repo": null
+    },
+    {
+      "id": "controller-skin-decals",
+      "name": "controller-skin-decals",
+      "category": "Lane",
+      "primaryOwner": "GE / Eng",
+      "bestRunner": "Claude / Grok Build",
+      "guidePath": "HD art lane",
+      "repo": null
+    },
+    {
+      "id": "ue5-import-controller-skin-pngs",
+      "name": "ue5-import-controller-skin-pngs",
+      "category": "Lane",
+      "primaryOwner": "GE / Eng",
+      "bestRunner": "Claude / Grok Build",
+      "guidePath": "HD art lane",
+      "repo": null
+    }
   ],
   "arsenal": [
     {
-      "org": "DarkWzrd-Zeref",
       "name": "dream-loop",
       "url": "https://github.com/DarkWzrd-Zeref/dream-loop",
-      "description": "Agent skill for impressive 3D visuals using Blender + image gen + subagent critic",
-      "language": "JavaScript"
+      "primaryWho": "BOT14 Claude + BOT13 Cursor + Heavy",
+      "notes": "Process not renderer; guide PRESENT"
     },
     {
-      "org": "DarkWzrd-Zeref",
       "name": "hub-app-mcps",
       "url": "https://github.com/DarkWzrd-Zeref/hub-app-mcps",
-      "description": null,
-      "language": null
+      "primaryWho": "Eng / AM",
+      "notes": "Private OK; App MCP shortcuts"
     },
     {
-      "org": "DarkWzrd-Zeref",
       "name": "hub-judgment",
       "url": "https://github.com/DarkWzrd-Zeref/hub-judgment",
-      "description": null,
-      "language": null
+      "primaryWho": "CoS / AM",
+      "notes": "Private OK; decisions store \u2014 docs track board first"
     },
     {
-      "org": "DarkWzrd-Zeref",
       "name": "hub-quota",
       "url": "https://github.com/DarkWzrd-Zeref/hub-quota",
-      "description": null,
-      "language": null
+      "primaryWho": "Eng / Police",
+      "notes": "Private OK; seat heartbeats \u2014 docs only first"
     },
     {
-      "org": "DarkWzrd-Zeref",
       "name": "bot-ops-status-board",
       "url": "https://github.com/DarkWzrd-Zeref/bot-ops-status-board",
-      "description": "Bot Passport / Bot Ops Status Board - ledger-first mobile PWA",
-      "language": "TypeScript"
+      "primaryWho": "Eng",
+      "notes": "Live Hub LOCKED Railway"
     },
     {
-      "org": "DarkWzrd-Zeref",
       "name": "media-money-printer",
       "url": "https://github.com/DarkWzrd-Zeref/media-money-printer",
-      "description": null,
-      "language": null,
-      "alias": "turbo-machine",
-      "aliasUrl": null,
-      "note": "turbo-machine alias URL is GAP (not invented)."
+      "primaryWho": "BOT04 Content / cc2",
+      "notes": "Private OK; **turbo-machine alias = GAP** (not locked)"
+    },
+    {
+      "name": "BOT",
+      "url": "Subject",
+      "primaryWho": "Status",
+      "notes": "Map note"
+    },
+    {
+      "name": "BOT01",
+      "url": "Chief of Staff",
+      "primaryWho": "live",
+      "notes": "CoS"
+    },
+    {
+      "name": "BOT02",
+      "url": "Account Manager",
+      "primaryWho": "live",
+      "notes": "AM MOBILE ios"
+    },
+    {
+      "name": "BOT03",
+      "url": "Media automated",
+      "primaryWho": "live",
+      "notes": "Group Automated Media (no dedicated bot)"
+    },
+    {
+      "name": "BOT04",
+      "url": "Content Creation",
+      "primaryWho": "live",
+      "notes": "+ cc2 twin on box"
+    },
+    {
+      "name": "BOT05",
+      "url": "Marketing",
+      "primaryWho": "live",
+      "notes": ""
+    },
+    {
+      "name": "BOT06",
+      "url": "Mr Finances",
+      "primaryWho": "live",
+      "notes": "read-only funds"
+    },
+    {
+      "name": "BOT07",
+      "url": "automated trading",
+      "primaryWho": "**paused**",
+      "notes": "soft-hold"
+    },
+    {
+      "name": "BOT08",
+      "url": "Game Earn",
+      "primaryWho": "live",
+      "notes": "HARD-DRIVE Neon"
+    },
+    {
+      "name": "BOT09",
+      "url": "MLB Predictions",
+      "primaryWho": "live",
+      "notes": ""
+    },
+    {
+      "name": "BOT10",
+      "url": "Bull Wizards",
+      "primaryWho": "dark",
+      "notes": "\u2260 HARD-DRIVE"
+    },
+    {
+      "name": "BOT11",
+      "url": "self hosted",
+      "primaryWho": "live",
+      "notes": "missing on this box \u2014 soft-hold invent"
+    },
+    {
+      "name": "BOT12",
+      "url": "im alive",
+      "primaryWho": "live",
+      "notes": "missing on this box \u2014 soft-hold invent"
+    },
+    {
+      "name": "BOT13",
+      "url": "Cursor Cloud",
+      "primaryWho": "live",
+      "notes": "coding rail"
+    },
+    {
+      "name": "BOT14",
+      "url": "Claude Pro",
+      "primaryWho": "live",
+      "notes": "build rail"
     }
   ]
 }
