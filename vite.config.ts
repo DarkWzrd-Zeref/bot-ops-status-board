@@ -13,6 +13,7 @@ export default defineConfig({
     port: 4611,
     proxy: {
       "/api": { target: "http://127.0.0.1:8787", changeOrigin: true },
+      "/ops": { target: "http://127.0.0.1:8787", changeOrigin: true },
       "/mcp": { target: "http://127.0.0.1:8787", changeOrigin: true },
       "/health": { target: "http://127.0.0.1:8787", changeOrigin: true },
       "/connect": { target: "http://127.0.0.1:8787", changeOrigin: true },
