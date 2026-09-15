@@ -1,0 +1,50 @@
+{
+  "title": "AREA 67 MCP Connection Sheet",
+  "signed_by": "grok-heavy",
+  "logged_at": "2026-09-09T23:10:00Z",
+  "live": "1.2.6/bb1cf2d",
+  "hold": "1.3.0 Railway env vars unverified — do not deploy",
+  "seats": [
+    {"slug": "claude", "url": "/mcp/claude", "pal": "claude", "radio": "yes", "tools_this_seat_observed": 8, "auth": "url-lock only"},
+    {"slug": "grok-heavy", "url": "/mcp/grok-heavy", "pal": "director", "radio": "yes", "tools_this_seat_observed": 8, "auth": "url-lock only"},
+    {"slug": "cursor", "url": "/mcp/cursor", "pal": "cursor-ultra", "radio": "yes", "tools_this_seat_observed": "unknown-other-seat", "auth": "url-lock only"},
+    {"slug": "codex", "url": "/mcp/codex", "pal": "codex", "radio": "yes", "tools_this_seat_observed": "unknown-other-seat", "auth": "url-lock only"},
+    {"slug": "chatgpt", "url": "/mcp/chatgpt", "pal": "researcher", "radio": "never", "tools_this_seat_observed": "unverified", "auth": "url-lock only"},
+    {"slug": "grok-a", "url": "/mcp/grok-a", "pal": "grok-am-a", "radio": "never", "tools_this_seat_observed": "unverified", "auth": "url-lock only"},
+    {"slug": "grok-b", "url": "/mcp/grok-b", "pal": "grok-am-b", "radio": "never", "tools_this_seat_observed": "unverified", "auth": "url-lock only"},
+    {"slug": "grok", "url": "/mcp/grok", "pal": "grok", "radio": "never", "tools_this_seat_observed": "unverified", "auth": "url-lock only"}
+  ],
+  "stations": [
+    {"id": "github", "mcp": "github", "heavy": "WRITE-VERIFIED"},
+    {"id": "drive", "mcp": "google-drive", "heavy": "WRITE-VERIFIED"},
+    {"id": "gmail", "mcp": "gmail", "heavy": "CONNECTED-UNUSED"},
+    {"id": "calendar", "mcp": "google-calendar", "heavy": "CONNECTED-UNUSED"},
+    {"id": "slack", "mcp": "slack", "heavy": "BLOCKED"},
+    {"id": "discord", "mcp": "discord", "heavy": "UNVERIFIED"},
+    {"id": "cursor", "mcp": "cursor-cloud", "heavy": "UNVERIFIED"},
+    {"id": "skillspector", "mcp": "skillspector", "heavy": "UNVERIFIED"},
+    {"id": "railway", "mcp": "railway", "heavy": "UNVERIFIED"},
+    {"id": "neon", "mcp": "neon", "heavy": "UNVERIFIED"},
+    {"id": "cloudflare", "mcp": "cloudflare", "heavy": "UNVERIFIED"},
+    {"id": "firecrawl", "mcp": "firecrawl", "heavy": "UNVERIFIED"},
+    {"id": "apify", "mcp": "apify", "heavy": "UNVERIFIED"},
+    {"id": "elevenlabs", "mcp": "elevenlabs", "heavy": "UNVERIFIED"},
+    {"id": "agentmail", "mcp": "agentmail", "heavy": "UNVERIFIED"},
+    {"id": "x", "mcp": "x", "heavy": "UNVERIFIED"},
+    {"id": "war-table", "mcp": null, "heavy": "NO-MCP"},
+    {"id": "vision-board", "mcp": null, "heavy": "NO-MCP"},
+    {"id": "pending-work", "mcp": null, "heavy": "NO-MCP"},
+    {"id": "skill-altar", "mcp": null, "heavy": "NO-MCP"},
+    {"id": "project-site", "mcp": null, "heavy": "NO-MCP staffed"},
+    {"id": "well", "mcp": null, "heavy": "NO-MCP"},
+    {"id": "bank", "mcp": null, "heavy": "NO-MCP"},
+    {"id": "grand-exchange", "mcp": null, "heavy": "NO-MCP"},
+    {"id": "skill-rack", "mcp": null, "heavy": "NO-MCP"}
+  ],
+  "stale": [
+    "Seat sheet S06: Cursor path is /mcp/cursor not /mcp/grok",
+    "Seat sheet missing Codex /mcp/codex",
+    "Passport ID04 still says No SuperGrok",
+    "Passport K08 Slack parked vs Cursor Slack live — conflict"
+  ]
+}
